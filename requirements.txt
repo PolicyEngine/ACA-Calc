@@ -1,0 +1,11 @@
+streamlit
+openai
+python-dotenv
+policyengine_us
+pyyaml
+policyengine_core
+numpy
+pyyaml
+pandas
+black
+setuptools
