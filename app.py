@@ -7,7 +7,6 @@ import plotly.graph_objects as go
 
 st.set_page_config(
     page_title="ACA Premium Tax Credit Calculator",
-    page_icon="🏥",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -22,14 +21,14 @@ def load_counties():
         return None
 
 def main():
-    st.title("🏥 ACA Premium Tax Credit Calculator")
+    st.title("ACA Premium Tax Credit Calculator")
     st.markdown("""
     **See how your Premium Tax Credits change when IRA enhancements expire**
     
     The Inflation Reduction Act enhanced ACA subsidies through 2025. See what happens in 2026 when they expire.
     """)
     
-    with st.expander("ℹ️ Understanding the Changes"):
+    with st.expander("Understanding the Changes"):
         st.markdown("""
         **2025 - With IRA Enhancements:**
         - No income cap - households above 400% FPL can still get credits
@@ -47,7 +46,7 @@ def main():
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        st.header("📋 Your Information")
+        st.header("Your Information")
         
         st.subheader("Household")
         
@@ -117,7 +116,7 @@ def main():
     
     with col2:
         if hasattr(st.session_state, 'calculate') and st.session_state.calculate:
-            st.header("📊 Your Results")
+            st.header("Your Results")
             
             params = st.session_state.params
             
@@ -127,12 +126,12 @@ def main():
                 fpl_pct = calculate_fpl_percentage(params['income'], household_size)
                 
                 # Calculate PTCs - just compare 2025 to 2026!
-                ptc_2025 = calculate_ptc(
+                ptc_2025, slcsp_2025 = calculate_ptc(
                     params['age_head'], params['age_spouse'], params['income'], 
                     params['dependent_ages'], params['state'], 2025  # With IRA
                 )
                 
-                ptc_2026 = calculate_ptc(
+                ptc_2026, slcsp_2026 = calculate_ptc(
                     params['age_head'], params['age_spouse'], params['income'], 
                     params['dependent_ages'], params['state'], 2026  # Without IRA (PolicyEngine knows this)
                 )
@@ -141,11 +140,14 @@ def main():
                 
                 # Display FPL status
                 if fpl_pct > 400:
-                    st.error(f"⚠️ **{fpl_pct:.0f}% of FPL** - Above the 400% cliff in 2026!")
+                    st.error(f"**{fpl_pct:.0f}% of FPL** - Above the 400% cliff in 2026!")
                 elif fpl_pct > 350:
-                    st.warning(f"⚠️ **{fpl_pct:.0f}% of FPL** - Near the 400% cliff")
+                    st.warning(f"**{fpl_pct:.0f}% of FPL** - Near the 400% cliff")
                 else:
-                    st.info(f"ℹ️ **{fpl_pct:.0f}% of FPL**")
+                    st.info(f"**{fpl_pct:.0f}% of FPL**")
+                
+                # Display SLCSP
+                st.info(f"Your base Second Lowest Cost Silver Plan is ${slcsp_2025:,.0f}/year")
                 
                 # Display metrics
                 col_2025, col_2026, col_diff = st.columns(3)
@@ -173,7 +175,7 @@ def main():
                 if ptc_2025 > 0 and ptc_2026 == 0:
                     if fpl_pct > 400:
                         st.error(f"""
-                        ### 💸 Complete Loss - The Cliff!
+                        ### Complete Loss - The Cliff!
                         
                         You lose **${ptc_2025:,.0f}/year** (${ptc_2025/12:,.0f}/month) in premium support.
                         
@@ -182,7 +184,7 @@ def main():
                         """)
                     else:
                         st.warning(f"""
-                        ### 📉 Complete Loss of Credits
+                        ### Complete Loss of Credits
                         
                         You lose **${ptc_2025:,.0f}/year** in premium support.
                         
@@ -191,16 +193,16 @@ def main():
                         """)
                 elif difference > 1000:
                     st.warning(f"""
-                    ### 📉 Significant Reduction
+                    ### Significant Reduction
                     Your monthly premium costs increase by **${difference/12:,.0f}**.
                     """)
                 elif difference > 0:
                     st.info(f"""
-                    ### 📊 Moderate Impact
+                    ### Moderate Impact
                     Your monthly costs increase by **${difference/12:,.0f}**.
                     """)
                 else:
-                    st.success("### ✅ No negative impact")
+                    st.success("### No negative impact")
                 
                 # Chart
                 fig = create_chart(ptc_2025, ptc_2026)
@@ -214,6 +216,7 @@ def main():
                     - **Income:** ${params['income']:,} ({fpl_pct:.0f}% of FPL)
                     - **2026 FPL for {household_size}:** ${get_fpl(household_size):,}
                     - **Location:** {params['county'] + ', ' if params['county'] else ''}{params['state']}
+                    - **Second Lowest Cost Silver Plan:** ${slcsp_2025:,.0f}/year (${slcsp_2025/12:,.0f}/month)
                     
                     ### How Premium Tax Credits Work
                     
@@ -293,12 +296,13 @@ def calculate_ptc(age_head, age_spouse, income, dependent_ages, state, year):
         # Run simulation - PolicyEngine knows the rules for each year!
         sim = Simulation(situation=household)
         ptc = sim.calculate("aca_ptc", map_to="household", period=year)[0]
+        slcsp = sim.calculate("slcsp", map_to="household", period=year)[0]
         
-        return float(max(0, ptc))
+        return float(max(0, ptc)), float(slcsp)
         
     except Exception as e:
         st.error(f"Calculation error for {year}: {str(e)}")
-        return 0
+        return 0, 0
 
 def create_chart(ptc_2025, ptc_2026):
     """Create comparison chart"""
