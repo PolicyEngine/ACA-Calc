@@ -9,3 +9,5 @@ pyyaml
 pandas
 black
 setuptools
+policyengine_app
+plotly
