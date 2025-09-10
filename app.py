@@ -184,7 +184,7 @@ def main():
                         st.warning(f"""
                         ### Credits Available in 2025 Only
                         
-                        Premium tax credits: **${ptc_2025:,.0f}/year** in 2025, **$0** in 2026.
+                        Premium tax credits: **$""" + f"{ptc_2025:,.0f}" + """/year** in 2025, **$0** in 2026.
                         
                         Your income exceeds 400% FPL. Credits are available above this limit in 2025 but not in 2026.
                         """)
@@ -192,14 +192,14 @@ def main():
                         st.warning(f"""
                         ### Credits Available in 2025 Only
                         
-                        Premium tax credits: **${ptc_2025:,.0f}/year** in 2025, **$0** in 2026.
+                        Premium tax credits: **$""" + f"{ptc_2025:,.0f}" + """/year** in 2025, **$0** in 2026.
                         
                         Higher contribution requirements in 2026 eliminate your credit eligibility.
                         """)
                 elif difference > 0:
                     st.info(f"""
                     ### Credit Reduction
-                    Premium tax credits decrease by **${difference:,.0f}/year** (${difference/12:,.0f}/month).
+                    Premium tax credits decrease by **$""" + f"{difference:,.0f}" + """/year** ($""" + f"{difference/12:,.0f}" + """/month).
                     """)
                 else:
                     st.success("### No Change in Credits")
