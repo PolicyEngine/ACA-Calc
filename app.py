@@ -340,30 +340,13 @@ def create_chart(ptc_2025, ptc_2026, age_head, age_spouse, dependent_ages, state
         base_household["households"]["your household"]["members"].append(child_id)
     
     try:
-        # Calculate 2025 IRA-enhanced curve
+        # Calculate both curves using PolicyEngine properly
         sim_2025 = Simulation(situation=base_household)
+        sim_2026 = Simulation(situation=base_household)
+        
         income_range = sim_2025.calculate("employment_income", map_to="household", period=2026)
         ptc_range_2025 = sim_2025.calculate("aca_ptc", map_to="household", period=2025)
-        
-        # Calculate FPL for household size to determine 400% cliff
-        household_size = len(base_household["people"])
-        fpl_400 = get_fpl(household_size) * 4
-        
-        # Create 2026 original ACA curve by modifying the 2025 curve
-        ptc_range_2026 = []
-        for i, inc in enumerate(income_range):
-            if inc > fpl_400:
-                # Hard cutoff at 400% FPL for original ACA
-                ptc_range_2026.append(0)
-            else:
-                # Use 2025 amount but with higher phase-out (approximate)
-                base_ptc = ptc_range_2025[i]
-                # Reduce by ~20-30% to simulate higher contribution percentages
-                reduction_factor = min(0.3, (inc / fpl_400) * 0.2)  # More reduction at higher incomes
-                reduced_ptc = base_ptc * (1 - reduction_factor)
-                ptc_range_2026.append(max(0, reduced_ptc))
-        
-        ptc_range_2026 = np.array(ptc_range_2026)
+        ptc_range_2026 = sim_2026.calculate("aca_ptc", map_to="household", period=2026)
         
         # Create the plot
         fig = go.Figure()
