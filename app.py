@@ -182,15 +182,15 @@ def main():
                 elif ptc_2025 > 0 and ptc_2026 == 0:
                     if fpl_pct > 400:
                         st.warning("### Credits Available in 2025 Only")
-                        st.warning(f"Premium tax credits: **${ptc_2025:,.0f}/year** in 2025, **$0** in 2026.")
+                        st.warning(f"Premium tax credits: **\\${ptc_2025:,.0f}/year** in 2025, **\\$0** in 2026.")
                         st.warning("Your income exceeds 400% FPL. Credits are available above this limit in 2025 but not in 2026.")
                     else:
                         st.warning("### Credits Available in 2025 Only")
-                        st.warning(f"Premium tax credits: **${ptc_2025:,.0f}/year** in 2025, **$0** in 2026.")
+                        st.warning(f"Premium tax credits: **\\${ptc_2025:,.0f}/year** in 2025, **\\$0** in 2026.")
                         st.warning("Higher contribution requirements in 2026 eliminate your credit eligibility.")
                 elif difference > 0:
                     st.info("### Credit Reduction")
-                    st.info(f"Premium tax credits decrease by **${difference:,.0f}/year** (**${difference/12:,.0f}/month**).")
+                    st.info(f"Premium tax credits decrease by **\\${difference:,.0f}/year** (**\\${difference/12:,.0f}/month**).")
                 else:
                     st.success("### No Change in Credits")
                 
