@@ -376,9 +376,11 @@ def calculate_ptc(age_head, age_spouse, income, dependent_ages, state, county_na
         st.error(traceback.format_exc())
         return 0, 0
 
-@st.cache_data(ttl=3600, show_spinner=False)
 def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_ages, state, income, county=None):
-    """Create income curve chart showing PTC across income range with user's position marked"""
+    """Create income curve chart showing PTC across income range with user's position marked
+
+    Note: Caching removed to prevent signature mismatch issues on Streamlit Cloud
+    """
 
     # Create base household structure for income sweep
     base_household = {
