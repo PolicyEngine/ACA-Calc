@@ -11,24 +11,33 @@ Uses PolicyEngine US for accurate tax-benefit microsimulation.
 """
 
 import streamlit as st
-import pandas as pd
-import numpy as np
-import json
-from policyengine_us import Simulation
-import plotly.graph_objects as go
 
-# Try to import reform capability
 try:
-    from policyengine_core.reforms import Reform
-    REFORM_AVAILABLE = True
-except ImportError:
-    REFORM_AVAILABLE = False
+    import pandas as pd
+    import numpy as np
+    import json
+    from policyengine_us import Simulation
+    import plotly.graph_objects as go
 
-st.set_page_config(
-    page_title="ACA Premium Tax Credit Calculator",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+    # Try to import reform capability
+    try:
+        from policyengine_core.reforms import Reform
+        REFORM_AVAILABLE = True
+    except ImportError:
+        REFORM_AVAILABLE = False
+
+    st.set_page_config(
+        page_title="ACA Premium Tax Credit Calculator",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+
+except Exception as e:
+    st.error(f"Startup Error: {str(e)}")
+    st.error("Please report this error with the details above.")
+    import traceback
+    st.code(traceback.format_exc())
+    st.stop()
 
 # Load counties from PolicyEngine data
 @st.cache_data
