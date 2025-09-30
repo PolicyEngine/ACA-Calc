@@ -228,8 +228,8 @@ def main():
                     st.success("### No Change in Credits")
                 
                 # Chart
-                fig = create_chart(ptc_2026_with_ira, ptc_2026_baseline, params['age_head'], params['age_spouse'], 
-                                 params['dependent_ages'], params['state'], params['income'])
+                fig = create_chart(ptc_2026_with_ira, ptc_2026_baseline, params['age_head'], params['age_spouse'],
+                                 tuple(params['dependent_ages']), params['state'], params['income'])
                 st.plotly_chart(fig, use_container_width=True)
                 
                 # Details
@@ -381,6 +381,7 @@ def calculate_ptc(age_head, age_spouse, income, dependent_ages, state, county_na
         st.error(traceback.format_exc())
         return 0, 0
 
+@st.cache_data(ttl=3600)
 def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_ages, state, income):
     """Create income curve chart showing PTC across income range with user's position marked"""
 
@@ -402,7 +403,7 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
             [
                 {
                     "name": "employment_income",
-                    "count": 400,
+                    "count": 100,
                     "min": 0,
                     "max": 200000
                 }
