@@ -218,12 +218,15 @@ def main():
                     st.info(f"Premium tax credits decrease by ${difference:,.0f}/year (${difference/12:,.0f}/month) when IRA enhancements expire.")
                 else:
                     st.success("### No Change in Credits")
-                
-                # Chart
-                fig = create_chart(ptc_2026_with_ira, ptc_2026_baseline, params['age_head'], params['age_spouse'],
-                                 tuple(params['dependent_ages']), params['state'], params['income'])
-                st.plotly_chart(fig, use_container_width=True)
-                
+
+                # Optional Chart - only generate when requested
+                st.markdown("---")
+                if st.button("📊 Show Income Comparison Chart", help="Generate an interactive chart showing how credits change across income levels"):
+                    with st.spinner("Generating chart..."):
+                        fig = create_chart(ptc_2026_with_ira, ptc_2026_baseline, params['age_head'], params['age_spouse'],
+                                         tuple(params['dependent_ages']), params['state'], params['income'], params['county'])
+                        st.plotly_chart(fig, use_container_width=True)
+
                 # Details
                 with st.expander("See calculation details"):
                     st.write(f"""
@@ -395,7 +398,7 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
             [
                 {
                     "name": "employment_income",
-                    "count": 100,
+                    "count": 50,  # Reduced for memory optimization
                     "min": 0,
                     "max": 200000
                 }
@@ -403,6 +406,11 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
         ]
     }
     
+    # Add county if provided
+    if county:
+        county_pe_format = county.upper().replace(' ', '_') + '_' + state
+        base_household["households"]["your household"]["county"] = {2026: county_pe_format}
+
     # Add spouse if married
     if age_spouse:
         base_household["people"]["your partner"] = {"age": {2026: age_spouse}}
@@ -426,7 +434,15 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
         base_household["spm_units"]["your household"]["members"].append(child_id)
         base_household["tax_units"]["your tax unit"]["members"].append(child_id)
         base_household["households"]["your household"]["members"].append(child_id)
-    
+
+        # Add child's marital unit
+        if "marital_units" not in base_household:
+            base_household["marital_units"] = {}
+        base_household["marital_units"][f"{child_id}'s marital unit"] = {
+            "members": [child_id],
+            "marital_unit_id": {2026: i + 1}  # Sequential IDs
+        }
+
     try:
         # Create reform for chart calculation
         from policyengine_core.reforms import Reform

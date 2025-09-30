@@ -1,14 +1,22 @@
 # Changelog
 
-## 2025-09-29 (Evening) - Bug Fix for Multiple Children
+## 2025-09-29 (Evening) - Memory Optimization & Bug Fixes
 
 ### Fixed
-- ✅ **Marital unit IDs** - Fixed crash with 4+ children households
+- ✅ **Marital unit IDs** - Fixed crash with 4+ children households (in both calculate_ptc and create_chart)
 - ✅ **Syntax warnings** - Removed escaped dollar signs in f-strings
+- ✅ **Memory issues** - Charts now optional to prevent out-of-memory errors
 
-**Issue**: App crashed with "Unable to set value for marital_unit_id" when adding 4+ children
-**Cause**: Incorrect marital_unit_id formula created non-sequential IDs
-**Solution**: Changed from `i + (2 if age_spouse else 1)` to `i + 1`
+### Changed
+- 🔄 **Chart is now optional** - Click "📊 Show Income Comparison Chart" button to generate
+- 🔄 **Chart resolution reduced** - 100 → 50 data points for lower memory usage
+- ➕ **County support in charts** - Charts now use county-specific data when selected
+
+**Memory Fix**: Chart generation consumed too much memory on free hosting tiers. Now charts are only generated on-demand when user clicks the button.
+
+**Marital Unit Bug**: App crashed with "Unable to set value for marital_unit_id" when adding 4+ children
+- **Cause**: Incorrect formula created non-sequential IDs
+- **Solution**: Changed from `i + (2 if age_spouse else 1)` to `i + 1`
 
 Verified with 1-5 children - all working correctly.
 
