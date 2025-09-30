@@ -160,17 +160,9 @@ def main():
                 
                 difference = ptc_2026_with_ira - ptc_2026_baseline
 
-                # Check for missing SLCSP data
-                if slcsp_2026 == 0:
-                    st.error("### No Marketplace Data Available")
-                    st.error(f"We couldn't calculate premium tax credits for {params['state']}. This may be because:")
-                    st.error("- Marketplace data is not available for this state/county in PolicyEngine")
-                    st.error("- The state may have unique marketplace arrangements")
-                    st.error("\nPlease try a different state or check healthcare.gov for your actual credits.")
-                    return
-
-                # Display SLCSP
-                st.info(f"Your base Second Lowest Cost Silver Plan is \${slcsp_2026:,.0f} per year (\${slcsp_2026/12:,.0f} per month)")
+                # Display SLCSP if available
+                if slcsp_2026 > 0:
+                    st.info(f"Your base Second Lowest Cost Silver Plan is \${slcsp_2026:,.0f} per year (\${slcsp_2026/12:,.0f} per month)")
                 
                 # Display metrics with custom CSS to prevent truncation
                 st.markdown("""
@@ -210,8 +202,8 @@ def main():
                         st.info("### No Premium Tax Credits Available")
                         st.write("Your income exceeds 400% FPL, which is above the credit limit in both scenarios.")
                     else:
-                        st.info("### No Premium Tax Credits Available") 
-                        st.write("Your income is below the minimum threshold for ACA premium tax credits in both scenarios.")
+                        st.info("### No Premium Tax Credits Available")
+                        st.write("Your income is below the minimum threshold for ACA premium tax credits in both scenarios. Check the chart below to see potential Medicaid or CHIP eligibility.")
                 elif ptc_2026_with_ira > 0 and ptc_2026_baseline == 0:
                     if fpl_pct > 400:
                         st.warning("### Credits Available Only With IRA Extension")
@@ -456,28 +448,54 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
         income_range = sim_baseline.calculate("employment_income", map_to="household", period=2026)
         ptc_range_baseline = sim_baseline.calculate("aca_ptc", map_to="household", period=2026)
         ptc_range_reform = sim_reform.calculate("aca_ptc", map_to="household", period=2026)
-        
+
+        # Calculate Medicaid and CHIP values
+        medicaid_range = sim_baseline.calculate("medicaid_cost", map_to="household", period=2026)
+        chip_range = sim_baseline.calculate("per_capita_chip", map_to="household", period=2026)
+
         # Create the plot
         fig = go.Figure()
-        
+
+        # Add Medicaid line
+        fig.add_trace(go.Scatter(
+            x=income_range,
+            y=medicaid_range,
+            mode='lines',
+            name='Medicaid',
+            line=dict(color='#28A745', width=3, dash='dot'),
+            hovertemplate='<b>Medicaid</b><br>Income: $%{x:,.0f}<br>Value: $%{y:,.0f}<extra></extra>',
+            visible=True
+        ))
+
+        # Add CHIP line
+        fig.add_trace(go.Scatter(
+            x=income_range,
+            y=chip_range,
+            mode='lines',
+            name='CHIP',
+            line=dict(color='#FFC107', width=3, dash='dot'),
+            hovertemplate='<b>CHIP</b><br>Income: $%{x:,.0f}<br>Value: $%{y:,.0f}<extra></extra>',
+            visible=True
+        ))
+
         # Add reform line (with IRA extension)
         fig.add_trace(go.Scatter(
             x=income_range,
             y=ptc_range_reform,
             mode='lines',
-            name='2026 (With IRA Extension)',
+            name='PTC (With IRA)',
             line=dict(color='#2C6496', width=3),
-            hovertemplate='<b>2026 (With IRA Extension)</b><br>Income: $%{x:,.0f}<br>PTC: $%{y:,.0f}<extra></extra>'
+            hovertemplate='<b>PTC (With IRA Extension)</b><br>Income: $%{x:,.0f}<br>PTC: $%{y:,.0f}<extra></extra>'
         ))
-        
+
         # Add baseline line (original ACA)
         fig.add_trace(go.Scatter(
             x=income_range,
             y=ptc_range_baseline,
             mode='lines',
-            name='2026 (After IRA Expires)',
+            name='PTC (After IRA Expires)',
             line=dict(color='#DC3545', width=3, dash='dash'),
-            hovertemplate='<b>2026 (After IRA Expires)</b><br>Income: $%{x:,.0f}<br>PTC: $%{y:,.0f}<extra></extra>'
+            hovertemplate='<b>PTC (After IRA Expires)</b><br>Income: $%{x:,.0f}<br>PTC: $%{y:,.0f}<extra></extra>'
         ))
         
         # Add user's position markers
@@ -494,36 +512,49 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
             ),
             showlegend=False
         ))
-        
-        # Add annotations for user's points
-        fig.add_annotation(
-            x=income,
-            y=ptc_with_ira,
-            text=f"Your w/ IRA: ${ptc_with_ira:,.0f}",
-            showarrow=False,
-            bgcolor='white',
-            bordercolor='#2C6496',
-            xshift=10
-        )
 
-        fig.add_annotation(
-            x=income,
-            y=ptc_baseline,
-            text=f"Your baseline: ${ptc_baseline:,.0f}",
-            showarrow=False,
-            bgcolor='white',
-            bordercolor='#DC3545',
-            xshift=10
-        )
+        # Add annotations for user's points (only if income > 0 to avoid cramping y-axis)
+        if income > 10000:
+            fig.add_annotation(
+                x=income,
+                y=ptc_with_ira,
+                text=f"Your w/ IRA: ${ptc_with_ira:,.0f}",
+                showarrow=True,
+                arrowhead=2,
+                arrowsize=1,
+                arrowwidth=2,
+                arrowcolor='#2C6496',
+                ax=60,
+                ay=-40,
+                bgcolor='white',
+                bordercolor='#2C6496',
+                borderwidth=2
+            )
+
+            fig.add_annotation(
+                x=income,
+                y=ptc_baseline,
+                text=f"Your baseline: ${ptc_baseline:,.0f}",
+                showarrow=True,
+                arrowhead=2,
+                arrowsize=1,
+                arrowwidth=2,
+                arrowcolor='#DC3545',
+                ax=60,
+                ay=40,
+                bgcolor='white',
+                bordercolor='#DC3545',
+                borderwidth=2
+            )
         
         # Update layout
         fig.update_layout(
-            title="Premium Tax Credits by Household Income",
+            title="Healthcare Assistance by Household Income",
             xaxis_title="Annual Household Income",
-            yaxis_title="Annual Premium Tax Credit",
+            yaxis_title="Annual Healthcare Assistance Value",
             height=500,
-            xaxis=dict(tickformat='$,.0f'),
-            yaxis=dict(tickformat='$,.0f', rangemode='tozero'),
+            xaxis=dict(tickformat='$,.0f', range=[0, 200000], automargin=True),
+            yaxis=dict(tickformat='$,.0f', rangemode='tozero', automargin=True),
             plot_bgcolor='white',
             legend=dict(
                 orientation="h",
@@ -531,7 +562,8 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
                 y=1.02,
                 xanchor="right",
                 x=1
-            )
+            ),
+            margin=dict(l=80, r=40, t=60, b=60)
         )
         
         return fig
