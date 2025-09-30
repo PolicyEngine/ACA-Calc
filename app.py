@@ -170,7 +170,7 @@ def main():
                     return
 
                 # Display SLCSP
-                st.info(f"Your base Second Lowest Cost Silver Plan is ${slcsp_2026:,.0f}/year (${slcsp_2026/12:,.0f}/month)")
+                st.info(f"Your base Second Lowest Cost Silver Plan is \${slcsp_2026:,.0f} per year (\${slcsp_2026/12:,.0f} per month)")
                 
                 # Display metrics with custom CSS to prevent truncation
                 st.markdown("""
