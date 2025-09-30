@@ -1,6 +1,18 @@
 # Changelog
 
-## 2025-09-29 - Major Fixes & Cleanup
+## 2025-09-29 (Evening) - Bug Fix for Multiple Children
+
+### Fixed
+- ✅ **Marital unit IDs** - Fixed crash with 4+ children households
+- ✅ **Syntax warnings** - Removed escaped dollar signs in f-strings
+
+**Issue**: App crashed with "Unable to set value for marital_unit_id" when adding 4+ children
+**Cause**: Incorrect marital_unit_id formula created non-sequential IDs
+**Solution**: Changed from `i + (2 if age_spouse else 1)` to `i + 1`
+
+Verified with 1-5 children - all working correctly.
+
+## 2025-09-29 (Afternoon) - Major Fixes & Cleanup
 
 ### Fixed
 - ✅ **County support working** - All 3,143 counties now calculate correctly

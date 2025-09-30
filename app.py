@@ -162,7 +162,7 @@ def main():
 
                 # Display SLCSP if available
                 if slcsp_2026 > 0:
-                    st.info(f"Your base Second Lowest Cost Silver Plan is \${slcsp_2026:,.0f} per year (\${slcsp_2026/12:,.0f} per month)")
+                    st.info(f"Your base Second Lowest Cost Silver Plan is ${slcsp_2026:,.0f}/year (${slcsp_2026/12:,.0f}/month)")
                 
                 # Display metrics with custom CSS to prevent truncation
                 st.markdown("""
@@ -207,15 +207,15 @@ def main():
                 elif ptc_2026_with_ira > 0 and ptc_2026_baseline == 0:
                     if fpl_pct > 400:
                         st.warning("### Credits Available Only With IRA Extension")
-                        st.warning(f"Premium tax credits: \${ptc_2026_with_ira:,.0f} per year with IRA extension, \$0 without.")
+                        st.warning(f"Premium tax credits: ${ptc_2026_with_ira:,.0f}/year with IRA extension, $0 without.")
                         st.warning("Your income exceeds 400% FPL. Credits are available above this limit with IRA enhancements but not without.")
                     else:
                         st.warning("### Credits Available Only With IRA Extension")
-                        st.warning(f"Premium tax credits: \${ptc_2026_with_ira:,.0f} per year with IRA extension, \$0 without.")
+                        st.warning(f"Premium tax credits: ${ptc_2026_with_ira:,.0f}/year with IRA extension, $0 without.")
                         st.warning("Higher contribution requirements without IRA eliminate your credit eligibility.")
                 elif difference > 0:
                     st.info("### Credit Reduction")
-                    st.info(f"Premium tax credits decrease by \${difference:,.0f} per year (\${difference/12:,.0f} per month) when IRA enhancements expire.")
+                    st.info(f"Premium tax credits decrease by ${difference:,.0f}/year (${difference/12:,.0f}/month) when IRA enhancements expire.")
                 else:
                     st.success("### No Change in Credits")
                 
@@ -331,7 +331,7 @@ def calculate_ptc(age_head, age_spouse, income, dependent_ages, state, county_na
                 situation["marital_units"] = {}
             situation["marital_units"][f"{child_id}'s marital unit"] = {
                 "members": [child_id],
-                "marital_unit_id": {2026: i + (2 if age_spouse else 1)}
+                "marital_unit_id": {2026: i + 1}  # Sequential IDs: 1, 2, 3, ...
             }
 
         # Deep copy and inject income (matches notebook pattern)
