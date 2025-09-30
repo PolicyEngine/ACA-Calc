@@ -170,7 +170,7 @@ def main():
                     return
 
                 # Display SLCSP
-                st.info(f"Your base Second Lowest Cost Silver Plan is \\${slcsp_2026:,.0f}/year (\\${slcsp_2026/12:,.0f}/month)")
+                st.info(f"Your base Second Lowest Cost Silver Plan is ${slcsp_2026:,.0f}/year (${slcsp_2026/12:,.0f}/month)")
                 
                 # Display metrics with custom CSS to prevent truncation
                 st.markdown("""
@@ -186,21 +186,21 @@ def main():
                 col_with_ira, col_baseline, col_diff = st.columns(3)
 
                 with col_with_ira:
-                    st.metric("2026 (With IRA)", f"\\${ptc_2026_with_ira:,.0f}/year",
+                    st.metric("2026 (With IRA)", f"${ptc_2026_with_ira:,.0f}/year",
                              help="Your credits if IRA enhancements were extended")
 
                 with col_baseline:
-                    st.metric("2026 (After Expiration)", f"\\${ptc_2026_baseline:,.0f}/year",
+                    st.metric("2026 (After Expiration)", f"${ptc_2026_baseline:,.0f}/year",
                              help="Your credits after IRA expires (original ACA)")
 
                 with col_diff:
                     if difference > 0:
-                        st.metric("You Lose", f"\\${difference:,.0f}/year",
-                                 f"-\\${difference/12:,.0f}/month", delta_color="inverse")
+                        st.metric("You Lose", f"${difference:,.0f}/year",
+                                 f"-${difference/12:,.0f}/month", delta_color="inverse")
                     elif difference < 0:
                         # This shouldn't happen but just in case
-                        st.metric("You Gain?", f"\\${abs(difference):,.0f}/year",
-                                 f"+\\${abs(difference)/12:,.0f}/month", delta_color="normal")
+                        st.metric("You Gain?", f"${abs(difference):,.0f}/year",
+                                 f"+${abs(difference)/12:,.0f}/month", delta_color="normal")
                     else:
                         st.metric("No Change", "$0")
                 
@@ -215,15 +215,15 @@ def main():
                 elif ptc_2026_with_ira > 0 and ptc_2026_baseline == 0:
                     if fpl_pct > 400:
                         st.warning("### Credits Available Only With IRA Extension")
-                        st.warning(f"Premium tax credits: **\\${ptc_2026_with_ira:,.0f}/year** with IRA extension, **\\$0** without.")
+                        st.warning(f"Premium tax credits: **${ptc_2026_with_ira:,.0f}/year** with IRA extension, **$0** without.")
                         st.warning("Your income exceeds 400% FPL. Credits are available above this limit with IRA enhancements but not without.")
                     else:
                         st.warning("### Credits Available Only With IRA Extension")
-                        st.warning(f"Premium tax credits: **\\${ptc_2026_with_ira:,.0f}/year** with IRA extension, **\\$0** without.")
+                        st.warning(f"Premium tax credits: **${ptc_2026_with_ira:,.0f}/year** with IRA extension, **$0** without.")
                         st.warning("Higher contribution requirements without IRA eliminate your credit eligibility.")
                 elif difference > 0:
                     st.info("### Credit Reduction")
-                    st.info(f"Premium tax credits decrease by **\\${difference:,.0f}/year** (**\\${difference/12:,.0f}/month**) when IRA enhancements expire.")
+                    st.info(f"Premium tax credits decrease by **${difference:,.0f}/year** (**${difference/12:,.0f}/month**) when IRA enhancements expire.")
                 else:
                     st.success("### No Change in Credits")
                 
@@ -237,10 +237,10 @@ def main():
                     st.write(f"""
                     ### Your Household
                     - **Size:** {household_size} people
-                    - **Income:** \\${params['income']:,} ({fpl_pct:.0f}% of FPL)
-                    - **2026 FPL for {household_size}:** \\${get_fpl(household_size):,}
+                    - **Income:** ${params['income']:,} ({fpl_pct:.0f}% of FPL)
+                    - **2026 FPL for {household_size}:** ${get_fpl(household_size):,}
                     - **Location:** {params['county'] + ', ' if params['county'] else ''}{params['state']}
-                    - **Second Lowest Cost Silver Plan:** \\${slcsp_2026:,.0f}/year (\\${slcsp_2026/12:,.0f}/month)
+                    - **Second Lowest Cost Silver Plan:** ${slcsp_2026:,.0f}/year (${slcsp_2026/12:,.0f}/month)
                     
                     ### How Premium Tax Credits Work
                     
@@ -498,7 +498,7 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
         fig.add_annotation(
             x=income,
             y=ptc_with_ira,
-            text=f"Your w/ IRA: \\${ptc_with_ira:,.0f}",
+            text=f"Your w/ IRA: ${ptc_with_ira:,.0f}",
             showarrow=False,
             bgcolor='white',
             bordercolor='#2C6496',
@@ -508,7 +508,7 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
         fig.add_annotation(
             x=income,
             y=ptc_baseline,
-            text=f"Your baseline: \\${ptc_baseline:,.0f}",
+            text=f"Your baseline: ${ptc_baseline:,.0f}",
             showarrow=False,
             bgcolor='white',
             bordercolor='#DC3545',
