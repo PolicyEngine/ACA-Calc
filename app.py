@@ -215,15 +215,15 @@ def main():
                 elif ptc_2026_with_ira > 0 and ptc_2026_baseline == 0:
                     if fpl_pct > 400:
                         st.warning("### Credits Available Only With IRA Extension")
-                        st.warning(f"Premium tax credits: ${ptc_2026_with_ira:,.0f}/year with IRA extension, $0 without.")
+                        st.warning(f"Premium tax credits: ${ptc_2026_with_ira:,.0f} per year with IRA extension, $0 without.")
                         st.warning("Your income exceeds 400% FPL. Credits are available above this limit with IRA enhancements but not without.")
                     else:
                         st.warning("### Credits Available Only With IRA Extension")
-                        st.warning(f"Premium tax credits: ${ptc_2026_with_ira:,.0f}/year with IRA extension, $0 without.")
+                        st.warning(f"Premium tax credits: ${ptc_2026_with_ira:,.0f} per year with IRA extension, $0 without.")
                         st.warning("Higher contribution requirements without IRA eliminate your credit eligibility.")
                 elif difference > 0:
                     st.info("### Credit Reduction")
-                    st.info(f"Premium tax credits decrease by ${difference:,.0f}/year (${difference/12:,.0f}/month) when IRA enhancements expire.")
+                    st.info(f"Premium tax credits decrease by ${difference:,.0f} per year (${difference/12:,.0f} per month) when IRA enhancements expire.")
                 else:
                     st.success("### No Change in Credits")
                 
