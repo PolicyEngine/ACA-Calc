@@ -222,7 +222,7 @@ def main():
 
             # Display SLCSP if available
             if slcsp_2026 > 0:
-                st.info(f"Your base Second Lowest Cost Silver Plan is ${slcsp_2026:,.0f}/year (${slcsp_2026/12:,.0f}/month)")
+                st.info(f"Your base Second Lowest Cost Silver Plan is ${slcsp_2026:,.0f}\\/year (${slcsp_2026/12:,.0f}\\/month)")
 
             # Display metrics with custom CSS to prevent truncation
             st.markdown("""
@@ -243,21 +243,21 @@ def main():
             col_with_ira, col_baseline, col_diff = st.columns(3)
 
             with col_with_ira:
-                st.metric("Enhanced PTCs extended", f"${ptc_2026_with_ira:,.0f}/year",
+                st.metric("Enhanced PTCs extended", f"${ptc_2026_with_ira:,.0f}\\/year",
                          help="Your credits if enhanced subsidies were extended")
 
             with col_baseline:
-                st.metric("Current law", f"${ptc_2026_baseline:,.0f}/year",
+                st.metric("Current law", f"${ptc_2026_baseline:,.0f}\\/year",
                          help="Your credits under current law (enhanced PTCs expire)")
 
             with col_diff:
                 if difference > 0:
-                    st.metric("You Lose", f"${difference:,.0f}/year",
-                             f"-${difference/12:,.0f}/month", delta_color="inverse")
+                    st.metric("You Lose", f"${difference:,.0f}\\/year",
+                             f"-${difference/12:,.0f}\\/month", delta_color="inverse")
                 elif difference < 0:
                     # This shouldn't happen but just in case
-                    st.metric("You Gain?", f"${abs(difference):,.0f}/year",
-                             f"+${abs(difference)/12:,.0f}/month", delta_color="normal")
+                    st.metric("You Gain?", f"${abs(difference):,.0f}\\/year",
+                             f"+${abs(difference)/12:,.0f}\\/month", delta_color="normal")
                 else:
                     st.metric("No Change", "$0")
 
@@ -272,15 +272,15 @@ def main():
             elif ptc_2026_with_ira > 0 and ptc_2026_baseline == 0:
                 if fpl_pct > 400:
                     st.warning("### Credits available only with enhanced PTCs extended")
-                    st.warning(f"Premium tax credits: ${ptc_2026_with_ira:,.0f}/year with enhanced PTCs extended, $0 under current law.")
+                    st.warning(f"Premium tax credits: ${ptc_2026_with_ira:,.0f}\\/year with enhanced PTCs extended, $0 under current law.")
                     st.warning("Your income exceeds 400% FPL. Credits are available above this limit with enhanced PTCs but not under current law.")
                 else:
                     st.warning("### Credits available only with enhanced PTCs extended")
-                    st.warning(f"Premium tax credits: ${ptc_2026_with_ira:,.0f}/year with enhanced PTCs extended, $0 under current law.")
+                    st.warning(f"Premium tax credits: ${ptc_2026_with_ira:,.0f}\\/year with enhanced PTCs extended, $0 under current law.")
                     st.warning("Higher contribution requirements under current law eliminate your credit eligibility.")
             elif difference > 0:
                 st.info("### Credit reduction under current law")
-                st.info(f"Premium tax credits decrease by ${difference:,.0f}/year (${difference/12:,.0f}/month) when enhanced PTCs expire.")
+                st.info(f"Premium tax credits decrease by ${difference:,.0f}\\/year (${difference/12:,.0f}\\/month) when enhanced PTCs expire.")
             else:
                 st.success("### No Change in Credits")
 
@@ -307,7 +307,7 @@ def main():
                 - **Income:** ${params['income']:,} ({fpl_pct:.0f}% of FPL)
                 - **2026 FPL for {household_size}:** ${get_fpl(household_size):,}
                 - **Location:** {params['county'] + ', ' if params['county'] else ''}{params['state']}
-                - **Second Lowest Cost Silver Plan:** ${slcsp_2026:,.0f}/year (${slcsp_2026/12:,.0f}/month)
+                - **Second Lowest Cost Silver Plan:** ${slcsp_2026:,.0f}\\/year (${slcsp_2026/12:,.0f}\\/month)
 
                 ### How Premium Tax Credits Work
 
