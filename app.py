@@ -405,8 +405,7 @@ def calculate_ptc(age_head, age_spouse, income, dependent_ages, state, county_na
             if "marital_units" not in situation:
                 situation["marital_units"] = {}
             situation["marital_units"][f"{child_id}'s marital unit"] = {
-                "members": [child_id],
-                "marital_unit_id": {2026: i + 1}  # Sequential IDs: 1, 2, 3, ...
+                "members": [child_id]
             }
 
         # Deep copy and inject income (matches notebook pattern)
@@ -516,8 +515,7 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
         if "marital_units" not in base_household:
             base_household["marital_units"] = {}
         base_household["marital_units"][f"{child_id}'s marital unit"] = {
-            "members": [child_id],
-            "marital_unit_id": {2026: i + 1}  # Sequential IDs
+            "members": [child_id]
         }
 
     try:
