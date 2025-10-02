@@ -544,15 +544,16 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
         medicaid_range = sim_baseline.calculate("medicaid_cost", map_to="household", period=2026)
         chip_range = sim_baseline.calculate("per_capita_chip", map_to="household", period=2026)
 
-        # Find where PTC with reform goes to zero (for dynamic x-axis range)
-        # Look for last point where ptc_range_reform > 0
+        # Find where PTC goes to zero for dynamic x-axis range
+        # Use reform PTC since it always extends to higher incomes than baseline
+        # (baseline has 400% FPL cliff, reform removes it)
         max_income_with_ptc = 200000  # Default fallback
         for i in range(len(ptc_range_reform) - 1, -1, -1):
             if ptc_range_reform[i] > 0:
                 max_income_with_ptc = income_range[i]
                 break
 
-        # Add some padding (10%) to the range
+        # Add 10% padding to the range
         x_axis_max = min(500000, max_income_with_ptc * 1.1)
 
         # Create the plot
