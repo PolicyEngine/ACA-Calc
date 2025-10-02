@@ -474,7 +474,7 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
             [
                 {
                     "name": "employment_income",
-                    "count": 500,  # 500k range in 1k increments
+                    "count": 501,  # 501 points for exact 1k increments (0 to 500k)
                     "min": 0,
                     "max": 500000
                 }
