@@ -556,8 +556,54 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
         # Add 10% padding to the range
         x_axis_max = min(500000, max_income_with_ptc * 1.1)
 
+        # Calculate delta
+        delta_range = ptc_range_reform - ptc_range_baseline
+
+        # Create hover text based on program eligibility
+        import numpy as np
+        hover_text = []
+        for i in range(len(income_range)):
+            inc = income_range[i]
+            ptc_base = ptc_range_baseline[i]
+            ptc_ref = ptc_range_reform[i]
+            delta = delta_range[i]
+            medicaid = medicaid_range[i]
+            chip = chip_range[i]
+
+            text = f"<b>Income: ${inc:,.0f}</b><br><br>"
+
+            # Check if eligible for Medicaid or CHIP
+            if medicaid > 0:
+                text += f"<b>Medicaid eligible</b><br>Estimated value: ${medicaid:,.0f}/year<br>"
+            elif chip > 0:
+                text += f"<b>CHIP eligible</b><br>Estimated value: ${chip:,.0f}/year<br>"
+            else:
+                # Show PTC information
+                text += f"<b>PTC (current law):</b> ${ptc_base:,.0f}/year<br>"
+                text += f"<b>PTC (extended):</b> ${ptc_ref:,.0f}/year<br>"
+                if delta > 0:
+                    text += f"<b>Difference:</b> -${delta:,.0f}/year"
+                elif delta < 0:
+                    text += f"<b>Difference:</b> +${abs(delta):,.0f}/year"
+                else:
+                    text += f"<b>Difference:</b> $0"
+
+            hover_text.append(text)
+
         # Create the plot
         fig = go.Figure()
+
+        # Add invisible hover trace with unified information
+        fig.add_trace(go.Scatter(
+            x=income_range,
+            y=np.maximum.reduce([medicaid_range, chip_range, ptc_range_baseline, ptc_range_reform]),
+            mode='lines',
+            line=dict(width=0),
+            hovertext=hover_text,
+            hoverinfo='text',
+            showlegend=False,
+            name=''
+        ))
 
         # Add Medicaid line
         fig.add_trace(go.Scatter(
@@ -566,7 +612,7 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
             mode='lines',
             name='Medicaid',
             line=dict(color=COLORS['green'], width=3),
-            hovertemplate='<b>Medicaid</b><br>Income: $%{x:,.0f}<br>Value: $%{y:,.0f}<extra></extra>',
+            hoverinfo='skip',
             visible=True
         ))
 
@@ -577,7 +623,7 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
             mode='lines',
             name="Children's Health Insurance Program (CHIP)",
             line=dict(color=COLORS['secondary'], width=3),
-            hovertemplate="<b>Children's Health Insurance Program (CHIP)</b><br>Income: $%{x:,.0f}<br>Value: $%{y:,.0f}<extra></extra>",
+            hoverinfo='skip',
             visible=True
         ))
 
@@ -588,7 +634,7 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
             mode='lines',
             name='PTC (current law)',
             line=dict(color=COLORS['gray'], width=3),
-            hovertemplate='<b>PTC (current law)</b><br>Income: $%{x:,.0f}<br>PTC: $%{y:,.0f}<extra></extra>'
+            hoverinfo='skip'
         ))
 
         # Add reform line (enhanced PTCs extended)
@@ -598,7 +644,7 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
             mode='lines',
             name='PTC (enhanced PTCs extended)',
             line=dict(color=COLORS['primary'], width=3),
-            hovertemplate='<b>PTC (enhanced PTCs extended)</b><br>Income: $%{x:,.0f}<br>PTC: $%{y:,.0f}<extra></extra>'
+            hoverinfo='skip'
         ))
         
         # Add user's position markers
@@ -613,6 +659,7 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
                 symbol='diamond',
                 line=dict(width=2, color='white')
             ),
+            hoverinfo='skip',
             showlegend=False
         ))
 
@@ -677,9 +724,33 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
         # Create delta chart
         fig_delta = go.Figure()
 
-        # Calculate delta (extended - current law)
-        delta_range = ptc_range_reform - ptc_range_baseline
         user_difference = ptc_with_ira - ptc_baseline
+
+        # Create hover text for delta chart
+        delta_hover_text = []
+        for i in range(len(income_range)):
+            inc = income_range[i]
+            delta = delta_range[i]
+            medicaid = medicaid_range[i]
+            chip = chip_range[i]
+
+            text = f"<b>Income: ${inc:,.0f}</b><br><br>"
+
+            # Check if eligible for Medicaid or CHIP
+            if medicaid > 0:
+                text += f"<b>Medicaid eligible</b><br>Premium tax credits not applicable"
+            elif chip > 0:
+                text += f"<b>CHIP eligible</b><br>Premium tax credits not applicable"
+            else:
+                # Show gain from extension
+                if delta > 0:
+                    text += f"<b>Gain from extension:</b> ${delta:,.0f}/year"
+                elif delta < 0:
+                    text += f"<b>Loss from extension:</b> -${abs(delta):,.0f}/year"
+                else:
+                    text += f"<b>No change</b>"
+
+            delta_hover_text.append(text)
 
         # Add delta line
         fig_delta.add_trace(go.Scatter(
@@ -690,7 +761,8 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
             line=dict(color=COLORS['primary'], width=3),
             fill='tozeroy',
             fillcolor=f"rgba(44, 100, 150, 0.2)",
-            hovertemplate='<b>PTC gain from extension</b><br>Income: $%{x:,.0f}<br>Gain: $%{y:,.0f}<extra></extra>'
+            hovertext=delta_hover_text,
+            hoverinfo='text'
         ))
 
         # Add user's position marker
@@ -706,6 +778,7 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
                     symbol='diamond',
                     line=dict(width=2, color='white')
                 ),
+                hoverinfo='skip',
                 showlegend=False
             ))
 
