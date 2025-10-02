@@ -18,6 +18,7 @@ try:
     import json
     from policyengine_us import Simulation
     import plotly.graph_objects as go
+    import base64
 
     # Try to import reform capability
     try:
@@ -53,9 +54,36 @@ COLORS = {
     "primary": "#2C6496",  # Blue for extension/reform
     "secondary": "#39C6C0",
     "green": "#28A745",
-    "gray": "#808080",  # Gray for baseline/expiration
+    "gray": "#BDBDBD",  # Medium light gray for baseline (matches policyengine-app)
     "blue_gradient": ["#D1E5F0", "#92C5DE", "#2166AC", "#053061"],
 }
+
+def get_logo_base64():
+    """Get base64 encoded PolicyEngine logo"""
+    try:
+        with open('blue.png', 'rb') as f:
+            return base64.b64encode(f.read()).decode()
+    except:
+        return None
+
+def add_logo_to_layout():
+    """Add PolicyEngine logo to chart layout"""
+    logo_base64 = get_logo_base64()
+    if logo_base64:
+        return {
+            "images": [{
+                "source": f"data:image/png;base64,{logo_base64}",
+                "xref": "paper",
+                "yref": "paper",
+                "x": 1,
+                "y": -0.15,
+                "sizex": 0.15,
+                "sizey": 0.15,
+                "xanchor": "right",
+                "yanchor": "bottom",
+            }]
+        }
+    return {}
 
 def main():
     # Header with PolicyEngine branding
@@ -474,9 +502,9 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
             [
                 {
                     "name": "employment_income",
-                    "count": 501,  # 501 points for exact 1k increments (0 to 500k)
+                    "count": 1001,  # 1001 points for exact 1k increments (0 to 1M)
                     "min": 0,
-                    "max": 500000
+                    "max": 1000000
                 }
             ]
         ]
@@ -554,7 +582,7 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
                 break
 
         # Add 10% padding to the range
-        x_axis_max = min(500000, max_income_with_ptc * 1.1)
+        x_axis_max = min(1000000, max_income_with_ptc * 1.1)
 
         # Calculate delta
         delta_range = ptc_range_reform - ptc_range_baseline
@@ -718,7 +746,8 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
                 xanchor="right",
                 x=1
             ),
-            margin=dict(l=80, r=40, t=60, b=60)
+            margin=dict(l=80, r=40, t=60, b=60),
+            **add_logo_to_layout()
         )
 
         # Create delta chart
