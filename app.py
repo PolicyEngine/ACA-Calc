@@ -474,9 +474,9 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
             [
                 {
                     "name": "employment_income",
-                    "count": 50,  # Reduced for memory optimization
+                    "count": 500,  # 500k range in 1k increments
                     "min": 0,
-                    "max": 200000
+                    "max": 500000
                 }
             ]
         ]
@@ -543,6 +543,17 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
         # Calculate Medicaid and CHIP values
         medicaid_range = sim_baseline.calculate("medicaid_cost", map_to="household", period=2026)
         chip_range = sim_baseline.calculate("per_capita_chip", map_to="household", period=2026)
+
+        # Find where PTC with reform goes to zero (for dynamic x-axis range)
+        # Look for last point where ptc_range_reform > 0
+        max_income_with_ptc = 200000  # Default fallback
+        for i in range(len(ptc_range_reform) - 1, -1, -1):
+            if ptc_range_reform[i] > 0:
+                max_income_with_ptc = income_range[i]
+                break
+
+        # Add some padding (10%) to the range
+        x_axis_max = min(500000, max_income_with_ptc * 1.1)
 
         # Create the plot
         fig = go.Figure()
@@ -647,7 +658,7 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
             xaxis_title="Annual household income",
             yaxis_title="Annual healthcare assistance value",
             height=500,
-            xaxis=dict(tickformat='$,.0f', range=[0, 200000], automargin=True),
+            xaxis=dict(tickformat='$,.0f', range=[0, x_axis_max], automargin=True),
             yaxis=dict(tickformat='$,.0f', rangemode='tozero', automargin=True),
             plot_bgcolor='white',
             paper_bgcolor='white',
@@ -721,7 +732,7 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
             xaxis_title="Annual household income",
             yaxis_title="Annual PTC gain (extended - current law)",
             height=500,
-            xaxis=dict(tickformat='$,.0f', range=[0, 200000], automargin=True),
+            xaxis=dict(tickformat='$,.0f', range=[0, x_axis_max], automargin=True),
             yaxis=dict(tickformat='$,.0f', rangemode='tozero', automargin=True),
             plot_bgcolor='white',
             paper_bgcolor='white',
