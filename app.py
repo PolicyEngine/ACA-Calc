@@ -240,15 +240,15 @@ def main():
             </style>
             """, unsafe_allow_html=True)
 
-            col_with_ira, col_baseline, col_diff = st.columns(3)
-
-            with col_with_ira:
-                st.metric("Enhanced PTCs extended", f"${ptc_2026_with_ira:,.0f} per year",
-                         help="Your credits if enhanced subsidies were extended")
+            col_baseline, col_with_ira, col_diff = st.columns(3)
 
             with col_baseline:
                 st.metric("Current law", f"${ptc_2026_baseline:,.0f} per year",
                          help="Your credits under current law (enhanced PTCs expire)")
+
+            with col_with_ira:
+                st.metric("Enhanced PTCs extended", f"${ptc_2026_with_ira:,.0f} per year",
+                         help="Your credits if enhanced subsidies were extended")
 
             with col_diff:
                 if difference > 0:
@@ -565,20 +565,30 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
             y=medicaid_range,
             mode='lines',
             name='Medicaid',
-            line=dict(color=COLORS['green'], width=3, dash='dot'),
+            line=dict(color=COLORS['green'], width=3),
             hovertemplate='<b>Medicaid</b><br>Income: $%{x:,.0f}<br>Value: $%{y:,.0f}<extra></extra>',
             visible=True
         ))
 
-        # Add CHIP line
+        # Add Children's Health Insurance Program (CHIP) line
         fig.add_trace(go.Scatter(
             x=income_range,
             y=chip_range,
             mode='lines',
-            name='CHIP',
-            line=dict(color=COLORS['secondary'], width=3, dash='dot'),
-            hovertemplate='<b>CHIP</b><br>Income: $%{x:,.0f}<br>Value: $%{y:,.0f}<extra></extra>',
+            name="Children's Health Insurance Program (CHIP)",
+            line=dict(color=COLORS['secondary'], width=3),
+            hovertemplate="<b>Children's Health Insurance Program (CHIP)</b><br>Income: $%{x:,.0f}<br>Value: $%{y:,.0f}<extra></extra>",
             visible=True
+        ))
+
+        # Add baseline line (current law) - show first in legend
+        fig.add_trace(go.Scatter(
+            x=income_range,
+            y=ptc_range_baseline,
+            mode='lines',
+            name='PTC (current law)',
+            line=dict(color=COLORS['gray'], width=3),
+            hovertemplate='<b>PTC (current law)</b><br>Income: $%{x:,.0f}<br>PTC: $%{y:,.0f}<extra></extra>'
         ))
 
         # Add reform line (enhanced PTCs extended)
@@ -590,25 +600,15 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
             line=dict(color=COLORS['primary'], width=3),
             hovertemplate='<b>PTC (enhanced PTCs extended)</b><br>Income: $%{x:,.0f}<br>PTC: $%{y:,.0f}<extra></extra>'
         ))
-
-        # Add baseline line (current law)
-        fig.add_trace(go.Scatter(
-            x=income_range,
-            y=ptc_range_baseline,
-            mode='lines',
-            name='PTC (current law)',
-            line=dict(color=COLORS['gray'], width=3, dash='dash'),
-            hovertemplate='<b>PTC (current law)</b><br>Income: $%{x:,.0f}<br>PTC: $%{y:,.0f}<extra></extra>'
-        ))
         
         # Add user's position markers
         fig.add_trace(go.Scatter(
             x=[income, income],
-            y=[ptc_with_ira, ptc_baseline],
+            y=[ptc_baseline, ptc_with_ira],
             mode='markers',
             name='Your Household',
             marker=dict(
-                color=[COLORS['primary'], COLORS['gray']],
+                color=[COLORS['gray'], COLORS['primary']],
                 size=12,
                 symbol='diamond',
                 line=dict(width=2, color='white')
@@ -618,22 +618,6 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
 
         # Add annotations for user's points (only if income > 0 to avoid cramping y-axis)
         if income > 10000:
-            fig.add_annotation(
-                x=income,
-                y=ptc_with_ira,
-                text=f"Extended: ${ptc_with_ira:,.0f}",
-                showarrow=True,
-                arrowhead=2,
-                arrowsize=1,
-                arrowwidth=2,
-                arrowcolor=COLORS['primary'],
-                ax=60,
-                ay=-40,
-                bgcolor='white',
-                bordercolor=COLORS['primary'],
-                borderwidth=2
-            )
-
             fig.add_annotation(
                 x=income,
                 y=ptc_baseline,
@@ -647,6 +631,22 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
                 ay=40,
                 bgcolor='white',
                 bordercolor=COLORS['gray'],
+                borderwidth=2
+            )
+
+            fig.add_annotation(
+                x=income,
+                y=ptc_with_ira,
+                text=f"Extended: ${ptc_with_ira:,.0f}",
+                showarrow=True,
+                arrowhead=2,
+                arrowsize=1,
+                arrowwidth=2,
+                arrowcolor=COLORS['primary'],
+                ax=60,
+                ay=-40,
+                bgcolor='white',
+                bordercolor=COLORS['primary'],
                 borderwidth=2
             )
         
@@ -746,14 +746,14 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
         
     except Exception as e:
         # Fallback to simple bar charts if curve fails
-        colors = [COLORS['primary'], COLORS['gray']]
+        colors = [COLORS['gray'], COLORS['primary']]
 
         # Comparison bar chart
         fig_comp = go.Figure(data=[
             go.Bar(
-                x=['Enhanced PTCs<br>extended', 'Current law'],
-                y=[ptc_with_ira, ptc_baseline],
-                text=[f'${ptc_with_ira:,.0f}', f'${ptc_baseline:,.0f}'],
+                x=['Current law', 'Enhanced PTCs<br>extended'],
+                y=[ptc_baseline, ptc_with_ira],
+                text=[f'${ptc_baseline:,.0f}', f'${ptc_with_ira:,.0f}'],
                 textposition='outside',
                 marker_color=colors
             )
