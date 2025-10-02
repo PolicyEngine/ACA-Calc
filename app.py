@@ -40,6 +40,15 @@ except Exception as e:
     st.code(traceback.format_exc())
     st.stop()
 
+# Load PolicyEngine logo
+def get_logo_base64():
+    """Load PolicyEngine logo and convert to base64"""
+    try:
+        with open('blue.png', 'rb') as f:
+            return base64.b64encode(f.read()).decode()
+    except:
+        return None
+
 # Load counties from PolicyEngine data
 @st.cache_data
 def load_counties():
@@ -841,7 +850,8 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
             paper_bgcolor='white',
             font=dict(family='Roboto, sans-serif'),
             showlegend=False,
-            margin=dict(l=80, r=40, t=60, b=60)
+            margin=dict(l=80, r=40, t=60, b=60),
+            **add_logo_to_layout()
         )
 
         return fig, fig_delta
@@ -867,7 +877,8 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
             height=400,
             showlegend=False,
             yaxis=dict(rangemode='tozero'),
-            plot_bgcolor='white'
+            plot_bgcolor='white',
+            **add_logo_to_layout()
         )
 
         # Delta bar chart
@@ -888,7 +899,8 @@ def create_chart(ptc_with_ira, ptc_baseline, age_head, age_spouse, dependent_age
             height=400,
             showlegend=False,
             yaxis=dict(rangemode='tozero'),
-            plot_bgcolor='white'
+            plot_bgcolor='white',
+            **add_logo_to_layout()
         )
 
         return fig_comp, fig_delta
