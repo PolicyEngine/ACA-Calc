@@ -698,7 +698,7 @@ def create_chart(
             [
                 {
                     "name": "employment_income",
-                    "count": 1001,  # 1001 points for exact 1k increments (0 to 1M)
+                    "count": 10_001,  # 10_001 points for exact $100 increments (0 to 1M)
                     "min": 0,
                     "max": 1000000,
                     "period": 2026,  # Specify period to get exact values without uprating
