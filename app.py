@@ -401,16 +401,10 @@ def main():
                     )
 
             with tab4:
-                # Display cached chart or generate with spinner
-                if hasattr(st.session_state, "fig_mtr") and st.session_state.fig_mtr is not None:
-                    st.plotly_chart(
-                        st.session_state.fig_mtr,
-                        use_container_width=True,
-                        config={"displayModeBar": False},
-                        key="mtr_chart",
-                    )
-                else:
-                    # Auto-generate MTR chart if not cached
+                # Check if chart needs to be generated
+                needs_generation = not hasattr(st.session_state, "fig_mtr") or st.session_state.fig_mtr is None
+
+                if needs_generation:
                     with st.spinner("Calculating marginal tax rates (this may take a few seconds)..."):
                         x_axis_max = st.session_state.get("x_axis_max", 200000)
                         (
@@ -433,13 +427,15 @@ def main():
                         if fig_mtr is not None:
                             st.session_state.fig_net_income = fig_net_income
                             st.session_state.fig_mtr = fig_mtr
-                            # Display after generation
-                            st.plotly_chart(
-                                st.session_state.fig_mtr,
-                                use_container_width=True,
-                                config={"displayModeBar": False},
-                                key="mtr_chart",
-                            )
+
+                # Display chart (either newly generated or from cache)
+                if hasattr(st.session_state, "fig_mtr") and st.session_state.fig_mtr is not None:
+                    st.plotly_chart(
+                        st.session_state.fig_mtr,
+                        use_container_width=True,
+                        config={"displayModeBar": False},
+                        key="mtr_chart",
+                    )
 
             with tab5:
                 st.markdown("Enter your annual household income to see your specific impact.")
