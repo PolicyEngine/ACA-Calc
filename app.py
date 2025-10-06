@@ -471,9 +471,9 @@ def main():
                         )
 
             with tab4:
-                # Lazy load net income chart
-                if st.button("Generate net income chart", key="generate_net_income"):
-                    with st.spinner("Calculating net income..."):
+                # Auto-generate net income chart if not cached
+                if not hasattr(st.session_state, "fig_net_income") or st.session_state.fig_net_income is None:
+                    with st.spinner("Calculating net income (this may take a few seconds)..."):
                         x_axis_max = st.session_state.get("x_axis_max", 200000)
                         (
                             fig_net_income,
@@ -496,20 +496,18 @@ def main():
                             st.session_state.fig_net_income = fig_net_income
                             st.session_state.fig_mtr = fig_mtr
 
-                # Display cached chart if available
+                # Display cached chart
                 if hasattr(st.session_state, "fig_net_income") and st.session_state.fig_net_income is not None:
                     st.plotly_chart(
                         st.session_state.fig_net_income,
                         use_container_width=True,
                         config={"displayModeBar": False},
                     )
-                else:
-                    st.info("Click the button above to generate the net income chart (includes health benefits like PTCs, Medicaid, and CHIP)")
 
             with tab5:
-                # Lazy load MTR chart
-                if st.button("Generate MTR chart", key="generate_mtr"):
-                    with st.spinner("Calculating marginal tax rates..."):
+                # Auto-generate MTR chart if not cached (uses same calculation as net income)
+                if not hasattr(st.session_state, "fig_mtr") or st.session_state.fig_mtr is None:
+                    with st.spinner("Calculating marginal tax rates (this may take a few seconds)..."):
                         x_axis_max = st.session_state.get("x_axis_max", 200000)
                         (
                             fig_net_income,
@@ -532,15 +530,13 @@ def main():
                             st.session_state.fig_net_income = fig_net_income
                             st.session_state.fig_mtr = fig_mtr
 
-                # Display cached chart if available
+                # Display cached chart
                 if hasattr(st.session_state, "fig_mtr") and st.session_state.fig_mtr is not None:
                     st.plotly_chart(
                         st.session_state.fig_mtr,
                         use_container_width=True,
                         config={"displayModeBar": False},
                     )
-                else:
-                    st.info("Click the button above to generate the marginal tax rate chart (includes impact of health benefits)")
 
             # Move "About this calculator" below the tabs
             with st.expander("About this calculator"):
@@ -1482,41 +1478,34 @@ def create_net_income_and_mtr_charts(
 
         # Calculate MTR using numerical differentiation with smoothing
         # MTR = 1 - d(net_income)/d(employment_income)
-        # Use wider window (10 points) for smoother MTR
+        # Use wider window (10 points = $1000) for smoother MTR
+        # Income range has uniform $100 spacing, so d_income is constant
         window = 10
+        d_income = income_range[window] - income_range[0]  # Constant $1000
+
         mtr_baseline = np.zeros_like(income_range)
         mtr_reform = np.zeros_like(income_range)
 
         for i in range(window, len(income_range) - window):
-            d_income = income_range[i+window] - income_range[i-window]
             d_net_baseline = net_income_baseline[i+window] - net_income_baseline[i-window]
             d_net_reform = net_income_reform[i+window] - net_income_reform[i-window]
 
             mtr_baseline[i] = 1 - d_net_baseline / d_income
             mtr_reform[i] = 1 - d_net_reform / d_income
 
-        # Handle edges with smaller windows
+        # Handle edges with forward differences
         for i in range(window):
-            if i > 0:
-                d_income = income_range[i+1] - income_range[i-1]
-                d_net_baseline = net_income_baseline[i+1] - net_income_baseline[i-1]
-                d_net_reform = net_income_reform[i+1] - net_income_reform[i-1]
-                mtr_baseline[i] = 1 - d_net_baseline / d_income
-                mtr_reform[i] = 1 - d_net_reform / d_income
-            else:
-                mtr_baseline[i] = 1 - (net_income_baseline[1] - net_income_baseline[0]) / (income_range[1] - income_range[0])
-                mtr_reform[i] = 1 - (net_income_reform[1] - net_income_reform[0]) / (income_range[1] - income_range[0])
+            d_net_baseline = net_income_baseline[i+window] - net_income_baseline[i]
+            d_net_reform = net_income_reform[i+window] - net_income_reform[i]
+            mtr_baseline[i] = 1 - d_net_baseline / d_income
+            mtr_reform[i] = 1 - d_net_reform / d_income
 
+        # Handle trailing edges with backward differences
         for i in range(len(income_range) - window, len(income_range)):
-            if i < len(income_range) - 1:
-                d_income = income_range[i+1] - income_range[i-1]
-                d_net_baseline = net_income_baseline[i+1] - net_income_baseline[i-1]
-                d_net_reform = net_income_reform[i+1] - net_income_reform[i-1]
-                mtr_baseline[i] = 1 - d_net_baseline / d_income
-                mtr_reform[i] = 1 - d_net_reform / d_income
-            else:
-                mtr_baseline[i] = 1 - (net_income_baseline[-1] - net_income_baseline[-2]) / (income_range[-1] - income_range[-2])
-                mtr_reform[i] = 1 - (net_income_reform[-1] - net_income_reform[-2]) / (income_range[-1] - income_range[-2])
+            d_net_baseline = net_income_baseline[i] - net_income_baseline[i-window]
+            d_net_reform = net_income_reform[i] - net_income_reform[i-window]
+            mtr_baseline[i] = 1 - d_net_baseline / d_income
+            mtr_reform[i] = 1 - d_net_reform / d_income
 
         # Bound MTR at +/- 100%
         mtr_baseline = np.clip(mtr_baseline, -1.0, 1.0)
@@ -1525,6 +1514,32 @@ def create_net_income_and_mtr_charts(
         # Convert to percentage
         mtr_baseline_pct = mtr_baseline * 100
         mtr_reform_pct = mtr_reform * 100
+
+        # Create hover text for net income chart
+        net_income_hover = []
+        for i in range(len(income_range)):
+            text = f"<b>Income: ${income_range[i]:,.0f}</b><br><br>"
+            text += f"<b>Net income (current law):</b> ${net_income_baseline[i]:,.0f}<br>"
+            text += f"<b>Net income (extended):</b> ${net_income_reform[i]:,.0f}<br>"
+            diff = net_income_reform[i] - net_income_baseline[i]
+            if diff > 0:
+                text += f"<b>Gain from extension:</b> ${diff:,.0f}"
+            else:
+                text += "<b>No difference</b>"
+            net_income_hover.append(text)
+
+        # Create MTR hover text
+        mtr_hover = []
+        for i in range(len(income_range)):
+            text = f"<b>Income: ${income_range[i]:,.0f}</b><br><br>"
+            text += f"<b>MTR (current law):</b> {mtr_baseline_pct[i]:.1f}%<br>"
+            text += f"<b>MTR (extended):</b> {mtr_reform_pct[i]:.1f}%<br>"
+            diff = mtr_reform_pct[i] - mtr_baseline_pct[i]
+            if abs(diff) > 0.1:
+                text += f"<b>Difference:</b> {diff:+.1f} pp"
+            else:
+                text += "<b>No difference</b>"
+            mtr_hover.append(text)
 
         # Create net income chart
         fig_net_income = go.Figure()
@@ -1536,6 +1551,8 @@ def create_net_income_and_mtr_charts(
                 mode="lines",
                 name="Current law",
                 line=dict(color=COLORS["gray"], width=3),
+                hovertext=net_income_hover,
+                hoverinfo="text",
             )
         )
 
@@ -1546,6 +1563,7 @@ def create_net_income_and_mtr_charts(
                 mode="lines",
                 name="Enhanced PTCs extended",
                 line=dict(color=COLORS["primary"], width=3),
+                hoverinfo="skip",
             )
         )
 
@@ -1561,7 +1579,7 @@ def create_net_income_and_mtr_charts(
                 tickformat="$,.0f", range=[0, x_axis_max], automargin=True
             ),
             yaxis=dict(
-                tickformat="$,.0f", rangemode="tozero", automargin=True
+                tickformat="$,.0f", automargin=True
             ),
             plot_bgcolor="white",
             paper_bgcolor="white",
@@ -1583,6 +1601,8 @@ def create_net_income_and_mtr_charts(
                 mode="lines",
                 name="Current law",
                 line=dict(color=COLORS["gray"], width=3),
+                hovertext=mtr_hover,
+                hoverinfo="text",
             )
         )
 
@@ -1593,6 +1613,7 @@ def create_net_income_and_mtr_charts(
                 mode="lines",
                 name="Enhanced PTCs extended",
                 line=dict(color=COLORS["primary"], width=3),
+                hoverinfo="skip",
             )
         )
 
@@ -1602,13 +1623,13 @@ def create_net_income_and_mtr_charts(
                 "font": {"size": 20, "color": COLORS["primary"]},
             },
             xaxis_title="Annual household income",
-            yaxis_title="Marginal tax rate (%)",
+            yaxis_title="Marginal tax rate",
             height=400,
             xaxis=dict(
                 tickformat="$,.0f", range=[0, x_axis_max], automargin=True
             ),
             yaxis=dict(
-                tickformat=".0f", automargin=True
+                tickformat=".0f", ticksuffix="%", automargin=True
             ),
             plot_bgcolor="white",
             paper_bgcolor="white",
