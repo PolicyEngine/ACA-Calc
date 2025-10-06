@@ -16,6 +16,7 @@ try:
     import pandas as pd
     import numpy as np
     import json
+    import gc
     from policyengine_us import Simulation
     import plotly.graph_objects as go
     import base64
@@ -575,9 +576,9 @@ def main():
 
                 **Key assumptions:**
                 - Households have no employer-sponsored insurance (ESI), making them eligible for Medicaid, CHIP, and premium tax credits
-                - Net income and MTR calculations disable itemization branching for performance (assumes standard deduction)
+                - Net income and MTR calculations assume standard deduction (set as input to avoid expensive itemization branching)
 
-                **Technical note on MTR chart:** The IRS requires MAGI/FPL ratios to be truncated to whole percentages per [Form 8962 instructions](https://www.irs.gov/pub/irs-pdf/i8962.pdf#page=8). This creates ~$10 jumps in PTCs approximately every $100-200 income. The MTR chart uses a $5,000 differentiation window to smooth over these artifacts.
+                **Technical note on MTR chart:** The IRS requires MAGI/FPL ratios to be truncated to whole percentages per [Form 8962 instructions](https://www.irs.gov/pub/irs-pdf/i8962.pdf#page=8). This creates ~$10 jumps in PTCs approximately every $100-200 income. The MTR chart uses a $5,000 differentiation window plus a $1,000 moving average to smooth over these artifacts.
                 """
                 )
 
@@ -1092,41 +1093,17 @@ def create_net_income_and_mtr_charts(
         with_axes=True,
     )
 
+    # Set tax_unit_itemizes=False to avoid expensive itemization branching
+    # This is an input variable, not a reform, so it doesn't slow down baseline
+    base_household["tax_units"]["your tax unit"]["tax_unit_itemizes"] = {2026: False}
+
     try:
-        # Create reform to disable itemization branching (reduces computation cost)
-        from policyengine_core.reforms import Reform
+        # Create reform for extended PTCs
+        reform = create_enhanced_ptc_reform()
 
-        no_branch_reform = Reform.from_dict(
-            {
-                "gov.simulation.branch_to_determine_itemization": {
-                    "2000-01-01.2100-12-31": False
-                }
-            },
-            country_id="us",
-        )
-
-        # Enhanced PTC reform
-        enhanced_ptc_reform = create_enhanced_ptc_reform()
-
-        # Combine: disable branching + enhanced PTCs
-        combined_reform_data = {
-            "gov.simulation.branch_to_determine_itemization": {
-                "2000-01-01.2100-12-31": False
-            },
-            "gov.aca.ptc_phase_out_rate[0].amount": {"2026-01-01.2100-12-31": 0},
-            "gov.aca.ptc_phase_out_rate[1].amount": {"2025-01-01.2100-12-31": 0},
-            "gov.aca.ptc_phase_out_rate[2].amount": {"2026-01-01.2100-12-31": 0},
-            "gov.aca.ptc_phase_out_rate[3].amount": {"2026-01-01.2100-12-31": 0.02},
-            "gov.aca.ptc_phase_out_rate[4].amount": {"2026-01-01.2100-12-31": 0.04},
-            "gov.aca.ptc_phase_out_rate[5].amount": {"2026-01-01.2100-12-31": 0.06},
-            "gov.aca.ptc_phase_out_rate[6].amount": {"2026-01-01.2100-12-31": 0.085},
-            "gov.aca.ptc_income_eligibility[2].amount": {"2026-01-01.2100-12-31": True},
-        }
-        reform_combined = Reform.from_dict(combined_reform_data, country_id="us")
-
-        # Run simulations with branching disabled
-        sim_baseline = Simulation(situation=base_household, reform=no_branch_reform)
-        sim_reform = Simulation(situation=base_household, reform=reform_combined)
+        # Run simulations (itemization already set to False via input)
+        sim_baseline = Simulation(situation=base_household)
+        sim_reform = Simulation(situation=base_household, reform=reform)
 
         income_range = sim_baseline.calculate(
             "employment_income", map_to="household", period=2026
@@ -1341,6 +1318,9 @@ def create_net_income_and_mtr_charts(
             margin=dict(l=80, r=40, t=60, b=80),
             **add_logo_to_layout(),
         )
+
+        # Clean up memory before returning
+        gc.collect()
 
         return (
             fig_net_income,
