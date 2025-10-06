@@ -1589,7 +1589,7 @@ def create_net_income_and_mtr_charts(
                 tickformat="$,.0f", range=[0, x_axis_max], automargin=True
             ),
             yaxis=dict(
-                tickformat=".0f", ticksuffix="%", range=[-20, 100], automargin=True
+                tickformat=".0f", ticksuffix="%", range=[-20, 100], automargin=True, zeroline=True, zerolinecolor="black", zerolinewidth=2
             ),
             plot_bgcolor="white",
             paper_bgcolor="white",
