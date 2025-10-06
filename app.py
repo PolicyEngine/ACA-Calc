@@ -1511,37 +1511,12 @@ def create_net_income_and_mtr_charts(
         )
 
         # Calculate net income including health benefits
-        # Net income = household_net_income + aca_ptc + medicaid_cost + per_capita_chip
-        net_income_baseline_core = sim_baseline.calculate(
-            "household_net_income", map_to="household", period=2026
+        # Use PolicyEngine's built-in variable that includes PTCs, Medicaid, CHIP
+        net_income_baseline = sim_baseline.calculate(
+            "household_net_income_including_health_benefits", map_to="household", period=2026
         )
-        aca_ptc_baseline = sim_baseline.calculate(
-            "aca_ptc", map_to="household", period=2026
-        )
-        medicaid_baseline = sim_baseline.calculate(
-            "medicaid_cost", map_to="household", period=2026
-        )
-        chip_baseline = sim_baseline.calculate(
-            "per_capita_chip", map_to="household", period=2026
-        )
-        net_income_baseline = (
-            net_income_baseline_core + aca_ptc_baseline + medicaid_baseline + chip_baseline
-        )
-
-        net_income_reform_core = sim_reform.calculate(
-            "household_net_income", map_to="household", period=2026
-        )
-        aca_ptc_reform = sim_reform.calculate(
-            "aca_ptc", map_to="household", period=2026
-        )
-        medicaid_reform = sim_reform.calculate(
-            "medicaid_cost", map_to="household", period=2026
-        )
-        chip_reform = sim_reform.calculate(
-            "per_capita_chip", map_to="household", period=2026
-        )
-        net_income_reform = (
-            net_income_reform_core + aca_ptc_reform + medicaid_reform + chip_reform
+        net_income_reform = sim_reform.calculate(
+            "household_net_income_including_health_benefits", map_to="household", period=2026
         )
 
         # Calculate MTR using numerical differentiation with smoothing
