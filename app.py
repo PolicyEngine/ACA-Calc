@@ -343,9 +343,11 @@ def main():
 
         # Show tabs using cached charts
         if hasattr(st.session_state, "fig_delta") and st.session_state.fig_delta is not None:
-            tab1, tab2, tab3 = st.tabs([
+            tab1, tab2, tab3, tab4, tab5 = st.tabs([
                 "Gain from extension",
                 "Baseline vs. extension",
+                "Net income",
+                "Marginal tax rates",
                 "Your impact"
             ])
 
@@ -364,6 +366,82 @@ def main():
                 )
 
             with tab3:
+                # Auto-generate net income chart if not cached
+                if not hasattr(st.session_state, "fig_net_income") or st.session_state.fig_net_income is None:
+                    with st.spinner("Calculating net income (this may take a few seconds)..."):
+                        x_axis_max = st.session_state.get("x_axis_max", 200000)
+                        (
+                            fig_net_income,
+                            fig_mtr,
+                            net_income_range,
+                            net_income_baseline,
+                            net_income_reform,
+                        ) = create_net_income_and_mtr_charts(
+                            params["age_head"],
+                            params["age_spouse"],
+                            tuple(params["dependent_ages"]),
+                            params["state"],
+                            params.get("county"),
+                            params.get("zip_code"),
+                            x_axis_max,
+                        )
+
+                        # Store in session state
+                        if fig_net_income is not None:
+                            st.session_state.fig_net_income = fig_net_income
+                            st.session_state.fig_mtr = fig_mtr
+
+                # Display cached chart
+                if hasattr(st.session_state, "fig_net_income") and st.session_state.fig_net_income is not None:
+                    st.plotly_chart(
+                        st.session_state.fig_net_income,
+                        use_container_width=True,
+                        config={"displayModeBar": False},
+                        key="net_income_chart",
+                    )
+
+            with tab4:
+                # Auto-generate MTR chart if not cached
+                if not hasattr(st.session_state, "fig_mtr") or st.session_state.fig_mtr is None:
+                    with st.spinner("Calculating marginal tax rates (this may take a few seconds)..."):
+                        x_axis_max = st.session_state.get("x_axis_max", 200000)
+                        (
+                            fig_net_income,
+                            fig_mtr,
+                            net_income_range,
+                            net_income_baseline,
+                            net_income_reform,
+                        ) = create_net_income_and_mtr_charts(
+                            params["age_head"],
+                            params["age_spouse"],
+                            tuple(params["dependent_ages"]),
+                            params["state"],
+                            params.get("county"),
+                            params.get("zip_code"),
+                            x_axis_max,
+                        )
+
+                        # Store in session state
+                        if fig_mtr is not None:
+                            st.session_state.fig_net_income = fig_net_income
+                            st.session_state.fig_mtr = fig_mtr
+
+                # Display cached chart
+                if hasattr(st.session_state, "fig_mtr") and st.session_state.fig_mtr is not None:
+                    st.plotly_chart(
+                        st.session_state.fig_mtr,
+                        use_container_width=True,
+                        config={"displayModeBar": False},
+                        key="mtr_chart",
+                    )
+
+                    st.info(
+                        "**Note on stepped appearance:** The IRS requires MAGI/FPL ratios to be truncated to whole percentages "
+                        "(see [Form 8962 instructions](https://www.irs.gov/pub/irs-pdf/i8962.pdf#page=8)). "
+                        "This creates discrete steps in marginal tax rates rather than smooth transitions."
+                    )
+
+            with tab5:
                 st.markdown("Enter your annual household income to see your specific impact.")
 
                 user_income = st.number_input(
