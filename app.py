@@ -398,33 +398,28 @@ def main():
             with tab4:
                 # Auto-generate MTR chart if not cached (uses same calculation as net income)
                 if not hasattr(st.session_state, "fig_mtr") or st.session_state.fig_mtr is None:
-                    # Check if we already have net income data (they're calculated together)
-                    if hasattr(st.session_state, "fig_net_income") and st.session_state.fig_net_income is not None:
-                        # MTR already calculated with net income
-                        pass
-                    else:
-                        with st.spinner("Calculating marginal tax rates (this may take a few seconds)..."):
-                            x_axis_max = st.session_state.get("x_axis_max", 200000)
-                            (
-                                fig_net_income,
-                                fig_mtr,
-                                net_income_range,
-                                net_income_baseline,
-                                net_income_reform,
-                            ) = create_net_income_and_mtr_charts(
-                                params["age_head"],
-                                params["age_spouse"],
-                                tuple(params["dependent_ages"]),
-                                params["state"],
-                                params.get("county"),
-                                params.get("zip_code"),
-                                x_axis_max,
-                            )
+                    with st.spinner("Calculating marginal tax rates (this may take a few seconds)..."):
+                        x_axis_max = st.session_state.get("x_axis_max", 200000)
+                        (
+                            fig_net_income,
+                            fig_mtr,
+                            net_income_range,
+                            net_income_baseline,
+                            net_income_reform,
+                        ) = create_net_income_and_mtr_charts(
+                            params["age_head"],
+                            params["age_spouse"],
+                            tuple(params["dependent_ages"]),
+                            params["state"],
+                            params.get("county"),
+                            params.get("zip_code"),
+                            x_axis_max,
+                        )
 
-                            # Store in session state
-                            if fig_mtr is not None:
-                                st.session_state.fig_net_income = fig_net_income
-                                st.session_state.fig_mtr = fig_mtr
+                        # Store in session state
+                        if fig_mtr is not None:
+                            st.session_state.fig_net_income = fig_net_income
+                            st.session_state.fig_mtr = fig_mtr
 
                 # Display cached chart
                 if hasattr(st.session_state, "fig_mtr") and st.session_state.fig_mtr is not None:
@@ -1613,7 +1608,7 @@ def create_net_income_and_mtr_charts(
                 tickformat="$,.0f", range=[0, x_axis_max], automargin=True
             ),
             yaxis=dict(
-                tickformat=".0f", ticksuffix="%", automargin=True
+                tickformat=".0f", ticksuffix="%", range=[-20, 100], automargin=True
             ),
             plot_bgcolor="white",
             paper_bgcolor="white",
