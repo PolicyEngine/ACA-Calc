@@ -1523,9 +1523,14 @@ def create_net_income_and_mtr_charts(
             )
         )
 
-        # Set y-axis range to double the max value for better scaling
-        net_income_max = max(np.max(net_income_baseline), np.max(net_income_reform))
-        net_income_y_max = net_income_max * 2
+        # Set y-axis range to 1.2x the max value within visible x range
+        # Find indices within x_axis_max
+        visible_indices = income_range <= x_axis_max
+        net_income_max = max(
+            np.max(net_income_baseline[visible_indices]),
+            np.max(net_income_reform[visible_indices])
+        )
+        net_income_y_max = net_income_max * 1.2
 
         fig_net_income.update_layout(
             title={
