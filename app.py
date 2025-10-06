@@ -274,6 +274,8 @@ def main():
             # Clear cached charts if params changed
             if hasattr(st.session_state, "params") and st.session_state.params != new_params:
                 st.session_state.income_range = None
+                st.session_state.fig_net_income = None
+                st.session_state.fig_mtr = None
             st.session_state.params = new_params
 
     # Main content area
@@ -312,6 +314,7 @@ def main():
                     ptc_reform_range,
                     slcsp_2026,
                     fpl,
+                    x_axis_max,
                 ) = create_chart(
                     params["age_head"],
                     params["age_spouse"],
@@ -331,10 +334,15 @@ def main():
                     st.session_state.benefit_info = benefit_info
                     st.session_state.fig_comparison = fig_comparison
                     st.session_state.fig_delta = fig_delta
+                    st.session_state.x_axis_max = x_axis_max
 
         # Show tabs using cached charts
         if hasattr(st.session_state, "fig_delta") and st.session_state.fig_delta is not None:
-            tab1, tab2, tab3 = st.tabs(["Gain from extension", "Baseline vs. extension", "Your impact"])
+            tab1, tab2, tab3 = st.tabs([
+                "Gain from extension",
+                "Baseline vs. extension",
+                "Your impact"
+            ])
 
             with tab1:
                 st.plotly_chart(
@@ -672,7 +680,7 @@ def create_chart(
         zip_code: 5-digit ZIP code string (required for LA County)
         income: Optional income to mark on chart. If None, no marker shown.
 
-    Returns tuple of (comparison_fig, delta_fig, benefit_info, income_range, ptc_baseline_range, ptc_reform_range, slcsp, fpl)
+    Returns tuple of (comparison_fig, delta_fig, benefit_info, income_range, ptc_baseline_range, ptc_reform_range, slcsp, fpl, x_axis_max)
         Arrays are returned for interpolation
 
     Note: Caching removed to prevent signature mismatch issues on Streamlit Cloud
@@ -1226,6 +1234,7 @@ def create_chart(
             ptc_range_reform,
             slcsp,
             fpl,
+            x_axis_max,
         )
 
     except Exception as e:
@@ -1234,7 +1243,338 @@ def create_chart(
         import traceback
 
         st.error(traceback.format_exc())
-        return None, None, None, None, None, None, 0, 0
+        return None, None, None, None, None, None, 0, 0, 200000
+
+
+def create_net_income_and_mtr_charts(
+    age_head,
+    age_spouse,
+    dependent_ages,
+    state,
+    county=None,
+    zip_code=None,
+    x_axis_max=200000,
+):
+    """Create net income and MTR charts including health benefits
+
+    Args:
+        x_axis_max: Maximum income for x-axis (from PTC charts)
+
+    Returns tuple of (net_income_fig, mtr_fig, income_range, net_income_baseline, net_income_reform)
+    """
+
+    # Create base household structure (same as create_chart)
+    base_household = {
+        "people": {"you": {"age": {2026: age_head}}},
+        "families": {"your family": {"members": ["you"]}},
+        "spm_units": {"your household": {"members": ["you"]}},
+        "tax_units": {"your tax unit": {"members": ["you"]}},
+        "households": {
+            "your household": {"members": ["you"], "state_name": {2026: state}}
+        },
+        "axes": [
+            [
+                {
+                    "name": "employment_income",
+                    "count": 10_001,
+                    "min": 0,
+                    "max": 1000000,
+                    "period": 2026,
+                }
+            ]
+        ],
+    }
+
+    # Add county if provided
+    if county:
+        county_pe_format = county.upper().replace(" ", "_") + "_" + state
+        base_household["households"]["your household"]["county"] = {
+            2026: county_pe_format
+        }
+
+    # Add ZIP code if provided
+    if zip_code:
+        base_household["households"]["your household"]["zip_code"] = {
+            2026: zip_code
+        }
+
+    # Add spouse if married
+    if age_spouse:
+        base_household["people"]["your partner"] = {"age": {2026: age_spouse}}
+        base_household["families"]["your family"]["members"].append("your partner")
+        base_household["spm_units"]["your household"]["members"].append("your partner")
+        base_household["tax_units"]["your tax unit"]["members"].append("your partner")
+        base_household["households"]["your household"]["members"].append("your partner")
+        base_household["marital_units"] = {
+            "your marital unit": {"members": ["you", "your partner"]}
+        }
+
+    # Add dependents
+    for i, dep_age in enumerate(dependent_ages):
+        if i == 0:
+            child_id = "your first dependent"
+        elif i == 1:
+            child_id = "your second dependent"
+        else:
+            child_id = f"dependent_{i+1}"
+
+        base_household["people"][child_id] = {"age": {2026: dep_age}}
+        base_household["families"]["your family"]["members"].append(child_id)
+        base_household["spm_units"]["your household"]["members"].append(child_id)
+        base_household["tax_units"]["your tax unit"]["members"].append(child_id)
+        base_household["households"]["your household"]["members"].append(child_id)
+
+        if "marital_units" not in base_household:
+            base_household["marital_units"] = {}
+        base_household["marital_units"][f"{child_id}'s marital unit"] = {
+            "members": [child_id]
+        }
+
+    try:
+        from policyengine_core.reforms import Reform
+
+        # Create reform for extended PTCs
+        reform = Reform.from_dict(
+            {
+                "gov.aca.ptc_phase_out_rate[0].amount": {
+                    "2026-01-01.2100-12-31": 0
+                },
+                "gov.aca.ptc_phase_out_rate[1].amount": {
+                    "2025-01-01.2100-12-31": 0
+                },
+                "gov.aca.ptc_phase_out_rate[2].amount": {
+                    "2026-01-01.2100-12-31": 0
+                },
+                "gov.aca.ptc_phase_out_rate[3].amount": {
+                    "2026-01-01.2100-12-31": 0.02
+                },
+                "gov.aca.ptc_phase_out_rate[4].amount": {
+                    "2026-01-01.2100-12-31": 0.04
+                },
+                "gov.aca.ptc_phase_out_rate[5].amount": {
+                    "2026-01-01.2100-12-31": 0.06
+                },
+                "gov.aca.ptc_phase_out_rate[6].amount": {
+                    "2026-01-01.2100-12-31": 0.085
+                },
+                "gov.aca.ptc_income_eligibility[2].amount": {
+                    "2026-01-01.2100-12-31": True
+                },
+            },
+            country_id="us",
+        )
+
+        # Run simulations
+        sim_baseline = Simulation(situation=base_household)
+        sim_reform = Simulation(situation=base_household, reform=reform)
+
+        income_range = sim_baseline.calculate(
+            "employment_income", map_to="household", period=2026
+        )
+
+        # Calculate net income including health benefits
+        # Use PolicyEngine's built-in variable that includes PTCs, Medicaid, CHIP
+        net_income_baseline = sim_baseline.calculate(
+            "household_net_income_including_health_benefits", map_to="household", period=2026
+        )
+        net_income_reform = sim_reform.calculate(
+            "household_net_income_including_health_benefits", map_to="household", period=2026
+        )
+
+        # Calculate PTC values to understand MTR contributions
+        ptc_baseline = sim_baseline.calculate("aca_ptc", map_to="household", period=2026)
+        ptc_reform = sim_reform.calculate("aca_ptc", map_to="household", period=2026)
+
+        # Calculate PTC's marginal effect using numerical differentiation
+        # MTR_ptc = -d(PTC)/d(income) (negative because PTC increases net income)
+        ptc_mtr_baseline = np.zeros_like(income_range)
+        ptc_mtr_reform = np.zeros_like(income_range)
+
+        # Use simple forward differences
+        for i in range(len(income_range) - 1):
+            d_income = income_range[i+1] - income_range[i]
+            d_ptc_baseline = ptc_baseline[i+1] - ptc_baseline[i]
+            d_ptc_reform = ptc_reform[i+1] - ptc_reform[i]
+
+            # MTR contribution from PTC (negative d_ptc means positive MTR)
+            ptc_mtr_baseline[i] = -d_ptc_baseline / d_income
+            ptc_mtr_reform[i] = -d_ptc_reform / d_income
+
+        # Last point same as second-to-last
+        ptc_mtr_baseline[-1] = ptc_mtr_baseline[-2] if len(income_range) > 1 else 0
+        ptc_mtr_reform[-1] = ptc_mtr_reform[-2] if len(income_range) > 1 else 0
+
+        # Clip extreme values (shouldn't exceed +/-50% from PTC alone)
+        ptc_mtr_baseline = np.clip(ptc_mtr_baseline, -0.5, 0.5)
+        ptc_mtr_reform = np.clip(ptc_mtr_reform, -0.5, 0.5)
+
+        # Calculate full MTR using PolicyEngine's built-in variable
+        mtr_baseline = sim_baseline.calculate(
+            "marginal_tax_rate_including_health_benefits", period=2026
+        )
+        mtr_reform = sim_reform.calculate(
+            "marginal_tax_rate_including_health_benefits", period=2026
+        )
+
+        # Use PTC MTR for visualization (simpler, shows just the subsidy effect)
+        mtr_baseline_viz = ptc_mtr_baseline
+        mtr_reform_viz = ptc_mtr_reform
+
+        # Create hover text for net income chart
+        net_income_hover = []
+        for i in range(len(income_range)):
+            text = f"<b>Income: ${income_range[i]:,.0f}</b><br><br>"
+            text += f"<b>Net income (current law):</b> ${net_income_baseline[i]:,.0f}<br>"
+            text += f"<b>Net income (extended):</b> ${net_income_reform[i]:,.0f}<br>"
+            diff = net_income_reform[i] - net_income_baseline[i]
+            if diff > 0:
+                text += f"<b>Gain from extension:</b> ${diff:,.0f}"
+            else:
+                text += "<b>No difference</b>"
+            net_income_hover.append(text)
+
+        # Create MTR hover text with PTC diagnostic info
+        mtr_hover = []
+        for i in range(len(income_range)):
+            text = f"<b>Income: ${income_range[i]:,.0f}</b><br><br>"
+            text += f"<b>PTC (current law):</b> ${ptc_baseline[i]:,.0f}<br>"
+            text += f"<b>PTC (extended):</b> ${ptc_reform[i]:,.0f}<br>"
+            if i > 0:
+                d_ptc_base = ptc_baseline[i] - ptc_baseline[i-1]
+                d_ptc_ref = ptc_reform[i] - ptc_reform[i-1]
+                text += f"<b>PTC change (current):</b> ${d_ptc_base:+.0f}<br>"
+                text += f"<b>PTC change (extended):</b> ${d_ptc_ref:+.0f}<br>"
+            text += f"<b>PTC MTR (current law):</b> {mtr_baseline_viz[i]*100:.1f}%<br>"
+            text += f"<b>PTC MTR (extended):</b> {mtr_reform_viz[i]*100:.1f}%<br>"
+            diff = (mtr_reform_viz[i] - mtr_baseline_viz[i]) * 100
+            if abs(diff) > 0.1:
+                text += f"<b>Difference:</b> {diff:+.1f} pp"
+            else:
+                text += "<b>No difference</b>"
+            mtr_hover.append(text)
+
+        # Create net income chart
+        fig_net_income = go.Figure()
+
+        fig_net_income.add_trace(
+            go.Scatter(
+                x=income_range,
+                y=net_income_baseline,
+                mode="lines",
+                name="Current law",
+                line=dict(color=COLORS["gray"], width=3),
+                hovertext=net_income_hover,
+                hoverinfo="text",
+            )
+        )
+
+        fig_net_income.add_trace(
+            go.Scatter(
+                x=income_range,
+                y=net_income_reform,
+                mode="lines",
+                name="Enhanced PTCs extended",
+                line=dict(color=COLORS["primary"], width=3),
+                hoverinfo="skip",
+            )
+        )
+
+        # Set y-axis range to 1.2x the max value within visible x range
+        # Find indices within x_axis_max
+        visible_indices = income_range <= x_axis_max
+        net_income_max = max(
+            np.max(net_income_baseline[visible_indices]),
+            np.max(net_income_reform[visible_indices])
+        )
+        net_income_y_max = net_income_max * 1.2
+
+        fig_net_income.update_layout(
+            title={
+                "text": "Net income including health benefits (2026)",
+                "font": {"size": 20, "color": COLORS["primary"]},
+            },
+            xaxis_title="Annual household income",
+            yaxis_title="Net income (including health benefits)",
+            height=400,
+            xaxis=dict(
+                tickformat="$,.0f", range=[0, x_axis_max], automargin=True
+            ),
+            yaxis=dict(
+                tickformat="$,.0f", range=[0, net_income_y_max], automargin=True
+            ),
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            font=dict(family="Roboto, sans-serif"),
+            legend=dict(
+                orientation="h", yanchor="bottom", y=0.98, xanchor="right", x=1
+            ),
+            margin=dict(l=80, r=40, t=60, b=80),
+            **add_logo_to_layout(),
+        )
+
+        # Create MTR chart
+        fig_mtr = go.Figure()
+
+        fig_mtr.add_trace(
+            go.Scatter(
+                x=income_range,
+                y=mtr_baseline_viz,
+                mode="lines",
+                name="Current law",
+                line=dict(color=COLORS["gray"], width=3),
+                hovertext=mtr_hover,
+                hoverinfo="text",
+            )
+        )
+
+        fig_mtr.add_trace(
+            go.Scatter(
+                x=income_range,
+                y=mtr_reform_viz,
+                mode="lines",
+                name="Enhanced PTCs extended",
+                line=dict(color=COLORS["primary"], width=3),
+                hoverinfo="skip",
+            )
+        )
+
+        fig_mtr.update_layout(
+            title={
+                "text": "PTC marginal effect on income (2026)",
+                "font": {"size": 20, "color": COLORS["primary"]},
+            },
+            xaxis_title="Annual household income",
+            yaxis_title="Marginal tax rate",
+            height=400,
+            xaxis=dict(
+                tickformat="$,.0f", range=[0, x_axis_max], automargin=True
+            ),
+            yaxis=dict(
+                tickformat=".0%", range=[-0.2, 0.5], automargin=True, zeroline=True, zerolinecolor="black", zerolinewidth=2
+            ),
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            font=dict(family="Roboto, sans-serif"),
+            legend=dict(
+                orientation="h", yanchor="bottom", y=0.98, xanchor="right", x=1
+            ),
+            margin=dict(l=80, r=40, t=60, b=80),
+            **add_logo_to_layout(),
+        )
+
+        return (
+            fig_net_income,
+            fig_mtr,
+            income_range,
+            net_income_baseline,
+            net_income_reform,
+        )
+
+    except Exception as e:
+        st.error(f"Error generating net income/MTR charts: {str(e)}")
+        import traceback
+        st.error(traceback.format_exc())
+        return None, None, None, None, None
 
 
 if __name__ == "__main__":
