@@ -341,9 +341,9 @@ def main():
             tab1, tab2, tab3, tab4, tab5 = st.tabs([
                 "Gain from extension",
                 "Baseline vs. extension",
-                "Your impact",
                 "Net income",
-                "Marginal tax rates"
+                "Marginal tax rates",
+                "Your impact"
             ])
 
             with tab1:
@@ -361,6 +361,74 @@ def main():
                 )
 
             with tab3:
+                # Auto-generate net income chart if not cached
+                if not hasattr(st.session_state, "fig_net_income") or st.session_state.fig_net_income is None:
+                    with st.spinner("Calculating net income (this may take a few seconds)..."):
+                        x_axis_max = st.session_state.get("x_axis_max", 200000)
+                        (
+                            fig_net_income,
+                            fig_mtr,
+                            net_income_range,
+                            net_income_baseline,
+                            net_income_reform,
+                        ) = create_net_income_and_mtr_charts(
+                            params["age_head"],
+                            params["age_spouse"],
+                            tuple(params["dependent_ages"]),
+                            params["state"],
+                            params.get("county"),
+                            params.get("zip_code"),
+                            x_axis_max,
+                        )
+
+                        # Store in session state
+                        if fig_net_income is not None:
+                            st.session_state.fig_net_income = fig_net_income
+                            st.session_state.fig_mtr = fig_mtr
+
+                # Display cached chart
+                if hasattr(st.session_state, "fig_net_income") and st.session_state.fig_net_income is not None:
+                    st.plotly_chart(
+                        st.session_state.fig_net_income,
+                        use_container_width=True,
+                        config={"displayModeBar": False},
+                    )
+
+            with tab4:
+                # Auto-generate MTR chart if not cached (uses same calculation as net income)
+                if not hasattr(st.session_state, "fig_mtr") or st.session_state.fig_mtr is None:
+                    with st.spinner("Calculating marginal tax rates (this may take a few seconds)..."):
+                        x_axis_max = st.session_state.get("x_axis_max", 200000)
+                        (
+                            fig_net_income,
+                            fig_mtr,
+                            net_income_range,
+                            net_income_baseline,
+                            net_income_reform,
+                        ) = create_net_income_and_mtr_charts(
+                            params["age_head"],
+                            params["age_spouse"],
+                            tuple(params["dependent_ages"]),
+                            params["state"],
+                            params.get("county"),
+                            params.get("zip_code"),
+                            x_axis_max,
+                        )
+
+                        # Store in session state
+                        if fig_mtr is not None:
+                            st.session_state.fig_net_income = fig_net_income
+                            st.session_state.fig_mtr = fig_mtr
+
+                # Display cached chart
+                if hasattr(st.session_state, "fig_mtr") and st.session_state.fig_mtr is not None:
+                    st.plotly_chart(
+                        st.session_state.fig_mtr,
+                        use_container_width=True,
+                        config={"displayModeBar": False},
+                    )
+
+            with tab5:
                 st.markdown("Enter your annual household income to see your specific impact.")
 
                 user_income = st.number_input(
