@@ -401,41 +401,44 @@ def main():
                     )
 
             with tab4:
+                # Use placeholder to ensure spinner shows immediately
+                chart_container = st.empty()
+
                 # Check if chart needs to be generated
-                needs_generation = not hasattr(st.session_state, "fig_mtr") or st.session_state.fig_mtr is None
+                if not hasattr(st.session_state, "fig_mtr") or st.session_state.fig_mtr is None:
+                    with chart_container:
+                        with st.spinner("Calculating marginal tax rates (this may take a few seconds)..."):
+                            x_axis_max = st.session_state.get("x_axis_max", 200000)
+                            (
+                                fig_net_income,
+                                fig_mtr,
+                                net_income_range,
+                                net_income_baseline,
+                                net_income_reform,
+                            ) = create_net_income_and_mtr_charts(
+                                params["age_head"],
+                                params["age_spouse"],
+                                tuple(params["dependent_ages"]),
+                                params["state"],
+                                params.get("county"),
+                                params.get("zip_code"),
+                                x_axis_max,
+                            )
 
-                if needs_generation:
-                    with st.spinner("Calculating marginal tax rates (this may take a few seconds)..."):
-                        x_axis_max = st.session_state.get("x_axis_max", 200000)
-                        (
-                            fig_net_income,
-                            fig_mtr,
-                            net_income_range,
-                            net_income_baseline,
-                            net_income_reform,
-                        ) = create_net_income_and_mtr_charts(
-                            params["age_head"],
-                            params["age_spouse"],
-                            tuple(params["dependent_ages"]),
-                            params["state"],
-                            params.get("county"),
-                            params.get("zip_code"),
-                            x_axis_max,
-                        )
+                            # Store in session state
+                            if fig_mtr is not None:
+                                st.session_state.fig_net_income = fig_net_income
+                                st.session_state.fig_mtr = fig_mtr
 
-                        # Store in session state
-                        if fig_mtr is not None:
-                            st.session_state.fig_net_income = fig_net_income
-                            st.session_state.fig_mtr = fig_mtr
-
-                # Display chart (either newly generated or from cache)
+                # Display chart in container (clears spinner)
                 if hasattr(st.session_state, "fig_mtr") and st.session_state.fig_mtr is not None:
-                    st.plotly_chart(
-                        st.session_state.fig_mtr,
-                        use_container_width=True,
-                        config={"displayModeBar": False},
-                        key="mtr_chart",
-                    )
+                    with chart_container:
+                        st.plotly_chart(
+                            st.session_state.fig_mtr,
+                            use_container_width=True,
+                            config={"displayModeBar": False},
+                            key="mtr_chart",
+                        )
 
             with tab5:
                 st.markdown("Enter your annual household income to see your specific impact.")
