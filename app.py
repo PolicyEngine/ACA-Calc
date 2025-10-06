@@ -262,7 +262,7 @@ def main():
 
         if calculate_button:
             st.session_state.calculate = True
-            st.session_state.params = {
+            new_params = {
                 "age_head": age_head,
                 "age_spouse": age_spouse,
                 "dependent_ages": dependent_ages,
@@ -271,6 +271,10 @@ def main():
                 "married": married,
                 "zip_code": zip_code,
             }
+            # Clear cached charts if params changed
+            if hasattr(st.session_state, "params") and st.session_state.params != new_params:
+                st.session_state.income_range = None
+            st.session_state.params = new_params
 
     # Main content area
     if not hasattr(st.session_state, "calculate") or not st.session_state.calculate:
