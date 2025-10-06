@@ -1480,25 +1480,43 @@ def create_net_income_and_mtr_charts(
             net_income_reform_core + aca_ptc_reform + medicaid_reform + chip_reform
         )
 
-        # Calculate MTR using numerical differentiation
-        # MTR = -d(net_income)/d(employment_income)
-        # Use central differences for better accuracy
+        # Calculate MTR using numerical differentiation with smoothing
+        # MTR = 1 - d(net_income)/d(employment_income)
+        # Use wider window (10 points) for smoother MTR
+        window = 10
         mtr_baseline = np.zeros_like(income_range)
         mtr_reform = np.zeros_like(income_range)
 
-        for i in range(1, len(income_range) - 1):
-            d_income = income_range[i+1] - income_range[i-1]
-            d_net_baseline = net_income_baseline[i+1] - net_income_baseline[i-1]
-            d_net_reform = net_income_reform[i+1] - net_income_reform[i-1]
+        for i in range(window, len(income_range) - window):
+            d_income = income_range[i+window] - income_range[i-window]
+            d_net_baseline = net_income_baseline[i+window] - net_income_baseline[i-window]
+            d_net_reform = net_income_reform[i+window] - net_income_reform[i-window]
 
-            mtr_baseline[i] = -(1 - d_net_baseline / d_income)
-            mtr_reform[i] = -(1 - d_net_reform / d_income)
+            mtr_baseline[i] = 1 - d_net_baseline / d_income
+            mtr_reform[i] = 1 - d_net_reform / d_income
 
-        # Handle edges with forward/backward differences
-        mtr_baseline[0] = -(1 - (net_income_baseline[1] - net_income_baseline[0]) / (income_range[1] - income_range[0]))
-        mtr_baseline[-1] = -(1 - (net_income_baseline[-1] - net_income_baseline[-2]) / (income_range[-1] - income_range[-2]))
-        mtr_reform[0] = -(1 - (net_income_reform[1] - net_income_reform[0]) / (income_range[1] - income_range[0]))
-        mtr_reform[-1] = -(1 - (net_income_reform[-1] - net_income_reform[-2]) / (income_range[-1] - income_range[-2]))
+        # Handle edges with smaller windows
+        for i in range(window):
+            if i > 0:
+                d_income = income_range[i+1] - income_range[i-1]
+                d_net_baseline = net_income_baseline[i+1] - net_income_baseline[i-1]
+                d_net_reform = net_income_reform[i+1] - net_income_reform[i-1]
+                mtr_baseline[i] = 1 - d_net_baseline / d_income
+                mtr_reform[i] = 1 - d_net_reform / d_income
+            else:
+                mtr_baseline[i] = 1 - (net_income_baseline[1] - net_income_baseline[0]) / (income_range[1] - income_range[0])
+                mtr_reform[i] = 1 - (net_income_reform[1] - net_income_reform[0]) / (income_range[1] - income_range[0])
+
+        for i in range(len(income_range) - window, len(income_range)):
+            if i < len(income_range) - 1:
+                d_income = income_range[i+1] - income_range[i-1]
+                d_net_baseline = net_income_baseline[i+1] - net_income_baseline[i-1]
+                d_net_reform = net_income_reform[i+1] - net_income_reform[i-1]
+                mtr_baseline[i] = 1 - d_net_baseline / d_income
+                mtr_reform[i] = 1 - d_net_reform / d_income
+            else:
+                mtr_baseline[i] = 1 - (net_income_baseline[-1] - net_income_baseline[-2]) / (income_range[-1] - income_range[-2])
+                mtr_reform[i] = 1 - (net_income_reform[-1] - net_income_reform[-2]) / (income_range[-1] - income_range[-2])
 
         # Bound MTR at +/- 100%
         mtr_baseline = np.clip(mtr_baseline, -1.0, 1.0)
