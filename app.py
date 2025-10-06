@@ -1458,38 +1458,44 @@ def create_net_income_and_mtr_charts(
             "household_net_income_including_health_benefits", map_to="household", period=2026
         )
 
-        # Calculate MTR using PolicyEngine's built-in variable
-        # Get MTR for first person (head of household) only, not summed across all people
-        mtr_baseline_all = sim_baseline.calculate(
+        # Calculate PTC values to understand MTR contributions
+        ptc_baseline = sim_baseline.calculate("aca_ptc", map_to="household", period=2026)
+        ptc_reform = sim_reform.calculate("aca_ptc", map_to="household", period=2026)
+
+        # Calculate PTC's marginal effect using numerical differentiation
+        # MTR_ptc = -d(PTC)/d(income) (negative because PTC increases net income)
+        ptc_mtr_baseline = np.zeros_like(income_range)
+        ptc_mtr_reform = np.zeros_like(income_range)
+
+        # Use simple forward differences
+        for i in range(len(income_range) - 1):
+            d_income = income_range[i+1] - income_range[i]
+            d_ptc_baseline = ptc_baseline[i+1] - ptc_baseline[i]
+            d_ptc_reform = ptc_reform[i+1] - ptc_reform[i]
+
+            # MTR contribution from PTC (negative d_ptc means positive MTR)
+            ptc_mtr_baseline[i] = -d_ptc_baseline / d_income
+            ptc_mtr_reform[i] = -d_ptc_reform / d_income
+
+        # Last point same as second-to-last
+        ptc_mtr_baseline[-1] = ptc_mtr_baseline[-2] if len(income_range) > 1 else 0
+        ptc_mtr_reform[-1] = ptc_mtr_reform[-2] if len(income_range) > 1 else 0
+
+        # Clip extreme values (shouldn't exceed +/-50% from PTC alone)
+        ptc_mtr_baseline = np.clip(ptc_mtr_baseline, -0.5, 0.5)
+        ptc_mtr_reform = np.clip(ptc_mtr_reform, -0.5, 0.5)
+
+        # Calculate full MTR using PolicyEngine's built-in variable
+        mtr_baseline = sim_baseline.calculate(
             "marginal_tax_rate_including_health_benefits", period=2026
         )
-        mtr_reform_all = sim_reform.calculate(
+        mtr_reform = sim_reform.calculate(
             "marginal_tax_rate_including_health_benefits", period=2026
         )
 
-        # Extract head of household MTR (first person in axes)
-        mtr_baseline = mtr_baseline_all[0]  # First person = "you"
-        mtr_reform = mtr_reform_all[0]
-
-        # Apply numpy-based rolling average smoothing for visualization (window=50 = $5k)
-        # Reduces visual noise from cliff effects while preserving overall trends
-        window = 50
-
-        # Simple rolling average using numpy
-        def smooth(arr, window_size):
-            result = np.copy(arr)
-            for i in range(len(arr)):
-                start = max(0, i - window_size // 2)
-                end = min(len(arr), i + window_size // 2 + 1)
-                result[i] = np.mean(arr[start:end])
-            return result
-
-        mtr_baseline_smooth = smooth(mtr_baseline, window)
-        mtr_reform_smooth = smooth(mtr_reform, window)
-
-        # Keep in 0-1 range, format as percentage in chart
-        mtr_baseline_viz = mtr_baseline_smooth
-        mtr_reform_viz = mtr_reform_smooth
+        # Use PTC MTR for visualization (simpler, shows just the subsidy effect)
+        mtr_baseline_viz = ptc_mtr_baseline
+        mtr_reform_viz = ptc_mtr_reform
 
         # Create hover text for net income chart
         net_income_hover = []
@@ -1604,7 +1610,7 @@ def create_net_income_and_mtr_charts(
 
         fig_mtr.update_layout(
             title={
-                "text": "Marginal tax rate including health benefits (2026)",
+                "text": "PTC marginal effect on income (2026)",
                 "font": {"size": 20, "color": COLORS["primary"]},
             },
             xaxis_title="Annual household income",
@@ -1614,7 +1620,7 @@ def create_net_income_and_mtr_charts(
                 tickformat="$,.0f", range=[0, x_axis_max], automargin=True
             ),
             yaxis=dict(
-                tickformat=".0%", range=[-0.2, 1.0], automargin=True, zeroline=True, zerolinecolor="black", zerolinewidth=2
+                tickformat=".0%", range=[-0.2, 0.5], automargin=True, zeroline=True, zerolinecolor="black", zerolinewidth=2
             ),
             plot_bgcolor="white",
             paper_bgcolor="white",
