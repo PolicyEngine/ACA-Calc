@@ -126,41 +126,13 @@ def main():
         unsafe_allow_html=True,
     )
 
-    st.title("How Would Extending Enhanced Subsidies Affect You?")
-    st.markdown(
-        '<p class="subtitle">Calculate your premium tax credits under '
-        "current law vs. extended enhancements</p>",
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
-        """
-    The Inflation Reduction Act enhanced ACA subsidies through 2025. Use this calculator to explore how extending these enhancements to 2026 would affect your household's premium tax credits.
-
-    📖 [Learn more about enhanced premium tax credits](https://policyengine.org/us/research/enhanced-premium-tax-credits-extension)
-    """
-    )
-
-    with st.expander("Understanding the enhanced subsidies"):
-        st.markdown(
-            """
-        **Enhanced PTCs extended:**
-        - No income cap - households above 400% FPL can still receive credits
-        - Lower premium contribution percentages (0-8.5% of income)
-        - More generous subsidies at all income levels
-
-        **Current law (enhanced PTCs expire):**
-        - Hard cap at 400% FPL - no credits above this level (the "subsidy cliff")
-        - Higher contribution percentages (2-9.5% of income)
-        - Less generous subsidies, especially for middle incomes
-        """
-        )
+    st.title("How would extending enhanced subsidies affect you?")
 
     counties = load_counties()
 
     # Sidebar for household configuration
     with st.sidebar:
-        st.header("Household Configuration")
+        st.header("Household configuration")
 
         married = st.checkbox("Are you married?", value=False)
 
@@ -197,15 +169,6 @@ def main():
                     key=f"dep_{i}",
                 )
                 dependent_ages.append(age_dep)
-
-        income = st.number_input(
-            "What is your annual household income?",
-            min_value=0,
-            value=0,
-            step=1000,
-            help="Modified Adjusted Gross Income (MAGI) as defined in 26 USC § 36B(d)(2). Includes: wages, self-employment income, capital gains, interest, dividends, pensions, Social Security, unemployment, rental income, and other income sources. Also includes tax-exempt interest and tax-exempt Social Security.",
-            format="%d",
-        )
 
         states = [
             "AL",
@@ -292,7 +255,7 @@ def main():
         st.markdown("---")
 
         calculate_button = st.button(
-            "Calculate Premium Tax Credits",
+            "Analyze premium subsidies",
             type="primary",
             use_container_width=True,
         )
@@ -302,7 +265,6 @@ def main():
             st.session_state.params = {
                 "age_head": age_head,
                 "age_spouse": age_spouse,
-                "income": income,
                 "dependent_ages": dependent_ages,
                 "state": state,
                 "county": county,
@@ -311,187 +273,214 @@ def main():
             }
 
     # Main content area
-    if hasattr(st.session_state, "calculate") and st.session_state.calculate:
-        st.header("Your Results")
+    if not hasattr(st.session_state, "calculate") or not st.session_state.calculate:
+        # Show instructional text when first loading
+        st.markdown(
+            """
+            ### Get started
 
+            Enter your household information in the sidebar, then click **"Analyze premium subsidies"** to see:
+
+            - How premium tax credits vary across income levels for your household
+            - The income range where extending enhanced subsidies would benefit you
+            - Your specific impact at any income level you choose
+
+            The analysis compares two scenarios:
+            - **Current law**: Enhanced premium tax credits expire after 2025
+            - **Extended**: Enhanced PTCs continue through 2026
+            """
+        )
+    else:
         params = st.session_state.params
 
-        with st.spinner("Calculating..."):
-            # Calculate PTCs - compare 2026 baseline vs 2026 with IRA reform!
-            # Pass county name if selected (will be converted to PolicyEngine format)
-            county_name = params["county"] if params["county"] else None
+        # Generate charts only if not already in session state (avoid recalculation)
+        if not hasattr(st.session_state, "income_range") or st.session_state.income_range is None:
+            with st.spinner("Generating analysis..."):
+                county_name = params["county"] if params["county"] else None
+                zip_code = params.get("zip_code")
 
-            zip_code = params.get("zip_code")
-
-            ptc_2026_with_ira, slcsp_2026, fpl, fpl_pct = calculate_ptc(
-                params["age_head"],
-                params["age_spouse"],
-                params["income"],
-                params["dependent_ages"],
-                params["state"],
-                county_name,
-                zip_code=zip_code,
-                use_reform=True,
-            )
-
-            ptc_2026_baseline, _, _, _ = calculate_ptc(
-                params["age_head"],
-                params["age_spouse"],
-                params["income"],
-                params["dependent_ages"],
-                params["state"],
-                county_name,
-                zip_code=zip_code,
-                use_reform=False,
-            )
-
-            difference = ptc_2026_with_ira - ptc_2026_baseline
-
-            # Display SLCSP if available
-            if slcsp_2026 > 0:
-                st.info(
-                    f"Your base Second Lowest Cost Silver Plan is ${slcsp_2026:,.0f} per year (${slcsp_2026/12:,.0f} per month)"
+                (
+                    fig_comparison,
+                    fig_delta,
+                    benefit_info,
+                    income_range,
+                    ptc_baseline_range,
+                    ptc_reform_range,
+                    slcsp_2026,
+                    fpl,
+                ) = create_chart(
+                    params["age_head"],
+                    params["age_spouse"],
+                    tuple(params["dependent_ages"]),
+                    params["state"],
+                    county_name,
+                    zip_code,
                 )
 
-            # Display metrics with custom CSS to prevent truncation
-            st.markdown(
-                """
-            <style>
-            [data-testid="stMetricValue"] {
-                font-size: 1.4rem !important;
-                white-space: nowrap !important;
-                overflow: visible !important;
-                line-height: 1.3 !important;
-            }
-            [data-testid="stMetricLabel"] {
-                font-size: 0.95rem !important;
-                line-height: 1.2 !important;
-            }
-            </style>
-            """,
-                unsafe_allow_html=True,
-            )
+                # Store arrays and charts in session state for later use
+                if income_range is not None:
+                    st.session_state.income_range = income_range
+                    st.session_state.ptc_baseline_range = ptc_baseline_range
+                    st.session_state.ptc_reform_range = ptc_reform_range
+                    st.session_state.slcsp_2026 = slcsp_2026
+                    st.session_state.fpl = fpl
+                    st.session_state.benefit_info = benefit_info
+                    st.session_state.fig_comparison = fig_comparison
+                    st.session_state.fig_delta = fig_delta
 
-            col_baseline, col_with_ira, col_diff = st.columns(3)
+        # Show tabs using cached charts
+        if hasattr(st.session_state, "fig_delta") and st.session_state.fig_delta is not None:
+            tab1, tab2, tab3 = st.tabs(["Gain from extension", "Baseline vs. extension", "Your impact"])
 
-            with col_baseline:
-                st.metric(
-                    "Current law",
-                    f"${ptc_2026_baseline:,.0f} per year",
-                    help="Your credits under current law (enhanced PTCs expire)",
+            with tab1:
+                st.plotly_chart(
+                    st.session_state.fig_delta,
+                    use_container_width=True,
+                    config={"displayModeBar": False},
                 )
 
-            with col_with_ira:
-                st.metric(
-                    "Enhanced PTCs extended",
-                    f"${ptc_2026_with_ira:,.0f} per year",
-                    help="Your credits if enhanced subsidies were extended",
+            with tab2:
+                st.plotly_chart(
+                    st.session_state.fig_comparison,
+                    use_container_width=True,
+                    config={"displayModeBar": False},
                 )
 
-            with col_diff:
-                if difference > 0:
-                    st.metric(
-                        "You Lose",
-                        f"${difference:,.0f} per year",
-                        f"-${difference/12:,.0f} per month",
-                        delta_color="inverse",
+            with tab3:
+                st.markdown("Enter your annual household income to see your specific impact.")
+
+                user_income = st.number_input(
+                    "Annual household income:",
+                    min_value=0,
+                    value=0,
+                    step=1000,
+                    help="Modified Adjusted Gross Income (MAGI) as defined in 26 USC § 36B(d)(2). Includes: wages, self-employment income, capital gains, interest, dividends, pensions, Social Security, unemployment, rental income, and other income sources. Also includes tax-exempt interest and tax-exempt Social Security.",
+                    format="%d",
+                )
+
+                # Interpolate values at user's income (only if income > 0)
+                if (
+                    hasattr(st.session_state, "income_range")
+                    and user_income is not None
+                    and user_income > 0
+                ):
+                    ptc_2026_baseline = np.interp(
+                        user_income,
+                        st.session_state.income_range,
+                        st.session_state.ptc_baseline_range,
                     )
-                elif difference < 0:
-                    # This shouldn't happen but just in case
-                    st.metric(
-                        "You Gain?",
-                        f"${abs(difference):,.0f} per year",
-                        f"+${abs(difference)/12:,.0f} per month",
-                        delta_color="normal",
+                    ptc_2026_with_ira = np.interp(
+                        user_income,
+                        st.session_state.income_range,
+                        st.session_state.ptc_reform_range,
                     )
-                else:
-                    st.metric("No Change", "$0")
+                    difference = ptc_2026_with_ira - ptc_2026_baseline
+                    slcsp_2026 = st.session_state.slcsp_2026
+                    fpl = st.session_state.fpl
 
-            # Impact message
-            if ptc_2026_with_ira == 0 and ptc_2026_baseline == 0:
-                st.info("### No Premium Tax Credits Available")
-                st.write(
-                    "You don't qualify for premium tax credits in either scenario. Check the chart below to see potential Medicaid or CHIP eligibility."
-                )
-            elif ptc_2026_with_ira > 0 and ptc_2026_baseline == 0:
-                st.warning(
-                    "### Credits available only with enhanced PTCs extended"
-                )
-                st.warning(
-                    f"Premium tax credits: ${ptc_2026_with_ira:,.0f} per year with enhanced PTCs extended, $0 under current law."
-                )
-                st.warning(
-                    "Under current law (without enhanced PTCs), you would not qualify for credits. Enhanced PTCs remove the income cap and lower contribution percentages."
-                )
-            elif difference > 0:
-                st.info("### Credit reduction under current law")
-                st.info(
-                    f"Premium tax credits decrease by ${difference:,.0f} per year (${difference/12:,.0f} per month) when enhanced PTCs expire."
-                )
-            else:
-                st.success("### No Change in Credits")
+                    # Calculate FPL percentage
+                    household_size = (
+                        1
+                        + (1 if params["age_spouse"] else 0)
+                        + len(params["dependent_ages"])
+                    )
+                    fpl_pct = (user_income / fpl * 100) if fpl > 0 else 0
 
-            # Optional Chart - only generate when requested
-            st.markdown("---")
-            if st.button(
-                "📊 Show income comparison chart",
-                help="Generate interactive charts showing how credits change across income levels",
-            ):
-                with st.spinner("Generating charts..."):
-                    fig_comparison, fig_delta = create_chart(
-                        ptc_2026_with_ira,
-                        ptc_2026_baseline,
-                        params["age_head"],
-                        params["age_spouse"],
-                        tuple(params["dependent_ages"]),
-                        params["state"],
-                        params["income"],
-                        params["county"],
-                        params.get("zip_code"),
+                    # Display metrics with custom CSS to prevent truncation
+                    st.markdown(
+                        """
+                    <style>
+                    [data-testid="stMetricValue"] {
+                        font-size: 1.4rem !important;
+                        white-space: nowrap !important;
+                        overflow: visible !important;
+                        line-height: 1.3 !important;
+                    }
+                    [data-testid="stMetricLabel"] {
+                        font-size: 0.95rem !important;
+                        line-height: 1.2 !important;
+                    }
+                    </style>
+                    """,
+                        unsafe_allow_html=True,
                     )
 
-                    tab1, tab2 = st.tabs(["Comparison", "Difference"])
+                    col_baseline, col_with_ira, col_diff = st.columns(3)
 
-                    with tab1:
-                        st.plotly_chart(
-                            fig_comparison,
-                            use_container_width=True,
-                            config={"displayModeBar": False},
+                    with col_baseline:
+                        st.metric(
+                            "Current law",
+                            f"${ptc_2026_baseline:,.0f} per year",
+                            help="Your credits under current law (enhanced PTCs expire)",
                         )
 
-                    with tab2:
-                        st.plotly_chart(
-                            fig_delta,
-                            use_container_width=True,
-                            config={"displayModeBar": False},
+                    with col_with_ira:
+                        st.metric(
+                            "Enhanced PTCs extended",
+                            f"${ptc_2026_with_ira:,.0f} per year",
+                            help="Your credits if enhanced subsidies were extended",
                         )
 
-            # Details
-            with st.expander("See calculation details"):
-                household_size = (
-                    1
-                    + (1 if params["age_spouse"] else 0)
-                    + len(params["dependent_ages"])
-                )
-                st.write(
+                    with col_diff:
+                        if difference > 0:
+                            st.metric(
+                                "You gain",
+                                f"${difference:,.0f} per year",
+                                f"+${difference/12:,.0f} per month",
+                                delta_color="normal",
+                            )
+                        else:
+                            st.metric("No change", "$0")
+
+                    # Details
+                    with st.expander("See calculation details"):
+                        st.write(
+                            f"""
+                        ### Your household
+                        - **Size:** {household_size} people
+                        - **Income:** ${user_income:,} ({fpl_pct:.0f}% of FPL)
+                        - **2026 Federal Poverty Guideline:** ${fpl:,.0f}
+                        - **Location:** {params['county'] + ', ' if params['county'] else ''}{params['state']}
+                        - **Second Lowest Cost Silver Plan:** ${slcsp_2026:,.0f} per year (${slcsp_2026/12:,.0f} per month)
+
+                        ### How premium tax credits work
+
+                        **Formula:** PTC = Benchmark Plan Cost - Your Required Contribution
+
+                        **Your Required Contribution** is a percentage of your income:
+                        - Lower percentages with IRA extension (2026): 0-8.5% based on income
+                        - Higher percentages without IRA (2026): 2-9.5% based on income
+                        - No credits at all above 400% FPL without IRA extension
+
+                        If the benchmark plan costs less than your required contribution, you get no credit.
+                        """
+                        )
+
+            # Move "About this calculator" below the tabs
+            with st.expander("About this calculator"):
+                from importlib.metadata import version
+
+                pe_version = version("policyengine-us")
+
+                st.markdown(
                     f"""
-                ### Your Household
-                - **Size:** {household_size} people
-                - **Income:** ${params['income']:,} ({fpl_pct:.0f}% of FPL)
-                - **2026 Federal Poverty Guideline:** ${fpl:,.0f}
-                - **Location:** {params['county'] + ', ' if params['county'] else ''}{params['state']}
-                - **Second Lowest Cost Silver Plan:** ${slcsp_2026:,.0f} per year (${slcsp_2026/12:,.0f} per month)
+                The Inflation Reduction Act enhanced ACA subsidies through 2025. This calculator shows how extending these enhancements to 2026 would affect your household's premium tax credits.
 
-                ### How Premium Tax Credits Work
+                This calculator uses [PolicyEngine's open-source tax-benefit microsimulation model](https://github.com/PolicyEngine/policyengine-us) (version {pe_version}).
 
-                **Formula:** PTC = Benchmark Plan Cost - Your Required Contribution
+                **2026 premium projections:** This calculator projects Second Lowest Cost Silver Plan (SLCSP) premiums for 2026 by applying a 4.19% increase to actual 2025 benchmark premiums from KFF, based on 2024-25 growth patterns. Actual premiums may rise faster, and we will update the calculator when CMS releases official data in October 2025.
 
-                **Your Required Contribution** is a percentage of your income:
-                - Lower percentages with IRA extension (2026): 0-8.5% based on income
-                - Higher percentages without IRA (2026): 2-9.5% based on income
-                - No credits at all above 400% FPL without IRA extension
+                📖 [Learn more about enhanced premium tax credits](https://policyengine.org/us/research/enhanced-premium-tax-credits-extension)
 
-                If the benchmark plan costs less than your required contribution, you get no credit.
+                **Enhanced PTCs extended:**
+                - No income cap - households above 400% FPL can still receive credits
+                - Lower premium contribution percentages (0-8.5% of income)
+                - More generous subsidies at all income levels
+
+                **Current law (enhanced PTCs expire):**
+                - Hard cap at 400% FPL - no credits above this level (the "subsidy cliff")
+                - Higher contribution percentages (2.1-9.96% of income, per IRS Revenue Procedure 2025-25)
+                - Less generous subsidies, especially for middle incomes
                 """
                 )
 
@@ -665,22 +654,22 @@ def calculate_ptc(
 
 
 def create_chart(
-    ptc_with_ira,
-    ptc_baseline,
     age_head,
     age_spouse,
     dependent_ages,
     state,
-    income,
     county=None,
     zip_code=None,
+    income=None,
 ):
-    """Create income curve charts showing PTC across income range with user's position marked
+    """Create income curve charts showing PTC across income range
 
     Args:
         zip_code: 5-digit ZIP code string (required for LA County)
+        income: Optional income to mark on chart. If None, no marker shown.
 
-    Returns tuple of (comparison_fig, delta_fig)
+    Returns tuple of (comparison_fig, delta_fig, benefit_info, income_range, ptc_baseline_range, ptc_reform_range, slcsp, fpl)
+        Arrays are returned for interpolation
 
     Note: Caching removed to prevent signature mismatch issues on Streamlit Cloud
     """
@@ -895,19 +884,18 @@ def create_chart(
             )
         )
 
-        # Add Medicaid line only if any household member is eligible
-        if np.any(medicaid_range > 0):
-            fig.add_trace(
-                go.Scatter(
-                    x=income_range,
-                    y=medicaid_range,
-                    mode="lines",
-                    name="Medicaid",
-                    line=dict(color=COLORS["green"], width=3),
-                    hoverinfo="skip",
-                    visible=True,
-                )
+        # Add Medicaid line (always show in legend, hidden by default)
+        fig.add_trace(
+            go.Scatter(
+                x=income_range,
+                y=medicaid_range,
+                mode="lines",
+                name="Medicaid",
+                line=dict(color=COLORS["green"], width=3),
+                hoverinfo="skip",
+                visible="legendonly",
             )
+        )
 
         # Add CHIP line only if any household member is eligible
         if np.any(chip_range > 0):
@@ -919,7 +907,7 @@ def create_chart(
                     name="Children's Health Insurance Program (CHIP)",
                     line=dict(color=COLORS["secondary"], width=3),
                     hoverinfo="skip",
-                    visible=True,
+                    visible="legendonly",
                 )
             )
 
@@ -947,30 +935,35 @@ def create_chart(
             )
         )
 
-        # Add user's position markers
-        fig.add_trace(
-            go.Scatter(
-                x=[income, income],
-                y=[ptc_baseline, ptc_with_ira],
-                mode="markers",
-                name="Your Household",
-                marker=dict(
-                    color=[COLORS["gray"], COLORS["primary"]],
-                    size=12,
-                    symbol="diamond",
-                    line=dict(width=2, color="white"),
-                ),
-                hoverinfo="skip",
-                showlegend=False,
+        # Add user's position markers (only if income is provided)
+        if income is not None and income > 10000:
+            # Interpolate PTC values at user's income
+            ptc_baseline_user = np.interp(
+                income, income_range, ptc_range_baseline
             )
-        )
+            ptc_reform_user = np.interp(income, income_range, ptc_range_reform)
 
-        # Add annotations for user's points (only if income > 0 to avoid cramping y-axis)
-        if income > 10000:
+            fig.add_trace(
+                go.Scatter(
+                    x=[income, income],
+                    y=[ptc_baseline_user, ptc_reform_user],
+                    mode="markers",
+                    name="Your Household",
+                    marker=dict(
+                        color=[COLORS["gray"], COLORS["primary"]],
+                        size=12,
+                        symbol="diamond",
+                        line=dict(width=2, color="white"),
+                    ),
+                    hoverinfo="skip",
+                    showlegend=False,
+                )
+            )
+
             fig.add_annotation(
                 x=income,
-                y=ptc_baseline,
-                text=f"Current law: ${ptc_baseline:,.0f}",
+                y=ptc_baseline_user,
+                text=f"Current law: ${ptc_baseline_user:,.0f}",
                 showarrow=True,
                 arrowhead=2,
                 arrowsize=1,
@@ -985,8 +978,8 @@ def create_chart(
 
             fig.add_annotation(
                 x=income,
-                y=ptc_with_ira,
-                text=f"Extended: ${ptc_with_ira:,.0f}",
+                y=ptc_reform_user,
+                text=f"Extended: ${ptc_reform_user:,.0f}",
                 showarrow=True,
                 arrowhead=2,
                 arrowsize=1,
@@ -1007,7 +1000,7 @@ def create_chart(
             },
             xaxis_title="Annual household income",
             yaxis_title="Annual healthcare assistance value",
-            height=500,
+            height=400,
             xaxis=dict(
                 tickformat="$,.0f", range=[0, x_axis_max], automargin=True
             ),
@@ -1027,13 +1020,13 @@ def create_chart(
         # Create delta chart
         fig_delta = go.Figure()
 
-        user_difference = ptc_with_ira - ptc_baseline
-
         # Create hover text for delta chart
         delta_hover_text = []
         for i in range(len(income_range)):
             inc = income_range[i]
             delta = delta_range[i]
+            ptc_base = ptc_range_baseline[i]
+            ptc_ref = ptc_range_reform[i]
             medicaid = medicaid_range[i]
             chip = chip_range[i]
 
@@ -1045,15 +1038,14 @@ def create_chart(
             if chip > 0:
                 text += f"<b>CHIP:</b> ${chip:,.0f}/year<br>"
 
-            # Show PTC gain/loss from extension
-            if delta > 0:
-                text += f"<b>PTC gain from extension:</b> ${delta:,.0f}/year"
-            elif delta < 0:
-                text += (
-                    f"<b>PTC loss from extension:</b> -${abs(delta):,.0f}/year"
-                )
-            elif ptc_range_baseline[i] > 0 or ptc_range_reform[i] > 0:
-                text += f"<b>PTC: no change</b>"
+            # Show PTC amounts and gain from extension
+            if ptc_base > 0 or ptc_ref > 0:
+                text += f"<b>PTC (current law):</b> ${ptc_base:,.0f}/year<br>"
+                text += f"<b>PTC (extended):</b> ${ptc_ref:,.0f}/year<br>"
+                if delta > 0:
+                    text += f"<b>Gain from extension:</b> ${delta:,.0f}/year"
+                else:
+                    text += f"<b>No change</b>"
 
             delta_hover_text.append(text)
 
@@ -1072,8 +1064,15 @@ def create_chart(
             )
         )
 
-        # Add user's position marker
-        if income > 10000:
+        # Add user's position marker (only if income is provided)
+        if income is not None and income > 10000:
+            # Interpolate values at user's income
+            ptc_baseline_user = np.interp(
+                income, income_range, ptc_range_baseline
+            )
+            ptc_reform_user = np.interp(income, income_range, ptc_range_reform)
+            user_difference = ptc_reform_user - ptc_baseline_user
+
             fig_delta.add_trace(
                 go.Scatter(
                     x=[income],
@@ -1114,7 +1113,7 @@ def create_chart(
             },
             xaxis_title="Annual household income",
             yaxis_title="Annual PTC gain (extended - current law)",
-            height=500,
+            height=400,
             xaxis=dict(
                 tickformat="$,.0f", range=[0, x_axis_max], automargin=True
             ),
@@ -1129,60 +1128,109 @@ def create_chart(
             **add_logo_to_layout(),
         )
 
-        return fig, fig_delta
+        # Calculate benefit range information
+        benefit_indices = np.where(delta_range > 0)[0]
+        if len(benefit_indices) > 0:
+            min_benefit_income = income_range[benefit_indices[0]]
+            max_benefit_income = income_range[benefit_indices[-1]]
+            max_benefit = np.max(delta_range[benefit_indices])
+            peak_benefit_index = benefit_indices[np.argmax(delta_range[benefit_indices])]
+            peak_benefit_income = income_range[peak_benefit_index]
+
+            benefit_info = {
+                "min_income": float(min_benefit_income),
+                "max_income": float(max_benefit_income),
+                "max_benefit": float(max_benefit),
+                "peak_income": float(peak_benefit_income),
+            }
+
+            # Add annotations to delta chart for min/max/peak
+            # Min income annotation
+            fig_delta.add_annotation(
+                x=min_benefit_income,
+                y=delta_range[benefit_indices[0]],
+                text=f"Benefit starts<br>${min_benefit_income:,.0f}",
+                showarrow=True,
+                arrowhead=2,
+                arrowsize=1,
+                arrowwidth=2,
+                arrowcolor=COLORS["primary"],
+                ax=-50,
+                ay=-50,
+                bgcolor=COLORS["primary"],
+                bordercolor=COLORS["primary"],
+                borderwidth=0,
+                borderpad=8,
+                font=dict(size=11, color="white"),
+            )
+
+            # Peak benefit annotation
+            fig_delta.add_annotation(
+                x=peak_benefit_income,
+                y=max_benefit,
+                text=f"Max benefit: ${max_benefit:,.0f}<br>at ${peak_benefit_income:,.0f}",
+                showarrow=True,
+                arrowhead=2,
+                arrowsize=1,
+                arrowwidth=2,
+                arrowcolor=COLORS["primary"],
+                ax=0,
+                ay=50,
+                bgcolor=COLORS["primary"],
+                bordercolor=COLORS["primary"],
+                borderwidth=0,
+                borderpad=8,
+                font=dict(size=12, color="white"),
+            )
+
+            # Max income annotation
+            fig_delta.add_annotation(
+                x=max_benefit_income,
+                y=delta_range[benefit_indices[-1]],
+                text=f"Benefit ends<br>${max_benefit_income:,.0f}",
+                showarrow=True,
+                arrowhead=2,
+                arrowsize=1,
+                arrowwidth=2,
+                arrowcolor=COLORS["primary"],
+                ax=50,
+                ay=-50,
+                bgcolor=COLORS["primary"],
+                bordercolor=COLORS["primary"],
+                borderwidth=0,
+                borderpad=8,
+                font=dict(size=11, color="white"),
+            )
+        else:
+            benefit_info = None
+
+        # Get SLCSP and FPL for display
+        # SLCSP and FPL don't vary with income, but get from middle of array to avoid edge cases
+        slcsp_array = sim_baseline.calculate("slcsp", map_to="household", period=2026)
+        fpl_array = sim_baseline.calculate("tax_unit_fpg", period=2026)
+
+        # Use max value for SLCSP (should be constant, but this handles any edge cases)
+        slcsp = float(np.max(slcsp_array))
+        fpl = float(fpl_array[len(fpl_array) // 2])  # Use middle value
+
+        return (
+            fig,
+            fig_delta,
+            benefit_info,
+            income_range,
+            ptc_range_baseline,
+            ptc_range_reform,
+            slcsp,
+            fpl,
+        )
 
     except Exception as e:
-        # Fallback to simple bar charts if curve fails
-        colors = [COLORS["gray"], COLORS["primary"]]
+        # If chart generation fails, return None for everything
+        st.error(f"Error generating charts: {str(e)}")
+        import traceback
 
-        # Comparison bar chart
-        fig_comp = go.Figure(
-            data=[
-                go.Bar(
-                    x=["Current law", "Enhanced PTCs<br>extended"],
-                    y=[ptc_baseline, ptc_with_ira],
-                    text=[f"${ptc_baseline:,.0f}", f"${ptc_with_ira:,.0f}"],
-                    textposition="outside",
-                    marker_color=colors,
-                )
-            ]
-        )
-
-        fig_comp.update_layout(
-            title="Annual premium tax credit comparison",
-            yaxis_title="Credit amount ($)",
-            height=400,
-            showlegend=False,
-            yaxis=dict(rangemode="tozero"),
-            plot_bgcolor="white",
-            **add_logo_to_layout(),
-        )
-
-        # Delta bar chart
-        user_difference = ptc_with_ira - ptc_baseline
-        fig_delta = go.Figure(
-            data=[
-                go.Bar(
-                    x=["PTC gain from<br>extending enhanced subsidies"],
-                    y=[user_difference],
-                    text=[f"${user_difference:,.0f}"],
-                    textposition="outside",
-                    marker_color=COLORS["primary"],
-                )
-            ]
-        )
-
-        fig_delta.update_layout(
-            title="PTC gain from extending enhanced subsidies",
-            yaxis_title="Gain ($)",
-            height=400,
-            showlegend=False,
-            yaxis=dict(rangemode="tozero"),
-            plot_bgcolor="white",
-            **add_logo_to_layout(),
-        )
-
-        return fig_comp, fig_delta
+        st.error(traceback.format_exc())
+        return None, None, None, None, None, None, 0, 0
 
 
 if __name__ == "__main__":
