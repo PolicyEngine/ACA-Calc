@@ -274,6 +274,8 @@ def main():
             # Clear cached charts if params changed
             if hasattr(st.session_state, "params") and st.session_state.params != new_params:
                 st.session_state.income_range = None
+                st.session_state.fig_net_income = None
+                st.session_state.fig_mtr = None
             st.session_state.params = new_params
 
     # Main content area
@@ -312,6 +314,7 @@ def main():
                     ptc_reform_range,
                     slcsp_2026,
                     fpl,
+                    x_axis_max,
                 ) = create_chart(
                     params["age_head"],
                     params["age_spouse"],
@@ -331,10 +334,17 @@ def main():
                     st.session_state.benefit_info = benefit_info
                     st.session_state.fig_comparison = fig_comparison
                     st.session_state.fig_delta = fig_delta
+                    st.session_state.x_axis_max = x_axis_max
 
         # Show tabs using cached charts
         if hasattr(st.session_state, "fig_delta") and st.session_state.fig_delta is not None:
-            tab1, tab2, tab3 = st.tabs(["Gain from extension", "Baseline vs. extension", "Your impact"])
+            tab1, tab2, tab3, tab4, tab5 = st.tabs([
+                "Gain from extension",
+                "Baseline vs. extension",
+                "Your impact",
+                "Net income",
+                "Marginal tax rates"
+            ])
 
             with tab1:
                 st.plotly_chart(
@@ -459,6 +469,78 @@ def main():
                         If the benchmark plan costs less than your required contribution, you get no credit.
                         """
                         )
+
+            with tab4:
+                # Lazy load net income chart
+                if st.button("Generate net income chart", key="generate_net_income"):
+                    with st.spinner("Calculating net income..."):
+                        x_axis_max = st.session_state.get("x_axis_max", 200000)
+                        (
+                            fig_net_income,
+                            fig_mtr,
+                            net_income_range,
+                            net_income_baseline,
+                            net_income_reform,
+                        ) = create_net_income_and_mtr_charts(
+                            params["age_head"],
+                            params["age_spouse"],
+                            tuple(params["dependent_ages"]),
+                            params["state"],
+                            params.get("county"),
+                            params.get("zip_code"),
+                            x_axis_max,
+                        )
+
+                        # Store in session state
+                        if fig_net_income is not None:
+                            st.session_state.fig_net_income = fig_net_income
+                            st.session_state.fig_mtr = fig_mtr
+
+                # Display cached chart if available
+                if hasattr(st.session_state, "fig_net_income") and st.session_state.fig_net_income is not None:
+                    st.plotly_chart(
+                        st.session_state.fig_net_income,
+                        use_container_width=True,
+                        config={"displayModeBar": False},
+                    )
+                else:
+                    st.info("Click the button above to generate the net income chart (includes health benefits like PTCs, Medicaid, and CHIP)")
+
+            with tab5:
+                # Lazy load MTR chart
+                if st.button("Generate MTR chart", key="generate_mtr"):
+                    with st.spinner("Calculating marginal tax rates..."):
+                        x_axis_max = st.session_state.get("x_axis_max", 200000)
+                        (
+                            fig_net_income,
+                            fig_mtr,
+                            net_income_range,
+                            net_income_baseline,
+                            net_income_reform,
+                        ) = create_net_income_and_mtr_charts(
+                            params["age_head"],
+                            params["age_spouse"],
+                            tuple(params["dependent_ages"]),
+                            params["state"],
+                            params.get("county"),
+                            params.get("zip_code"),
+                            x_axis_max,
+                        )
+
+                        # Store in session state
+                        if fig_mtr is not None:
+                            st.session_state.fig_net_income = fig_net_income
+                            st.session_state.fig_mtr = fig_mtr
+
+                # Display cached chart if available
+                if hasattr(st.session_state, "fig_mtr") and st.session_state.fig_mtr is not None:
+                    st.plotly_chart(
+                        st.session_state.fig_mtr,
+                        use_container_width=True,
+                        config={"displayModeBar": False},
+                    )
+                else:
+                    st.info("Click the button above to generate the marginal tax rate chart (includes impact of health benefits)")
 
             # Move "About this calculator" below the tabs
             with st.expander("About this calculator"):
@@ -672,7 +754,7 @@ def create_chart(
         zip_code: 5-digit ZIP code string (required for LA County)
         income: Optional income to mark on chart. If None, no marker shown.
 
-    Returns tuple of (comparison_fig, delta_fig, benefit_info, income_range, ptc_baseline_range, ptc_reform_range, slcsp, fpl)
+    Returns tuple of (comparison_fig, delta_fig, benefit_info, income_range, ptc_baseline_range, ptc_reform_range, slcsp, fpl, x_axis_max)
         Arrays are returned for interpolation
 
     Note: Caching removed to prevent signature mismatch issues on Streamlit Cloud
@@ -1226,6 +1308,7 @@ def create_chart(
             ptc_range_reform,
             slcsp,
             fpl,
+            x_axis_max,
         )
 
     except Exception as e:
@@ -1234,7 +1317,304 @@ def create_chart(
         import traceback
 
         st.error(traceback.format_exc())
-        return None, None, None, None, None, None, 0, 0
+        return None, None, None, None, None, None, 0, 0, 200000
+
+
+def create_net_income_and_mtr_charts(
+    age_head,
+    age_spouse,
+    dependent_ages,
+    state,
+    county=None,
+    zip_code=None,
+    x_axis_max=200000,
+):
+    """Create net income and MTR charts including health benefits
+
+    Args:
+        x_axis_max: Maximum income for x-axis (from PTC charts)
+
+    Returns tuple of (net_income_fig, mtr_fig, income_range, net_income_baseline, net_income_reform)
+    """
+
+    # Create base household structure (same as create_chart)
+    base_household = {
+        "people": {"you": {"age": {2026: age_head}}},
+        "families": {"your family": {"members": ["you"]}},
+        "spm_units": {"your household": {"members": ["you"]}},
+        "tax_units": {"your tax unit": {"members": ["you"]}},
+        "households": {
+            "your household": {"members": ["you"], "state_name": {2026: state}}
+        },
+        "axes": [
+            [
+                {
+                    "name": "employment_income",
+                    "count": 10_001,
+                    "min": 0,
+                    "max": 1000000,
+                    "period": 2026,
+                }
+            ]
+        ],
+    }
+
+    # Add county if provided
+    if county:
+        county_pe_format = county.upper().replace(" ", "_") + "_" + state
+        base_household["households"]["your household"]["county"] = {
+            2026: county_pe_format
+        }
+
+    # Add ZIP code if provided
+    if zip_code:
+        base_household["households"]["your household"]["zip_code"] = {
+            2026: zip_code
+        }
+
+    # Add spouse if married
+    if age_spouse:
+        base_household["people"]["your partner"] = {"age": {2026: age_spouse}}
+        base_household["families"]["your family"]["members"].append("your partner")
+        base_household["spm_units"]["your household"]["members"].append("your partner")
+        base_household["tax_units"]["your tax unit"]["members"].append("your partner")
+        base_household["households"]["your household"]["members"].append("your partner")
+        base_household["marital_units"] = {
+            "your marital unit": {"members": ["you", "your partner"]}
+        }
+
+    # Add dependents
+    for i, dep_age in enumerate(dependent_ages):
+        if i == 0:
+            child_id = "your first dependent"
+        elif i == 1:
+            child_id = "your second dependent"
+        else:
+            child_id = f"dependent_{i+1}"
+
+        base_household["people"][child_id] = {"age": {2026: dep_age}}
+        base_household["families"]["your family"]["members"].append(child_id)
+        base_household["spm_units"]["your household"]["members"].append(child_id)
+        base_household["tax_units"]["your tax unit"]["members"].append(child_id)
+        base_household["households"]["your household"]["members"].append(child_id)
+
+        if "marital_units" not in base_household:
+            base_household["marital_units"] = {}
+        base_household["marital_units"][f"{child_id}'s marital unit"] = {
+            "members": [child_id]
+        }
+
+    try:
+        from policyengine_core.reforms import Reform
+
+        # Create reform for extended PTCs
+        reform = Reform.from_dict(
+            {
+                "gov.aca.ptc_phase_out_rate[0].amount": {
+                    "2026-01-01.2100-12-31": 0
+                },
+                "gov.aca.ptc_phase_out_rate[1].amount": {
+                    "2025-01-01.2100-12-31": 0
+                },
+                "gov.aca.ptc_phase_out_rate[2].amount": {
+                    "2026-01-01.2100-12-31": 0
+                },
+                "gov.aca.ptc_phase_out_rate[3].amount": {
+                    "2026-01-01.2100-12-31": 0.02
+                },
+                "gov.aca.ptc_phase_out_rate[4].amount": {
+                    "2026-01-01.2100-12-31": 0.04
+                },
+                "gov.aca.ptc_phase_out_rate[5].amount": {
+                    "2026-01-01.2100-12-31": 0.06
+                },
+                "gov.aca.ptc_phase_out_rate[6].amount": {
+                    "2026-01-01.2100-12-31": 0.085
+                },
+                "gov.aca.ptc_income_eligibility[2].amount": {
+                    "2026-01-01.2100-12-31": True
+                },
+            },
+            country_id="us",
+        )
+
+        # Run simulations
+        sim_baseline = Simulation(situation=base_household)
+        sim_reform = Simulation(situation=base_household, reform=reform)
+
+        income_range = sim_baseline.calculate(
+            "employment_income", map_to="household", period=2026
+        )
+
+        # Calculate net income including health benefits
+        # Net income = household_net_income + aca_ptc + medicaid_cost + per_capita_chip
+        net_income_baseline_core = sim_baseline.calculate(
+            "household_net_income", map_to="household", period=2026
+        )
+        aca_ptc_baseline = sim_baseline.calculate(
+            "aca_ptc", map_to="household", period=2026
+        )
+        medicaid_baseline = sim_baseline.calculate(
+            "medicaid_cost", map_to="household", period=2026
+        )
+        chip_baseline = sim_baseline.calculate(
+            "per_capita_chip", map_to="household", period=2026
+        )
+        net_income_baseline = (
+            net_income_baseline_core + aca_ptc_baseline + medicaid_baseline + chip_baseline
+        )
+
+        net_income_reform_core = sim_reform.calculate(
+            "household_net_income", map_to="household", period=2026
+        )
+        aca_ptc_reform = sim_reform.calculate(
+            "aca_ptc", map_to="household", period=2026
+        )
+        medicaid_reform = sim_reform.calculate(
+            "medicaid_cost", map_to="household", period=2026
+        )
+        chip_reform = sim_reform.calculate(
+            "per_capita_chip", map_to="household", period=2026
+        )
+        net_income_reform = (
+            net_income_reform_core + aca_ptc_reform + medicaid_reform + chip_reform
+        )
+
+        # Calculate MTR using numerical differentiation
+        # MTR = -d(net_income)/d(employment_income)
+        # Use central differences for better accuracy
+        mtr_baseline = np.zeros_like(income_range)
+        mtr_reform = np.zeros_like(income_range)
+
+        for i in range(1, len(income_range) - 1):
+            d_income = income_range[i+1] - income_range[i-1]
+            d_net_baseline = net_income_baseline[i+1] - net_income_baseline[i-1]
+            d_net_reform = net_income_reform[i+1] - net_income_reform[i-1]
+
+            mtr_baseline[i] = -(1 - d_net_baseline / d_income)
+            mtr_reform[i] = -(1 - d_net_reform / d_income)
+
+        # Handle edges with forward/backward differences
+        mtr_baseline[0] = -(1 - (net_income_baseline[1] - net_income_baseline[0]) / (income_range[1] - income_range[0]))
+        mtr_baseline[-1] = -(1 - (net_income_baseline[-1] - net_income_baseline[-2]) / (income_range[-1] - income_range[-2]))
+        mtr_reform[0] = -(1 - (net_income_reform[1] - net_income_reform[0]) / (income_range[1] - income_range[0]))
+        mtr_reform[-1] = -(1 - (net_income_reform[-1] - net_income_reform[-2]) / (income_range[-1] - income_range[-2]))
+
+        # Bound MTR at +/- 100%
+        mtr_baseline = np.clip(mtr_baseline, -1.0, 1.0)
+        mtr_reform = np.clip(mtr_reform, -1.0, 1.0)
+
+        # Convert to percentage
+        mtr_baseline_pct = mtr_baseline * 100
+        mtr_reform_pct = mtr_reform * 100
+
+        # Create net income chart
+        fig_net_income = go.Figure()
+
+        fig_net_income.add_trace(
+            go.Scatter(
+                x=income_range,
+                y=net_income_baseline,
+                mode="lines",
+                name="Current law",
+                line=dict(color=COLORS["gray"], width=3),
+            )
+        )
+
+        fig_net_income.add_trace(
+            go.Scatter(
+                x=income_range,
+                y=net_income_reform,
+                mode="lines",
+                name="Enhanced PTCs extended",
+                line=dict(color=COLORS["primary"], width=3),
+            )
+        )
+
+        fig_net_income.update_layout(
+            title={
+                "text": "Net income including health benefits (2026)",
+                "font": {"size": 20, "color": COLORS["primary"]},
+            },
+            xaxis_title="Annual household income",
+            yaxis_title="Net income (including health benefits)",
+            height=400,
+            xaxis=dict(
+                tickformat="$,.0f", range=[0, x_axis_max], automargin=True
+            ),
+            yaxis=dict(
+                tickformat="$,.0f", rangemode="tozero", automargin=True
+            ),
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            font=dict(family="Roboto, sans-serif"),
+            legend=dict(
+                orientation="h", yanchor="bottom", y=0.98, xanchor="right", x=1
+            ),
+            margin=dict(l=80, r=40, t=60, b=80),
+            **add_logo_to_layout(),
+        )
+
+        # Create MTR chart
+        fig_mtr = go.Figure()
+
+        fig_mtr.add_trace(
+            go.Scatter(
+                x=income_range,
+                y=mtr_baseline_pct,
+                mode="lines",
+                name="Current law",
+                line=dict(color=COLORS["gray"], width=3),
+            )
+        )
+
+        fig_mtr.add_trace(
+            go.Scatter(
+                x=income_range,
+                y=mtr_reform_pct,
+                mode="lines",
+                name="Enhanced PTCs extended",
+                line=dict(color=COLORS["primary"], width=3),
+            )
+        )
+
+        fig_mtr.update_layout(
+            title={
+                "text": "Marginal tax rate including health benefits (2026)",
+                "font": {"size": 20, "color": COLORS["primary"]},
+            },
+            xaxis_title="Annual household income",
+            yaxis_title="Marginal tax rate (%)",
+            height=400,
+            xaxis=dict(
+                tickformat="$,.0f", range=[0, x_axis_max], automargin=True
+            ),
+            yaxis=dict(
+                tickformat=".0f", automargin=True
+            ),
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            font=dict(family="Roboto, sans-serif"),
+            legend=dict(
+                orientation="h", yanchor="bottom", y=0.98, xanchor="right", x=1
+            ),
+            margin=dict(l=80, r=40, t=60, b=80),
+            **add_logo_to_layout(),
+        )
+
+        return (
+            fig_net_income,
+            fig_mtr,
+            income_range,
+            net_income_baseline,
+            net_income_reform,
+        )
+
+    except Exception as e:
+        st.error(f"Error generating net income/MTR charts: {str(e)}")
+        import traceback
+        st.error(traceback.format_exc())
+        return None, None, None, None, None
 
 
 if __name__ == "__main__":
