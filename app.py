@@ -343,9 +343,11 @@ def main():
 
         # Show tabs using cached charts
         if hasattr(st.session_state, "fig_delta") and st.session_state.fig_delta is not None:
-            tab1, tab2, tab3 = st.tabs([
+            tab1, tab2, tab3, tab4, tab5 = st.tabs([
                 "Gain from extension",
                 "Baseline vs. extension",
+                "Net income",
+                "Marginal tax rates",
                 "Your impact"
             ])
 
@@ -364,6 +366,81 @@ def main():
                 )
 
             with tab3:
+                # Auto-generate net income chart if not cached
+                if not hasattr(st.session_state, "fig_net_income") or st.session_state.fig_net_income is None:
+                    with st.spinner("Calculating net income (this may take a few seconds)..."):
+                        x_axis_max = st.session_state.get("x_axis_max", 200000)
+                        (
+                            fig_net_income,
+                            fig_mtr,
+                            net_income_range,
+                            net_income_baseline,
+                            net_income_reform,
+                        ) = create_net_income_and_mtr_charts(
+                            params["age_head"],
+                            params["age_spouse"],
+                            tuple(params["dependent_ages"]),
+                            params["state"],
+                            params.get("county"),
+                            params.get("zip_code"),
+                            x_axis_max,
+                        )
+
+                        # Store in session state
+                        if fig_net_income is not None:
+                            st.session_state.fig_net_income = fig_net_income
+                            st.session_state.fig_mtr = fig_mtr
+
+                # Display cached chart
+                if hasattr(st.session_state, "fig_net_income") and st.session_state.fig_net_income is not None:
+                    st.plotly_chart(
+                        st.session_state.fig_net_income,
+                        use_container_width=True,
+                        config={"displayModeBar": False},
+                        key="net_income_chart",
+                    )
+
+            with tab4:
+                # Use placeholder to ensure spinner shows immediately
+                chart_container = st.empty()
+
+                # Check if chart needs to be generated
+                if not hasattr(st.session_state, "fig_mtr") or st.session_state.fig_mtr is None:
+                    with chart_container:
+                        with st.spinner("Calculating marginal tax rates (this may take a few seconds)..."):
+                            x_axis_max = st.session_state.get("x_axis_max", 200000)
+                            (
+                                fig_net_income,
+                                fig_mtr,
+                                net_income_range,
+                                net_income_baseline,
+                                net_income_reform,
+                            ) = create_net_income_and_mtr_charts(
+                                params["age_head"],
+                                params["age_spouse"],
+                                tuple(params["dependent_ages"]),
+                                params["state"],
+                                params.get("county"),
+                                params.get("zip_code"),
+                                x_axis_max,
+                            )
+
+                            # Store in session state
+                            if fig_mtr is not None:
+                                st.session_state.fig_net_income = fig_net_income
+                                st.session_state.fig_mtr = fig_mtr
+
+                # Display chart in container (clears spinner)
+                if hasattr(st.session_state, "fig_mtr") and st.session_state.fig_mtr is not None:
+                    with chart_container:
+                        st.plotly_chart(
+                            st.session_state.fig_mtr,
+                            use_container_width=True,
+                            config={"displayModeBar": False},
+                            key="mtr_chart",
+                        )
+
+            with tab5:
                 st.markdown("Enter your annual household income to see your specific impact.")
 
                 user_income = st.number_input(
@@ -498,6 +575,13 @@ def main():
                 - Hard cap at 400% FPL - no credits above this level (the "subsidy cliff")
                 - Higher contribution percentages (2.1-9.96% of income, per IRS Revenue Procedure 2025-25)
                 - Less generous subsidies, especially for middle incomes
+
+                **Key assumptions:**
+                - Households have no employer-sponsored insurance (ESI), making them eligible for Medicaid, CHIP, and premium tax credits
+                - Net income includes the value of health benefits (PTCs, Medicaid, CHIP)
+                - Marginal tax rates include the phase-out effects of health benefits
+
+                **Technical note on chart appearance:** The IRS requires MAGI/FPL ratios to be truncated to whole percentages per [Form 8962 instructions](https://www.irs.gov/pub/irs-pdf/i8962.pdf#page=8). This creates ~$10 jumps in PTCs approximately every $100-200 income. The marginal tax rate chart applies a $1,000 moving average to smooth over these truncation artifacts while preserving overall trends.
                 """
                 )
 
@@ -1061,16 +1145,32 @@ def create_net_income_and_mtr_charts(
         ptc_mtr_reform = np.clip(ptc_mtr_reform, -0.5, 0.5)
 
         # Calculate full MTR using PolicyEngine's built-in variable
-        mtr_baseline = sim_baseline.calculate(
+        # This is a person-level variable, returns array with one value per income point per person
+        mtr_baseline_all = sim_baseline.calculate(
             "marginal_tax_rate_including_health_benefits", period=2026
         )
-        mtr_reform = sim_reform.calculate(
+        mtr_reform_all = sim_reform.calculate(
             "marginal_tax_rate_including_health_benefits", period=2026
         )
 
-        # Use PTC MTR for visualization (simpler, shows just the subsidy effect)
-        mtr_baseline_viz = ptc_mtr_baseline
-        mtr_reform_viz = ptc_mtr_reform
+        # Extract head of household MTR only (first person in axes)
+        # Don't sum across all household members
+        mtr_baseline_raw = mtr_baseline_all[0] if len(mtr_baseline_all.shape) > 1 else mtr_baseline_all
+        mtr_reform_raw = mtr_reform_all[0] if len(mtr_reform_all.shape) > 1 else mtr_reform_all
+
+        # Apply 10-step ($1k) moving average to smooth IRS MAGI/FPL truncation artifacts
+        window = 10
+        def moving_average(arr, window_size):
+            """Apply simple moving average smoothing."""
+            result = np.copy(arr)
+            for i in range(len(arr)):
+                start = max(0, i - window_size // 2)
+                end = min(len(arr), i + window_size // 2 + 1)
+                result[i] = np.mean(arr[start:end])
+            return result
+
+        mtr_baseline_viz = moving_average(mtr_baseline_raw, window)
+        mtr_reform_viz = moving_average(mtr_reform_raw, window)
 
         # Create hover text for net income chart
         net_income_hover = []
@@ -1085,19 +1185,12 @@ def create_net_income_and_mtr_charts(
                 text += "<b>No difference</b>"
             net_income_hover.append(text)
 
-        # Create MTR hover text with PTC diagnostic info
+        # Create MTR hover text
         mtr_hover = []
         for i in range(len(income_range)):
             text = f"<b>Income: ${income_range[i]:,.0f}</b><br><br>"
-            text += f"<b>PTC (current law):</b> ${ptc_baseline[i]:,.0f}<br>"
-            text += f"<b>PTC (extended):</b> ${ptc_reform[i]:,.0f}<br>"
-            if i > 0:
-                d_ptc_base = ptc_baseline[i] - ptc_baseline[i-1]
-                d_ptc_ref = ptc_reform[i] - ptc_reform[i-1]
-                text += f"<b>PTC change (current):</b> ${d_ptc_base:+.0f}<br>"
-                text += f"<b>PTC change (extended):</b> ${d_ptc_ref:+.0f}<br>"
-            text += f"<b>PTC MTR (current law):</b> {mtr_baseline_viz[i]*100:.1f}%<br>"
-            text += f"<b>PTC MTR (extended):</b> {mtr_reform_viz[i]*100:.1f}%<br>"
+            text += f"<b>MTR (current law):</b> {mtr_baseline_viz[i]*100:.1f}%<br>"
+            text += f"<b>MTR (extended):</b> {mtr_reform_viz[i]*100:.1f}%<br>"
             diff = (mtr_reform_viz[i] - mtr_baseline_viz[i]) * 100
             if abs(diff) > 0.1:
                 text += f"<b>Difference:</b> {diff:+.1f} pp"
@@ -1127,7 +1220,8 @@ def create_net_income_and_mtr_charts(
                 mode="lines",
                 name="Enhanced PTCs extended",
                 line=dict(color=COLORS["primary"], width=3),
-                hoverinfo="skip",
+                hovertext=net_income_hover,
+                hoverinfo="text",
             )
         )
 
@@ -1142,11 +1236,11 @@ def create_net_income_and_mtr_charts(
 
         fig_net_income.update_layout(
             title={
-                "text": "Net income including health benefits (2026)",
+                "text": "Net income (2026)",
                 "font": {"size": 20, "color": COLORS["primary"]},
             },
             xaxis_title="Annual household income",
-            yaxis_title="Net income (including health benefits)",
+            yaxis_title="Net income",
             height=400,
             xaxis=dict(
                 tickformat="$,.0f", range=[0, x_axis_max], automargin=True
@@ -1186,13 +1280,14 @@ def create_net_income_and_mtr_charts(
                 mode="lines",
                 name="Enhanced PTCs extended",
                 line=dict(color=COLORS["primary"], width=3),
-                hoverinfo="skip",
+                hovertext=mtr_hover,
+                hoverinfo="text",
             )
         )
 
         fig_mtr.update_layout(
             title={
-                "text": "PTC marginal effect on income (2026)",
+                "text": "Marginal tax rate (2026)",
                 "font": {"size": 20, "color": COLORS["primary"]},
             },
             xaxis_title="Annual household income",
@@ -1202,7 +1297,7 @@ def create_net_income_and_mtr_charts(
                 tickformat="$,.0f", range=[0, x_axis_max], automargin=True
             ),
             yaxis=dict(
-                tickformat=".0%", range=[-0.2, 0.5], automargin=True, zeroline=True, zerolinecolor="black", zerolinewidth=2
+                tickformat=".0%", range=[-0.1, 1.0], automargin=True, zeroline=True, zerolinecolor="black", zerolinewidth=2
             ),
             plot_bgcolor="white",
             paper_bgcolor="white",
