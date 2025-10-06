@@ -343,11 +343,9 @@ def main():
 
         # Show tabs using cached charts
         if hasattr(st.session_state, "fig_delta") and st.session_state.fig_delta is not None:
-            tab1, tab2, tab3, tab4, tab5 = st.tabs([
+            tab1, tab2, tab3 = st.tabs([
                 "Gain from extension",
                 "Baseline vs. extension",
-                "Net income",
-                "Marginal tax rates",
                 "Your impact"
             ])
 
@@ -368,81 +366,6 @@ def main():
                 )
 
             with tab3:
-                # Auto-generate net income chart if not cached
-                if not hasattr(st.session_state, "fig_net_income") or st.session_state.fig_net_income is None:
-                    with st.spinner("Calculating net income (this may take a few seconds)..."):
-                        x_axis_max = st.session_state.get("x_axis_max", 200000)
-                        (
-                            fig_net_income,
-                            fig_mtr,
-                            net_income_range,
-                            net_income_baseline,
-                            net_income_reform,
-                        ) = create_net_income_and_mtr_charts(
-                            params["age_head"],
-                            params["age_spouse"],
-                            tuple(params["dependent_ages"]),
-                            params["state"],
-                            params.get("county"),
-                            params.get("zip_code"),
-                            x_axis_max,
-                        )
-
-                        # Store in session state
-                        if fig_net_income is not None:
-                            st.session_state.fig_net_income = fig_net_income
-                            st.session_state.fig_mtr = fig_mtr
-
-                # Display cached chart
-                if hasattr(st.session_state, "fig_net_income") and st.session_state.fig_net_income is not None:
-                    st.plotly_chart(
-                        st.session_state.fig_net_income,
-                        use_container_width=True,
-                        config={"displayModeBar": False},
-                        key="net_income_chart",
-                    )
-
-            with tab4:
-                # Use placeholder to ensure spinner shows immediately
-                chart_container = st.empty()
-
-                # Check if chart needs to be generated
-                if not hasattr(st.session_state, "fig_mtr") or st.session_state.fig_mtr is None:
-                    with chart_container:
-                        with st.spinner("Calculating marginal tax rates (this may take a few seconds)..."):
-                            x_axis_max = st.session_state.get("x_axis_max", 200000)
-                            (
-                                fig_net_income,
-                                fig_mtr,
-                                net_income_range,
-                                net_income_baseline,
-                                net_income_reform,
-                            ) = create_net_income_and_mtr_charts(
-                                params["age_head"],
-                                params["age_spouse"],
-                                tuple(params["dependent_ages"]),
-                                params["state"],
-                                params.get("county"),
-                                params.get("zip_code"),
-                                x_axis_max,
-                            )
-
-                            # Store in session state
-                            if fig_mtr is not None:
-                                st.session_state.fig_net_income = fig_net_income
-                                st.session_state.fig_mtr = fig_mtr
-
-                # Display chart in container (clears spinner)
-                if hasattr(st.session_state, "fig_mtr") and st.session_state.fig_mtr is not None:
-                    with chart_container:
-                        st.plotly_chart(
-                            st.session_state.fig_mtr,
-                            use_container_width=True,
-                            config={"displayModeBar": False},
-                            key="mtr_chart",
-                        )
-
-            with tab5:
                 st.markdown("Enter your annual household income to see your specific impact.")
 
                 user_income = st.number_input(
@@ -580,10 +503,6 @@ def main():
 
                 **Key assumptions:**
                 - Households have no employer-sponsored insurance (ESI), making them eligible for Medicaid, CHIP, and premium tax credits
-                - Net income includes the value of health benefits (PTCs, Medicaid, CHIP)
-                - Marginal tax rates include the phase-out effects of health benefits
-
-                **Technical note on chart appearance:** The IRS requires MAGI/FPL ratios to be truncated to whole percentages per [Form 8962 instructions](https://www.irs.gov/pub/irs-pdf/i8962.pdf#page=8). This creates ~$10 jumps in PTCs approximately every $100-200 income. The marginal tax rate chart applies a $1,000 moving average to smooth over these truncation artifacts while preserving overall trends.
                 """
                 )
 
@@ -1146,33 +1065,42 @@ def create_net_income_and_mtr_charts(
         ptc_mtr_baseline = np.clip(ptc_mtr_baseline, -0.5, 0.5)
         ptc_mtr_reform = np.clip(ptc_mtr_reform, -0.5, 0.5)
 
-        # Calculate full MTR using PolicyEngine's built-in variable
-        # This is a person-level variable, returns array with one value per income point per person
-        mtr_baseline_all = sim_baseline.calculate(
-            "marginal_tax_rate_including_health_benefits", period=2026
-        )
-        mtr_reform_all = sim_reform.calculate(
-            "marginal_tax_rate_including_health_benefits", period=2026
-        )
+        # Calculate MTR from net income using numerical differentiation
+        # MTR = 1 - d(net_income)/d(income)
+        # Use 50-point window ($5k) to smooth over IRS MAGI/FPL truncation artifacts
+        window = 50
 
-        # Extract head of household MTR only (first person in axes)
-        # Don't sum across all household members
-        mtr_baseline_raw = mtr_baseline_all[0] if len(mtr_baseline_all.shape) > 1 else mtr_baseline_all
-        mtr_reform_raw = mtr_reform_all[0] if len(mtr_reform_all.shape) > 1 else mtr_reform_all
+        mtr_baseline_viz = np.zeros_like(income_range)
+        mtr_reform_viz = np.zeros_like(income_range)
 
-        # Apply 10-step ($1k) moving average to smooth IRS MAGI/FPL truncation artifacts
-        window = 10
-        def moving_average(arr, window_size):
-            """Apply simple moving average smoothing."""
-            result = np.copy(arr)
-            for i in range(len(arr)):
-                start = max(0, i - window_size // 2)
-                end = min(len(arr), i + window_size // 2 + 1)
-                result[i] = np.mean(arr[start:end])
-            return result
+        # Central differences for interior points
+        for i in range(window, len(income_range) - window):
+            d_income = income_range[i+window] - income_range[i-window]
+            d_net_baseline = net_income_baseline[i+window] - net_income_baseline[i-window]
+            d_net_reform = net_income_reform[i+window] - net_income_reform[i-window]
 
-        mtr_baseline_viz = moving_average(mtr_baseline_raw, window)
-        mtr_reform_viz = moving_average(mtr_reform_raw, window)
+            mtr_baseline_viz[i] = 1 - d_net_baseline / d_income
+            mtr_reform_viz[i] = 1 - d_net_reform / d_income
+
+        # Forward differences for leading edge
+        for i in range(window):
+            d_income = income_range[i+window] - income_range[i]
+            d_net_baseline = net_income_baseline[i+window] - net_income_baseline[i]
+            d_net_reform = net_income_reform[i+window] - net_income_reform[i]
+            mtr_baseline_viz[i] = 1 - d_net_baseline / d_income
+            mtr_reform_viz[i] = 1 - d_net_reform / d_income
+
+        # Backward differences for trailing edge
+        for i in range(len(income_range) - window, len(income_range)):
+            d_income = income_range[i] - income_range[i-window]
+            d_net_baseline = net_income_baseline[i] - net_income_baseline[i-window]
+            d_net_reform = net_income_reform[i] - net_income_reform[i-window]
+            mtr_baseline_viz[i] = 1 - d_net_baseline / d_income
+            mtr_reform_viz[i] = 1 - d_net_reform / d_income
+
+        # Clip to reasonable bounds
+        mtr_baseline_viz = np.clip(mtr_baseline_viz, -0.5, 1.5)
+        mtr_reform_viz = np.clip(mtr_reform_viz, -0.5, 1.5)
 
         # Create hover text for net income chart
         net_income_hover = []
