@@ -582,7 +582,7 @@ def main():
                 - Net income includes the value of health benefits (PTCs, Medicaid, CHIP)
                 - Marginal tax rates include the phase-out effects of health benefits
 
-                **Technical note on chart appearance:** The IRS requires MAGI/FPL ratios to be truncated to whole percentages per [Form 8962 instructions](https://www.irs.gov/pub/irs-pdf/i8962.pdf#page=8). This creates ~$10 jumps in PTCs approximately every $100-200 income. The marginal tax rate chart uses a $5,000 income delta (instead of the standard $1,000) to naturally smooth over these truncation artifacts while preserving overall trends.
+                **Technical note on chart appearance:** The IRS requires MAGI/FPL ratios to be truncated to whole percentages per [Form 8962 instructions](https://www.irs.gov/pub/irs-pdf/i8962.pdf#page=8). This creates ~$10 jumps in PTCs approximately every $100-200 income. The marginal tax rate chart uses a $5,000 income delta to naturally smooth over these truncation artifacts while preserving overall trends.
                 """
                 )
 
@@ -1101,32 +1101,48 @@ def create_net_income_and_mtr_charts(
         # Create reform for extended PTCs with increased MTR delta for smoother calculation
         from policyengine_core.reforms import Reform
 
-        base_reform = create_enhanced_ptc_reform()
-
-        # Increase MTR delta from $1,000 to $5,000 to smooth over IRS MAGI/FPL truncation artifacts
+        # Increase MTR delta to $5,000 to smooth over IRS MAGI/FPL truncation artifacts
         mtr_delta_reform = Reform.from_dict(
             {
                 "simulation.marginal_tax_rate_delta": {
-                    "0000-01-01.2100-12-31": 5000
+                    "2000-01-01.2100-12-31": 5000
                 }
             },
             country_id="us",
         )
 
-        # Combine reforms
-        reform_with_delta = Reform.from_dict(
-            {**base_reform.data, **mtr_delta_reform.data},
-            country_id="us",
-        )
+        # Enhanced PTC reform
+        enhanced_ptc_reform = create_enhanced_ptc_reform()
+
+        # Combine: enhanced PTCs + wider MTR delta
+        combined_reform_data = {
+            "simulation.marginal_tax_rate_delta": {
+                "2000-01-01.2100-12-31": 5000
+            },
+            **{
+                k: v for k, v in {
+                    "gov.aca.ptc_phase_out_rate[0].amount": {"2026-01-01.2100-12-31": 0},
+                    "gov.aca.ptc_phase_out_rate[1].amount": {"2025-01-01.2100-12-31": 0},
+                    "gov.aca.ptc_phase_out_rate[2].amount": {"2026-01-01.2100-12-31": 0},
+                    "gov.aca.ptc_phase_out_rate[3].amount": {"2026-01-01.2100-12-31": 0.02},
+                    "gov.aca.ptc_phase_out_rate[4].amount": {"2026-01-01.2100-12-31": 0.04},
+                    "gov.aca.ptc_phase_out_rate[5].amount": {"2026-01-01.2100-12-31": 0.06},
+                    "gov.aca.ptc_phase_out_rate[6].amount": {"2026-01-01.2100-12-31": 0.085},
+                    "gov.aca.ptc_income_eligibility[2].amount": {"2026-01-01.2100-12-31": True},
+                }.items()
+            }
+        }
+
+        reform_with_delta = Reform.from_dict(combined_reform_data, country_id="us")
 
         # Run simulations with increased MTR delta
         sim_baseline = Simulation(
             situation=base_household,
-            reform=mtr_delta_reform,  # Baseline uses increased delta too
+            reform=mtr_delta_reform,  # Baseline uses increased delta
         )
         sim_reform = Simulation(
             situation=base_household,
-            reform=reform_with_delta,  # Reform uses both enhanced PTCs and increased delta
+            reform=reform_with_delta,  # Reform uses enhanced PTCs + increased delta
         )
 
         income_range = sim_baseline.calculate(
