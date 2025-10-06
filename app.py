@@ -20,6 +20,11 @@ try:
     import plotly.graph_objects as go
     import base64
 
+    # Import calculation functions from package
+    from aca_calc.calculations.ptc import calculate_ptc
+    from aca_calc.calculations.household import build_household_situation
+    from aca_calc.calculations.reforms import create_enhanced_ptc_reform
+
     # Try to import reform capability
     try:
         from policyengine_core.reforms import Reform
@@ -497,174 +502,6 @@ def main():
                 )
 
 
-def calculate_ptc(
-    age_head,
-    age_spouse,
-    income,
-    dependent_ages,
-    state,
-    county_name=None,
-    zip_code=None,
-    use_reform=False,
-):
-    """Calculate PTC for baseline or IRA enhanced scenario using 2026 comparison
-
-    Matches notebook pattern exactly - uses copy.deepcopy pattern with income injection
-
-    Args:
-        county_name: County name from dropdown (e.g. "Travis County")
-                    Will be converted to PolicyEngine format (TRAVIS_COUNTY_TX)
-        zip_code: 5-digit ZIP code string (required for LA County)
-
-    Returns:
-        tuple: (ptc, slcsp, fpl, fpl_pct) - PTC amount, SLCSP premium, FPL dollar amount, and income as % of FPL (for display only)
-    """
-    import copy
-
-    try:
-        # Build base household situation (matches notebook structure exactly)
-        situation = {
-            "people": {"you": {"age": {2026: age_head}}},
-            "families": {"your family": {"members": ["you"]}},
-            "spm_units": {"your household": {"members": ["you"]}},
-            "tax_units": {"your tax unit": {"members": ["you"]}},
-            "households": {
-                "your household": {
-                    "members": ["you"],
-                    "state_name": {2026: state},
-                }
-            },
-        }
-
-        # Add county if provided - convert to PolicyEngine format
-        if county_name:
-            # Convert "Travis County" -> "TRAVIS_COUNTY_TX"
-            county_pe_format = (
-                county_name.upper().replace(" ", "_") + "_" + state
-            )
-            situation["households"]["your household"]["county"] = {
-                2026: county_pe_format
-            }
-
-        # Add ZIP code if provided (required for LA County)
-        if zip_code:
-            situation["households"]["your household"]["zip_code"] = {
-                2026: zip_code
-            }
-
-        # Add spouse if married
-        if age_spouse:
-            situation["people"]["your partner"] = {"age": {2026: age_spouse}}
-            situation["families"]["your family"]["members"].append(
-                "your partner"
-            )
-            situation["spm_units"]["your household"]["members"].append(
-                "your partner"
-            )
-            situation["tax_units"]["your tax unit"]["members"].append(
-                "your partner"
-            )
-            situation["households"]["your household"]["members"].append(
-                "your partner"
-            )
-            situation["marital_units"] = {
-                "your marital unit": {"members": ["you", "your partner"]}
-            }
-
-        # Add dependents with consistent naming (matches notebook)
-        for i, dep_age in enumerate(dependent_ages):
-            if i == 0:
-                child_id = "your first dependent"
-            elif i == 1:
-                child_id = "your second dependent"
-            else:
-                child_id = f"dependent_{i+1}"
-
-            situation["people"][child_id] = {"age": {2026: dep_age}}
-            situation["families"]["your family"]["members"].append(child_id)
-            situation["spm_units"]["your household"]["members"].append(
-                child_id
-            )
-            situation["tax_units"]["your tax unit"]["members"].append(child_id)
-            situation["households"]["your household"]["members"].append(
-                child_id
-            )
-
-            # Add child's marital unit
-            if "marital_units" not in situation:
-                situation["marital_units"] = {}
-            situation["marital_units"][f"{child_id}'s marital unit"] = {
-                "members": [child_id]
-            }
-
-        # Deep copy and inject income (matches notebook pattern)
-        sit = copy.deepcopy(situation)
-
-        # Split income between adults if married, otherwise single person gets all
-        # Note: Cannot set aca_magi directly - must use employment_income for reforms to work
-        if age_spouse:
-            sit["people"]["you"]["employment_income"] = {2026: income / 2}
-            sit["people"]["your partner"]["employment_income"] = {
-                2026: income / 2
-            }
-        else:
-            sit["people"]["you"]["employment_income"] = {2026: income}
-
-        # Create reform if requested (exact same as notebook)
-        reform = None
-        if use_reform:
-            from policyengine_core.reforms import Reform
-
-            reform = Reform.from_dict(
-                {
-                    "gov.aca.ptc_phase_out_rate[0].amount": {
-                        "2026-01-01.2100-12-31": 0
-                    },
-                    "gov.aca.ptc_phase_out_rate[1].amount": {
-                        "2025-01-01.2100-12-31": 0
-                    },
-                    "gov.aca.ptc_phase_out_rate[2].amount": {
-                        "2026-01-01.2100-12-31": 0
-                    },
-                    "gov.aca.ptc_phase_out_rate[3].amount": {
-                        "2026-01-01.2100-12-31": 0.02
-                    },
-                    "gov.aca.ptc_phase_out_rate[4].amount": {
-                        "2026-01-01.2100-12-31": 0.04
-                    },
-                    "gov.aca.ptc_phase_out_rate[5].amount": {
-                        "2026-01-01.2100-12-31": 0.06
-                    },
-                    "gov.aca.ptc_phase_out_rate[6].amount": {
-                        "2026-01-01.2100-12-31": 0.085
-                    },
-                    "gov.aca.ptc_income_eligibility[2].amount": {
-                        "2026-01-01.2100-12-31": True
-                    },
-                },
-                country_id="us",
-            )
-
-        # Run simulation
-        sim = Simulation(situation=sit, reform=reform)
-
-        ptc = sim.calculate("aca_ptc", map_to="household", period=2026)[0]
-        slcsp = sim.calculate("slcsp", map_to="household", period=2026)[0]
-        # Get FPL info for display only (all calculations done by PolicyEngine)
-        fpl = sim.calculate("tax_unit_fpg", period=2026)[0]
-        aca_magi_fraction = sim.calculate("aca_magi_fraction", period=2026)[0]
-        fpl_pct = aca_magi_fraction * 100
-
-        return float(max(0, ptc)), float(slcsp), float(fpl), float(fpl_pct)
-
-    except Exception as e:
-        st.error(f"Calculation error: {str(e)}")
-        import traceback
-
-        st.error(traceback.format_exc())
-        return 0, 0, 0, 0
-
-
 def create_chart(
     age_head,
     age_spouse,
@@ -687,120 +524,20 @@ def create_chart(
     """
 
     # Create base household structure for income sweep
-    base_household = {
-        "people": {"you": {"age": {2026: age_head}}},
-        "families": {"your family": {"members": ["you"]}},
-        "spm_units": {"your household": {"members": ["you"]}},
-        "tax_units": {"your tax unit": {"members": ["you"]}},
-        "households": {
-            "your household": {"members": ["you"], "state_name": {2026: state}}
-        },
-        "axes": [
-            [
-                {
-                    "name": "employment_income",
-                    "count": 10_001,  # 10_001 points for exact $100 increments (0 to 1M)
-                    "min": 0,
-                    "max": 1000000,
-                    "period": 2026,  # Specify period to get exact values without uprating
-                }
-            ]
-        ],
-    }
-
-    # Add county if provided
-    if county:
-        county_pe_format = county.upper().replace(" ", "_") + "_" + state
-        base_household["households"]["your household"]["county"] = {
-            2026: county_pe_format
-        }
-
-    # Add ZIP code if provided (required for LA County)
-    if zip_code:
-        base_household["households"]["your household"]["zip_code"] = {
-            2026: zip_code
-        }
-
-    # Add spouse if married
-    if age_spouse:
-        base_household["people"]["your partner"] = {"age": {2026: age_spouse}}
-        base_household["families"]["your family"]["members"].append(
-            "your partner"
-        )
-        base_household["spm_units"]["your household"]["members"].append(
-            "your partner"
-        )
-        base_household["tax_units"]["your tax unit"]["members"].append(
-            "your partner"
-        )
-        base_household["households"]["your household"]["members"].append(
-            "your partner"
-        )
-        base_household["marital_units"] = {
-            "your marital unit": {"members": ["you", "your partner"]}
-        }
-
-    # Add dependents
-    for i, dep_age in enumerate(dependent_ages):
-        if i == 0:
-            child_id = "your first dependent"
-        elif i == 1:
-            child_id = "your second dependent"
-        else:
-            child_id = f"dependent_{i+1}"
-
-        base_household["people"][child_id] = {"age": {2026: dep_age}}
-        base_household["families"]["your family"]["members"].append(child_id)
-        base_household["spm_units"]["your household"]["members"].append(
-            child_id
-        )
-        base_household["tax_units"]["your tax unit"]["members"].append(
-            child_id
-        )
-        base_household["households"]["your household"]["members"].append(
-            child_id
-        )
-
-        # Add child's marital unit
-        if "marital_units" not in base_household:
-            base_household["marital_units"] = {}
-        base_household["marital_units"][f"{child_id}'s marital unit"] = {
-            "members": [child_id]
-        }
+    base_household = build_household_situation(
+        age_head=age_head,
+        age_spouse=age_spouse,
+        dependent_ages=list(dependent_ages) if dependent_ages else [],
+        state=state,
+        county=county,
+        zip_code=zip_code,
+        year=2026,
+        with_axes=True,
+    )
 
     try:
         # Create reform for chart calculation
-        from policyengine_core.reforms import Reform
-
-        reform = Reform.from_dict(
-            {
-                "gov.aca.ptc_phase_out_rate[0].amount": {
-                    "2026-01-01.2100-12-31": 0
-                },
-                "gov.aca.ptc_phase_out_rate[1].amount": {
-                    "2025-01-01.2100-12-31": 0
-                },
-                "gov.aca.ptc_phase_out_rate[2].amount": {
-                    "2026-01-01.2100-12-31": 0
-                },
-                "gov.aca.ptc_phase_out_rate[3].amount": {
-                    "2026-01-01.2100-12-31": 0.02
-                },
-                "gov.aca.ptc_phase_out_rate[4].amount": {
-                    "2026-01-01.2100-12-31": 0.04
-                },
-                "gov.aca.ptc_phase_out_rate[5].amount": {
-                    "2026-01-01.2100-12-31": 0.06
-                },
-                "gov.aca.ptc_phase_out_rate[6].amount": {
-                    "2026-01-01.2100-12-31": 0.085
-                },
-                "gov.aca.ptc_income_eligibility[2].amount": {
-                    "2026-01-01.2100-12-31": True
-                },
-            },
-            country_id="us",
-        )
+        reform = create_enhanced_ptc_reform()
 
         # Calculate both curves - baseline and reform for 2026
         sim_baseline = Simulation(situation=base_household)
@@ -1263,106 +1000,21 @@ def create_net_income_and_mtr_charts(
     Returns tuple of (net_income_fig, mtr_fig, income_range, net_income_baseline, net_income_reform)
     """
 
-    # Create base household structure (same as create_chart)
-    base_household = {
-        "people": {"you": {"age": {2026: age_head}}},
-        "families": {"your family": {"members": ["you"]}},
-        "spm_units": {"your household": {"members": ["you"]}},
-        "tax_units": {"your tax unit": {"members": ["you"]}},
-        "households": {
-            "your household": {"members": ["you"], "state_name": {2026: state}}
-        },
-        "axes": [
-            [
-                {
-                    "name": "employment_income",
-                    "count": 10_001,
-                    "min": 0,
-                    "max": 1000000,
-                    "period": 2026,
-                }
-            ]
-        ],
-    }
-
-    # Add county if provided
-    if county:
-        county_pe_format = county.upper().replace(" ", "_") + "_" + state
-        base_household["households"]["your household"]["county"] = {
-            2026: county_pe_format
-        }
-
-    # Add ZIP code if provided
-    if zip_code:
-        base_household["households"]["your household"]["zip_code"] = {
-            2026: zip_code
-        }
-
-    # Add spouse if married
-    if age_spouse:
-        base_household["people"]["your partner"] = {"age": {2026: age_spouse}}
-        base_household["families"]["your family"]["members"].append("your partner")
-        base_household["spm_units"]["your household"]["members"].append("your partner")
-        base_household["tax_units"]["your tax unit"]["members"].append("your partner")
-        base_household["households"]["your household"]["members"].append("your partner")
-        base_household["marital_units"] = {
-            "your marital unit": {"members": ["you", "your partner"]}
-        }
-
-    # Add dependents
-    for i, dep_age in enumerate(dependent_ages):
-        if i == 0:
-            child_id = "your first dependent"
-        elif i == 1:
-            child_id = "your second dependent"
-        else:
-            child_id = f"dependent_{i+1}"
-
-        base_household["people"][child_id] = {"age": {2026: dep_age}}
-        base_household["families"]["your family"]["members"].append(child_id)
-        base_household["spm_units"]["your household"]["members"].append(child_id)
-        base_household["tax_units"]["your tax unit"]["members"].append(child_id)
-        base_household["households"]["your household"]["members"].append(child_id)
-
-        if "marital_units" not in base_household:
-            base_household["marital_units"] = {}
-        base_household["marital_units"][f"{child_id}'s marital unit"] = {
-            "members": [child_id]
-        }
+    # Create base household structure for income sweep
+    base_household = build_household_situation(
+        age_head=age_head,
+        age_spouse=age_spouse,
+        dependent_ages=list(dependent_ages) if dependent_ages else [],
+        state=state,
+        county=county,
+        zip_code=zip_code,
+        year=2026,
+        with_axes=True,
+    )
 
     try:
-        from policyengine_core.reforms import Reform
-
         # Create reform for extended PTCs
-        reform = Reform.from_dict(
-            {
-                "gov.aca.ptc_phase_out_rate[0].amount": {
-                    "2026-01-01.2100-12-31": 0
-                },
-                "gov.aca.ptc_phase_out_rate[1].amount": {
-                    "2025-01-01.2100-12-31": 0
-                },
-                "gov.aca.ptc_phase_out_rate[2].amount": {
-                    "2026-01-01.2100-12-31": 0
-                },
-                "gov.aca.ptc_phase_out_rate[3].amount": {
-                    "2026-01-01.2100-12-31": 0.02
-                },
-                "gov.aca.ptc_phase_out_rate[4].amount": {
-                    "2026-01-01.2100-12-31": 0.04
-                },
-                "gov.aca.ptc_phase_out_rate[5].amount": {
-                    "2026-01-01.2100-12-31": 0.06
-                },
-                "gov.aca.ptc_phase_out_rate[6].amount": {
-                    "2026-01-01.2100-12-31": 0.085
-                },
-                "gov.aca.ptc_income_eligibility[2].amount": {
-                    "2026-01-01.2100-12-31": True
-                },
-            },
-            country_id="us",
-        )
+        reform = create_enhanced_ptc_reform()
 
         # Run simulations
         sim_baseline = Simulation(situation=base_household)
