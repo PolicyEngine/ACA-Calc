@@ -1471,9 +1471,25 @@ def create_net_income_and_mtr_charts(
         mtr_baseline = mtr_baseline_all[0]  # First person = "you"
         mtr_reform = mtr_reform_all[0]
 
-        # Convert to percentage (variable is already in 0-1 range)
-        mtr_baseline_pct = mtr_baseline * 100
-        mtr_reform_pct = mtr_reform * 100
+        # Apply numpy-based rolling average smoothing for visualization (window=50 = $5k)
+        # Reduces visual noise from cliff effects while preserving overall trends
+        window = 50
+
+        # Simple rolling average using numpy
+        def smooth(arr, window_size):
+            result = np.copy(arr)
+            for i in range(len(arr)):
+                start = max(0, i - window_size // 2)
+                end = min(len(arr), i + window_size // 2 + 1)
+                result[i] = np.mean(arr[start:end])
+            return result
+
+        mtr_baseline_smooth = smooth(mtr_baseline, window)
+        mtr_reform_smooth = smooth(mtr_reform, window)
+
+        # Keep in 0-1 range, format as percentage in chart
+        mtr_baseline_viz = mtr_baseline_smooth
+        mtr_reform_viz = mtr_reform_smooth
 
         # Create hover text for net income chart
         net_income_hover = []
@@ -1492,9 +1508,9 @@ def create_net_income_and_mtr_charts(
         mtr_hover = []
         for i in range(len(income_range)):
             text = f"<b>Income: ${income_range[i]:,.0f}</b><br><br>"
-            text += f"<b>MTR (current law):</b> {mtr_baseline_pct[i]:.1f}%<br>"
-            text += f"<b>MTR (extended):</b> {mtr_reform_pct[i]:.1f}%<br>"
-            diff = mtr_reform_pct[i] - mtr_baseline_pct[i]
+            text += f"<b>MTR (current law):</b> {mtr_baseline_viz[i]*100:.1f}%<br>"
+            text += f"<b>MTR (extended):</b> {mtr_reform_viz[i]*100:.1f}%<br>"
+            diff = (mtr_reform_viz[i] - mtr_baseline_viz[i]) * 100
             if abs(diff) > 0.1:
                 text += f"<b>Difference:</b> {diff:+.1f} pp"
             else:
@@ -1566,7 +1582,7 @@ def create_net_income_and_mtr_charts(
         fig_mtr.add_trace(
             go.Scatter(
                 x=income_range,
-                y=mtr_baseline_pct,
+                y=mtr_baseline_viz,
                 mode="lines",
                 name="Current law",
                 line=dict(color=COLORS["gray"], width=3),
@@ -1578,7 +1594,7 @@ def create_net_income_and_mtr_charts(
         fig_mtr.add_trace(
             go.Scatter(
                 x=income_range,
-                y=mtr_reform_pct,
+                y=mtr_reform_viz,
                 mode="lines",
                 name="Enhanced PTCs extended",
                 line=dict(color=COLORS["primary"], width=3),
@@ -1598,7 +1614,7 @@ def create_net_income_and_mtr_charts(
                 tickformat="$,.0f", range=[0, x_axis_max], automargin=True
             ),
             yaxis=dict(
-                tickformat=".0f", ticksuffix="%", range=[-20, 100], automargin=True, zeroline=True, zerolinecolor="black", zerolinewidth=2
+                tickformat=".0%", range=[-0.2, 1.0], automargin=True, zeroline=True, zerolinecolor="black", zerolinewidth=2
             ),
             plot_bgcolor="white",
             paper_bgcolor="white",
