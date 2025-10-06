@@ -396,8 +396,15 @@ def main():
                     )
 
             with tab4:
-                # Auto-generate MTR chart if not cached (uses same calculation as net income)
-                if not hasattr(st.session_state, "fig_mtr") or st.session_state.fig_mtr is None:
+                # Display cached chart or generate
+                if hasattr(st.session_state, "fig_mtr") and st.session_state.fig_mtr is not None:
+                    st.plotly_chart(
+                        st.session_state.fig_mtr,
+                        use_container_width=True,
+                        config={"displayModeBar": False},
+                        key="mtr_chart",
+                    )
+                else:
                     with st.spinner("Calculating marginal tax rates (this may take a few seconds)..."):
                         x_axis_max = st.session_state.get("x_axis_max", 200000)
                         (
@@ -420,15 +427,13 @@ def main():
                         if fig_mtr is not None:
                             st.session_state.fig_net_income = fig_net_income
                             st.session_state.fig_mtr = fig_mtr
-
-                # Display cached chart
-                if hasattr(st.session_state, "fig_mtr") and st.session_state.fig_mtr is not None:
-                    st.plotly_chart(
-                        st.session_state.fig_mtr,
-                        use_container_width=True,
-                        config={"displayModeBar": False},
-                        key="mtr_chart",
-                    )
+                            # Show chart immediately
+                            st.plotly_chart(
+                                st.session_state.fig_mtr,
+                                use_container_width=True,
+                                config={"displayModeBar": False},
+                                key="mtr_chart",
+                            )
 
             with tab5:
                 st.markdown("Enter your annual household income to see your specific impact.")
@@ -1455,11 +1460,11 @@ def create_net_income_and_mtr_charts(
 
         # Calculate MTR using numerical differentiation with smoothing
         # MTR = 1 - d(net_income)/d(employment_income)
-        # Use wider window (10 points = $1000) for smoother MTR
+        # Use wider window (50 points = $5000) for smoother MTR
         # Income range has uniform $100 spacing
-        window = 10
-        d_income_central = income_range[window] - income_range[0]  # $1000 for edges
-        d_income_window = 2 * d_income_central  # $2000 for central differences
+        window = 50
+        d_income_central = income_range[window] - income_range[0]  # $5000 for edges
+        d_income_window = 2 * d_income_central  # $10000 for central differences
 
         mtr_baseline = np.zeros_like(income_range)
         mtr_reform = np.zeros_like(income_range)
