@@ -578,7 +578,7 @@ def main():
                 - Net income includes the value of health benefits (PTCs, Medicaid, CHIP)
                 - Marginal tax rates include the phase-out effects of health benefits
 
-                **Technical note on chart appearance:** The IRS requires MAGI/FPL ratios to be truncated to whole percentages per [Form 8962 instructions](https://www.irs.gov/pub/irs-pdf/i8962.pdf#page=8). This creates ~$10 jumps in PTCs approximately every $100-200 income. The marginal tax rate chart uses a $5,000 income delta to naturally smooth over these truncation artifacts while preserving overall trends.
+                **Technical note on chart appearance:** The IRS requires MAGI/FPL ratios to be truncated to whole percentages per [Form 8962 instructions](https://www.irs.gov/pub/irs-pdf/i8962.pdf#page=8). This creates ~$10 jumps in PTCs approximately every $100-200 income. The marginal tax rate chart uses a $5,000 income delta plus a $500 moving average to smooth over these truncation artifacts while preserving overall trends.
                 """
                 )
 
@@ -1192,8 +1192,23 @@ def create_net_income_and_mtr_charts(
 
         # Extract head of household MTR only (first person in axes)
         # Don't sum across all household members
-        mtr_baseline_viz = mtr_baseline_all[0] if len(mtr_baseline_all.shape) > 1 else mtr_baseline_all
-        mtr_reform_viz = mtr_reform_all[0] if len(mtr_reform_all.shape) > 1 else mtr_reform_all
+        mtr_baseline_raw = mtr_baseline_all[0] if len(mtr_baseline_all.shape) > 1 else mtr_baseline_all
+        mtr_reform_raw = mtr_reform_all[0] if len(mtr_reform_all.shape) > 1 else mtr_reform_all
+
+        # Apply 5-step ($500) moving average for additional smoothing
+        # Even with $5k delta, some stepping remains from IRS truncation
+        window = 5
+        def moving_average(arr, window_size):
+            """Apply simple moving average smoothing."""
+            result = np.copy(arr)
+            for i in range(len(arr)):
+                start = max(0, i - window_size // 2)
+                end = min(len(arr), i + window_size // 2 + 1)
+                result[i] = np.mean(arr[start:end])
+            return result
+
+        mtr_baseline_viz = moving_average(mtr_baseline_raw, window)
+        mtr_reform_viz = moving_average(mtr_reform_raw, window)
 
         # Create hover text for net income chart
         net_income_hover = []
