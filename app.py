@@ -582,7 +582,7 @@ def main():
                 - Net income includes the value of health benefits (PTCs, Medicaid, CHIP)
                 - Marginal tax rates include the phase-out effects of health benefits
 
-                **Technical note on chart appearance:** The IRS requires MAGI/FPL ratios to be truncated to whole percentages per [Form 8962 instructions](https://www.irs.gov/pub/irs-pdf/i8962.pdf#page=8). This creates ~$10 jumps in PTCs approximately every $100-200 income. The marginal tax rate chart applies a $500 moving average to smooth these artifacts while preserving overall trends.
+                **Technical note on chart appearance:** The IRS requires MAGI/FPL ratios to be truncated to whole percentages per [Form 8962 instructions](https://www.irs.gov/pub/irs-pdf/i8962.pdf#page=8). This creates ~$10 jumps in PTCs approximately every $100-200 income. The marginal tax rate chart uses a $5,000 income delta (instead of the standard $1,000) to naturally smooth over these truncation artifacts while preserving overall trends.
                 """
                 )
 
@@ -1098,12 +1098,36 @@ def create_net_income_and_mtr_charts(
     )
 
     try:
-        # Create reform for extended PTCs
-        reform = create_enhanced_ptc_reform()
+        # Create reform for extended PTCs with increased MTR delta for smoother calculation
+        from policyengine_core.reforms import Reform
 
-        # Run simulations
-        sim_baseline = Simulation(situation=base_household)
-        sim_reform = Simulation(situation=base_household, reform=reform)
+        base_reform = create_enhanced_ptc_reform()
+
+        # Increase MTR delta from $1,000 to $5,000 to smooth over IRS MAGI/FPL truncation artifacts
+        mtr_delta_reform = Reform.from_dict(
+            {
+                "simulation.marginal_tax_rate_delta": {
+                    "0000-01-01.2100-12-31": 5000
+                }
+            },
+            country_id="us",
+        )
+
+        # Combine reforms
+        reform_with_delta = Reform.from_dict(
+            {**base_reform.data, **mtr_delta_reform.data},
+            country_id="us",
+        )
+
+        # Run simulations with increased MTR delta
+        sim_baseline = Simulation(
+            situation=base_household,
+            reform=mtr_delta_reform,  # Baseline uses increased delta too
+        )
+        sim_reform = Simulation(
+            situation=base_household,
+            reform=reform_with_delta,  # Reform uses both enhanced PTCs and increased delta
+        )
 
         income_range = sim_baseline.calculate(
             "employment_income", map_to="household", period=2026
@@ -1156,22 +1180,8 @@ def create_net_income_and_mtr_charts(
 
         # Extract head of household MTR only (first person in axes)
         # Don't sum across all household members
-        mtr_baseline_raw = mtr_baseline_all[0] if len(mtr_baseline_all.shape) > 1 else mtr_baseline_all
-        mtr_reform_raw = mtr_reform_all[0] if len(mtr_reform_all.shape) > 1 else mtr_reform_all
-
-        # Apply 5-step ($500) moving average to smooth IRS-mandated MAGI/FPL truncation artifacts
-        window = 5
-        def moving_average(arr, window_size):
-            """Apply simple moving average smoothing."""
-            result = np.copy(arr)
-            for i in range(len(arr)):
-                start = max(0, i - window_size // 2)
-                end = min(len(arr), i + window_size // 2 + 1)
-                result[i] = np.mean(arr[start:end])
-            return result
-
-        mtr_baseline_viz = moving_average(mtr_baseline_raw, window)
-        mtr_reform_viz = moving_average(mtr_reform_raw, window)
+        mtr_baseline_viz = mtr_baseline_all[0] if len(mtr_baseline_all.shape) > 1 else mtr_baseline_all
+        mtr_reform_viz = mtr_reform_all[0] if len(mtr_reform_all.shape) > 1 else mtr_reform_all
 
         # Create hover text for net income chart
         net_income_hover = []
