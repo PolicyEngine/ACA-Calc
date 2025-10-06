@@ -401,8 +401,16 @@ def main():
                     )
 
             with tab4:
-                # Auto-generate MTR chart if not cached
-                if not hasattr(st.session_state, "fig_mtr") or st.session_state.fig_mtr is None:
+                # Display cached chart or generate with spinner
+                if hasattr(st.session_state, "fig_mtr") and st.session_state.fig_mtr is not None:
+                    st.plotly_chart(
+                        st.session_state.fig_mtr,
+                        use_container_width=True,
+                        config={"displayModeBar": False},
+                        key="mtr_chart",
+                    )
+                else:
+                    # Auto-generate MTR chart if not cached
                     with st.spinner("Calculating marginal tax rates (this may take a few seconds)..."):
                         x_axis_max = st.session_state.get("x_axis_max", 200000)
                         (
@@ -425,22 +433,13 @@ def main():
                         if fig_mtr is not None:
                             st.session_state.fig_net_income = fig_net_income
                             st.session_state.fig_mtr = fig_mtr
-
-                # Display cached chart
-                if hasattr(st.session_state, "fig_mtr") and st.session_state.fig_mtr is not None:
-                    st.plotly_chart(
-                        st.session_state.fig_mtr,
-                        use_container_width=True,
-                        config={"displayModeBar": False},
-                        key="mtr_chart",
-                    )
-
-                    st.info(
-                        "**Note:** The IRS requires MAGI/FPL ratios to be truncated to whole percentages "
-                        "(see [Form 8962 instructions](https://www.irs.gov/pub/irs-pdf/i8962.pdf#page=8)). "
-                        "This MAGI/FPL truncation creates a jagged structure in premium tax credits (~$10 jumps every $100-200 income). "
-                        "This chart applies a $1,000 moving average to smooth the visualization while preserving overall trends."
-                    )
+                            # Display after generation
+                            st.plotly_chart(
+                                st.session_state.fig_mtr,
+                                use_container_width=True,
+                                config={"displayModeBar": False},
+                                key="mtr_chart",
+                            )
 
             with tab5:
                 st.markdown("Enter your annual household income to see your specific impact.")
@@ -577,6 +576,13 @@ def main():
                 - Hard cap at 400% FPL - no credits above this level (the "subsidy cliff")
                 - Higher contribution percentages (2.1-9.96% of income, per IRS Revenue Procedure 2025-25)
                 - Less generous subsidies, especially for middle incomes
+
+                **Key assumptions:**
+                - Households have no employer-sponsored insurance (ESI), making them eligible for Medicaid, CHIP, and premium tax credits
+                - Net income includes the value of health benefits (PTCs, Medicaid, CHIP)
+                - Marginal tax rates include the phase-out effects of health benefits
+
+                **Technical note on chart appearance:** The IRS requires MAGI/FPL ratios to be truncated to whole percentages per [Form 8962 instructions](https://www.irs.gov/pub/irs-pdf/i8962.pdf#page=8). This creates ~$10 jumps in PTCs approximately every $100-200 income. The marginal tax rate chart applies a $500 moving average to smooth these artifacts while preserving overall trends.
                 """
                 )
 
@@ -1153,8 +1159,8 @@ def create_net_income_and_mtr_charts(
         mtr_baseline_raw = mtr_baseline_all[0] if len(mtr_baseline_all.shape) > 1 else mtr_baseline_all
         mtr_reform_raw = mtr_reform_all[0] if len(mtr_reform_all.shape) > 1 else mtr_reform_all
 
-        # Apply 10-step ($1k) moving average to smooth IRS-mandated MAGI/FPL truncation artifacts
-        window = 10
+        # Apply 5-step ($500) moving average to smooth IRS-mandated MAGI/FPL truncation artifacts
+        window = 5
         def moving_average(arr, window_size):
             """Apply simple moving average smoothing."""
             result = np.copy(arr)
@@ -1230,11 +1236,11 @@ def create_net_income_and_mtr_charts(
 
         fig_net_income.update_layout(
             title={
-                "text": "Net income including health benefits (2026)",
+                "text": "Net income (2026)",
                 "font": {"size": 20, "color": COLORS["primary"]},
             },
             xaxis_title="Annual household income",
-            yaxis_title="Net income (including health benefits)",
+            yaxis_title="Net income",
             height=400,
             xaxis=dict(
                 tickformat="$,.0f", range=[0, x_axis_max], automargin=True
@@ -1280,7 +1286,7 @@ def create_net_income_and_mtr_charts(
 
         fig_mtr.update_layout(
             title={
-                "text": "Marginal tax rate including health benefits (2026)",
+                "text": "Marginal tax rate (2026)",
                 "font": {"size": 20, "color": COLORS["primary"]},
             },
             xaxis_title="Annual household income",
