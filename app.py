@@ -1546,6 +1546,10 @@ def create_net_income_and_mtr_charts(
             )
         )
 
+        # Set y-axis range to double the max value for better scaling
+        net_income_max = max(np.max(net_income_baseline), np.max(net_income_reform))
+        net_income_y_max = net_income_max * 2
+
         fig_net_income.update_layout(
             title={
                 "text": "Net income including health benefits (2026)",
@@ -1558,7 +1562,7 @@ def create_net_income_and_mtr_charts(
                 tickformat="$,.0f", range=[0, x_axis_max], automargin=True
             ),
             yaxis=dict(
-                tickformat="$,.0f", automargin=True
+                tickformat="$,.0f", range=[0, net_income_y_max], automargin=True
             ),
             plot_bgcolor="white",
             paper_bgcolor="white",
