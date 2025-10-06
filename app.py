@@ -1221,7 +1221,8 @@ def create_net_income_and_mtr_charts(
                 mode="lines",
                 name="Enhanced PTCs extended",
                 line=dict(color=COLORS["primary"], width=3),
-                hoverinfo="skip",
+                hovertext=net_income_hover,
+                hoverinfo="text",
             )
         )
 
@@ -1280,7 +1281,8 @@ def create_net_income_and_mtr_charts(
                 mode="lines",
                 name="Enhanced PTCs extended",
                 line=dict(color=COLORS["primary"], width=3),
-                hoverinfo="skip",
+                hovertext=mtr_hover,
+                hoverinfo="text",
             )
         )
 
