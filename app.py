@@ -1459,13 +1459,17 @@ def create_net_income_and_mtr_charts(
         )
 
         # Calculate MTR using PolicyEngine's built-in variable
-        # This properly handles cliffs and discontinuities
-        mtr_baseline = sim_baseline.calculate(
-            "marginal_tax_rate_including_health_benefits", map_to="household", period=2026
+        # Get MTR for first person (head of household) only, not summed across all people
+        mtr_baseline_all = sim_baseline.calculate(
+            "marginal_tax_rate_including_health_benefits", period=2026
         )
-        mtr_reform = sim_reform.calculate(
-            "marginal_tax_rate_including_health_benefits", map_to="household", period=2026
+        mtr_reform_all = sim_reform.calculate(
+            "marginal_tax_rate_including_health_benefits", period=2026
         )
+
+        # Extract head of household MTR (first person in axes)
+        mtr_baseline = mtr_baseline_all[0]  # First person = "you"
+        mtr_reform = mtr_reform_all[0]
 
         # Convert to percentage (variable is already in 0-1 range)
         mtr_baseline_pct = mtr_baseline * 100
