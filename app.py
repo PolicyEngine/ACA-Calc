@@ -436,10 +436,10 @@ def main():
                     )
 
                     st.info(
-                        "**Note on stepped appearance:** The IRS requires MAGI/FPL ratios to be truncated to whole percentages "
+                        "**Note:** The IRS requires MAGI/FPL ratios to be truncated to whole percentages "
                         "(see [Form 8962 instructions](https://www.irs.gov/pub/irs-pdf/i8962.pdf#page=8)). "
-                        "This MAGI/FPL truncation creates a jagged structure in premium tax credits (~$10 jumps every $100-200 income), "
-                        "which appears as discrete steps in marginal tax rates rather than smooth transitions."
+                        "This MAGI/FPL truncation creates a jagged structure in premium tax credits (~$10 jumps every $100-200 income). "
+                        "This chart applies a $1,000 moving average to smooth the visualization while preserving overall trends."
                     )
 
             with tab5:
@@ -1150,8 +1150,22 @@ def create_net_income_and_mtr_charts(
 
         # Extract head of household MTR only (first person in axes)
         # Don't sum across all household members
-        mtr_baseline_viz = mtr_baseline_all[0] if len(mtr_baseline_all.shape) > 1 else mtr_baseline_all
-        mtr_reform_viz = mtr_reform_all[0] if len(mtr_reform_all.shape) > 1 else mtr_reform_all
+        mtr_baseline_raw = mtr_baseline_all[0] if len(mtr_baseline_all.shape) > 1 else mtr_baseline_all
+        mtr_reform_raw = mtr_reform_all[0] if len(mtr_reform_all.shape) > 1 else mtr_reform_all
+
+        # Apply 10-step ($1k) moving average to smooth IRS-mandated MAGI/FPL truncation artifacts
+        window = 10
+        def moving_average(arr, window_size):
+            """Apply simple moving average smoothing."""
+            result = np.copy(arr)
+            for i in range(len(arr)):
+                start = max(0, i - window_size // 2)
+                end = min(len(arr), i + window_size // 2 + 1)
+                result[i] = np.mean(arr[start:end])
+            return result
+
+        mtr_baseline_viz = moving_average(mtr_baseline_raw, window)
+        mtr_reform_viz = moving_average(mtr_reform_raw, window)
 
         # Create hover text for net income chart
         net_income_hover = []
