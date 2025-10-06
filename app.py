@@ -578,7 +578,7 @@ def main():
                 - Households have no employer-sponsored insurance (ESI), making them eligible for Medicaid, CHIP, and premium tax credits
                 - Net income and MTR calculations assume standard deduction (set as input to avoid expensive itemization branching)
 
-                **Technical note on MTR chart:** The IRS requires MAGI/FPL ratios to be truncated to whole percentages per [Form 8962 instructions](https://www.irs.gov/pub/irs-pdf/i8962.pdf#page=8). This creates ~$10 jumps in PTCs approximately every $100-200 income. The MTR chart uses a $5,000 differentiation window plus a $1,000 moving average to smooth over these artifacts.
+                **Technical note on MTR chart:** The IRS requires MAGI/FPL ratios to be truncated to whole percentages per [Form 8962 instructions](https://www.irs.gov/pub/irs-pdf/i8962.pdf#page=8). This creates ~$10 jumps in PTCs approximately every $100-200 income. The MTR chart applies a $1,000 moving average to smooth over these artifacts while preserving major cliffs (like PTC eligibility thresholds).
                 """
                 )
 
@@ -1145,42 +1145,40 @@ def create_net_income_and_mtr_charts(
         ptc_mtr_baseline = np.clip(ptc_mtr_baseline, -0.5, 0.5)
         ptc_mtr_reform = np.clip(ptc_mtr_reform, -0.5, 0.5)
 
-        # Calculate MTR from net income using numerical differentiation
+        # Calculate MTR from net income using simple forward differences
         # MTR = 1 - d(net_income)/d(income)
-        # Use 50-point window ($5k) to smooth over IRS MAGI/FPL truncation artifacts
-        window = 50
+        mtr_baseline_raw = np.zeros_like(income_range)
+        mtr_reform_raw = np.zeros_like(income_range)
 
-        mtr_baseline_viz = np.zeros_like(income_range)
-        mtr_reform_viz = np.zeros_like(income_range)
+        for i in range(len(income_range) - 1):
+            d_income = income_range[i+1] - income_range[i]
+            d_net_baseline = net_income_baseline[i+1] - net_income_baseline[i]
+            d_net_reform = net_income_reform[i+1] - net_income_reform[i]
 
-        # Central differences for interior points
-        for i in range(window, len(income_range) - window):
-            d_income = income_range[i+window] - income_range[i-window]
-            d_net_baseline = net_income_baseline[i+window] - net_income_baseline[i-window]
-            d_net_reform = net_income_reform[i+window] - net_income_reform[i-window]
+            mtr_baseline_raw[i] = 1 - d_net_baseline / d_income
+            mtr_reform_raw[i] = 1 - d_net_reform / d_income
 
-            mtr_baseline_viz[i] = 1 - d_net_baseline / d_income
-            mtr_reform_viz[i] = 1 - d_net_reform / d_income
+        # Last point same as second-to-last
+        mtr_baseline_raw[-1] = mtr_baseline_raw[-2] if len(income_range) > 1 else 0
+        mtr_reform_raw[-1] = mtr_reform_raw[-2] if len(income_range) > 1 else 0
 
-        # Forward differences for leading edge
-        for i in range(window):
-            d_income = income_range[i+window] - income_range[i]
-            d_net_baseline = net_income_baseline[i+window] - net_income_baseline[i]
-            d_net_reform = net_income_reform[i+window] - net_income_reform[i]
-            mtr_baseline_viz[i] = 1 - d_net_baseline / d_income
-            mtr_reform_viz[i] = 1 - d_net_reform / d_income
+        # Apply 10-step ($1k) moving average to smooth IRS truncation artifacts
+        window = 10
+        def moving_average(arr, window_size):
+            """Apply simple moving average smoothing."""
+            result = np.copy(arr)
+            for i in range(len(arr)):
+                start = max(0, i - window_size // 2)
+                end = min(len(arr), i + window_size // 2 + 1)
+                result[i] = np.mean(arr[start:end])
+            return result
 
-        # Backward differences for trailing edge
-        for i in range(len(income_range) - window, len(income_range)):
-            d_income = income_range[i] - income_range[i-window]
-            d_net_baseline = net_income_baseline[i] - net_income_baseline[i-window]
-            d_net_reform = net_income_reform[i] - net_income_reform[i-window]
-            mtr_baseline_viz[i] = 1 - d_net_baseline / d_income
-            mtr_reform_viz[i] = 1 - d_net_reform / d_income
+        mtr_baseline_viz = moving_average(mtr_baseline_raw, window)
+        mtr_reform_viz = moving_average(mtr_reform_raw, window)
 
-        # Clip to reasonable bounds
-        mtr_baseline_viz = np.clip(mtr_baseline_viz, -0.5, 1.5)
-        mtr_reform_viz = np.clip(mtr_reform_viz, -0.5, 1.5)
+        # Clip to reasonable bounds after smoothing
+        mtr_baseline_viz = np.clip(mtr_baseline_viz, -1.0, 1.5)
+        mtr_reform_viz = np.clip(mtr_reform_viz, -1.0, 1.5)
 
         # Create hover text for net income chart
         net_income_hover = []
