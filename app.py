@@ -1510,12 +1510,19 @@ def create_net_income_and_mtr_charts(
                 text += "<b>No difference</b>"
             net_income_hover.append(text)
 
-        # Create MTR hover text
+        # Create MTR hover text with PTC diagnostic info
         mtr_hover = []
         for i in range(len(income_range)):
             text = f"<b>Income: ${income_range[i]:,.0f}</b><br><br>"
-            text += f"<b>MTR (current law):</b> {mtr_baseline_viz[i]*100:.1f}%<br>"
-            text += f"<b>MTR (extended):</b> {mtr_reform_viz[i]*100:.1f}%<br>"
+            text += f"<b>PTC (current law):</b> ${ptc_baseline[i]:,.0f}<br>"
+            text += f"<b>PTC (extended):</b> ${ptc_reform[i]:,.0f}<br>"
+            if i > 0:
+                d_ptc_base = ptc_baseline[i] - ptc_baseline[i-1]
+                d_ptc_ref = ptc_reform[i] - ptc_reform[i-1]
+                text += f"<b>PTC change (current):</b> ${d_ptc_base:+.0f}<br>"
+                text += f"<b>PTC change (extended):</b> ${d_ptc_ref:+.0f}<br>"
+            text += f"<b>PTC MTR (current law):</b> {mtr_baseline_viz[i]*100:.1f}%<br>"
+            text += f"<b>PTC MTR (extended):</b> {mtr_reform_viz[i]*100:.1f}%<br>"
             diff = (mtr_reform_viz[i] - mtr_baseline_viz[i]) * 100
             if abs(diff) > 0.1:
                 text += f"<b>Difference:</b> {diff:+.1f} pp"
