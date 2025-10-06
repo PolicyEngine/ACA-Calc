@@ -438,7 +438,8 @@ def main():
                     st.info(
                         "**Note on stepped appearance:** The IRS requires MAGI/FPL ratios to be truncated to whole percentages "
                         "(see [Form 8962 instructions](https://www.irs.gov/pub/irs-pdf/i8962.pdf#page=8)). "
-                        "This creates discrete steps in marginal tax rates rather than smooth transitions."
+                        "This MAGI/FPL truncation creates a jagged structure in premium tax credits (~$10 jumps every $100-200 income), "
+                        "which appears as discrete steps in marginal tax rates rather than smooth transitions."
                     )
 
             with tab5:
@@ -1139,16 +1140,18 @@ def create_net_income_and_mtr_charts(
         ptc_mtr_reform = np.clip(ptc_mtr_reform, -0.5, 0.5)
 
         # Calculate full MTR using PolicyEngine's built-in variable
-        mtr_baseline = sim_baseline.calculate(
+        # This is a person-level variable, returns array with one value per income point per person
+        mtr_baseline_all = sim_baseline.calculate(
             "marginal_tax_rate_including_health_benefits", period=2026
         )
-        mtr_reform = sim_reform.calculate(
+        mtr_reform_all = sim_reform.calculate(
             "marginal_tax_rate_including_health_benefits", period=2026
         )
 
-        # Use PTC MTR for visualization (simpler, shows just the subsidy effect)
-        mtr_baseline_viz = ptc_mtr_baseline
-        mtr_reform_viz = ptc_mtr_reform
+        # Extract head of household MTR only (first person in axes)
+        # Don't sum across all household members
+        mtr_baseline_viz = mtr_baseline_all[0] if len(mtr_baseline_all.shape) > 1 else mtr_baseline_all
+        mtr_reform_viz = mtr_reform_all[0] if len(mtr_reform_all.shape) > 1 else mtr_reform_all
 
         # Create hover text for net income chart
         net_income_hover = []
@@ -1163,19 +1166,12 @@ def create_net_income_and_mtr_charts(
                 text += "<b>No difference</b>"
             net_income_hover.append(text)
 
-        # Create MTR hover text with PTC diagnostic info
+        # Create MTR hover text
         mtr_hover = []
         for i in range(len(income_range)):
             text = f"<b>Income: ${income_range[i]:,.0f}</b><br><br>"
-            text += f"<b>PTC (current law):</b> ${ptc_baseline[i]:,.0f}<br>"
-            text += f"<b>PTC (extended):</b> ${ptc_reform[i]:,.0f}<br>"
-            if i > 0:
-                d_ptc_base = ptc_baseline[i] - ptc_baseline[i-1]
-                d_ptc_ref = ptc_reform[i] - ptc_reform[i-1]
-                text += f"<b>PTC change (current):</b> ${d_ptc_base:+.0f}<br>"
-                text += f"<b>PTC change (extended):</b> ${d_ptc_ref:+.0f}<br>"
-            text += f"<b>PTC MTR (current law):</b> {mtr_baseline_viz[i]*100:.1f}%<br>"
-            text += f"<b>PTC MTR (extended):</b> {mtr_reform_viz[i]*100:.1f}%<br>"
+            text += f"<b>MTR (current law):</b> {mtr_baseline_viz[i]*100:.1f}%<br>"
+            text += f"<b>MTR (extended):</b> {mtr_reform_viz[i]*100:.1f}%<br>"
             diff = (mtr_reform_viz[i] - mtr_baseline_viz[i]) * 100
             if abs(diff) > 0.1:
                 text += f"<b>Difference:</b> {diff:+.1f} pp"
@@ -1270,7 +1266,7 @@ def create_net_income_and_mtr_charts(
 
         fig_mtr.update_layout(
             title={
-                "text": "PTC marginal effect on income (2026)",
+                "text": "Marginal tax rate including health benefits (2026)",
                 "font": {"size": 20, "color": COLORS["primary"]},
             },
             xaxis_title="Annual household income",
@@ -1280,7 +1276,7 @@ def create_net_income_and_mtr_charts(
                 tickformat="$,.0f", range=[0, x_axis_max], automargin=True
             ),
             yaxis=dict(
-                tickformat=".0%", range=[-0.2, 0.5], automargin=True, zeroline=True, zerolinecolor="black", zerolinewidth=2
+                tickformat=".0%", range=[-0.1, 1.0], automargin=True, zeroline=True, zerolinecolor="black", zerolinewidth=2
             ),
             plot_bgcolor="white",
             paper_bgcolor="white",
