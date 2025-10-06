@@ -37,3 +37,7 @@ def test_all_plotly_charts_have_unique_keys():
     assert len(duplicate_keys) == 0, f"Duplicate keys found: {set(duplicate_keys)}"
 
     print(f"\n✓ All {len(matches)} charts have unique keys")
+
+
+if __name__ == "__main__":
+    test_all_plotly_charts_have_unique_keys()
