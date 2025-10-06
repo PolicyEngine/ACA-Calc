@@ -356,6 +356,7 @@ def main():
                     st.session_state.fig_delta,
                     use_container_width=True,
                     config={"displayModeBar": False},
+                    key="gain_chart",
                 )
 
             with tab2:
@@ -363,6 +364,7 @@ def main():
                     st.session_state.fig_comparison,
                     use_container_width=True,
                     config={"displayModeBar": False},
+                    key="comparison_chart",
                 )
 
             with tab3:
