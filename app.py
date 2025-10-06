@@ -1522,33 +1522,35 @@ def create_net_income_and_mtr_charts(
         # Calculate MTR using numerical differentiation with smoothing
         # MTR = 1 - d(net_income)/d(employment_income)
         # Use wider window (10 points = $1000) for smoother MTR
-        # Income range has uniform $100 spacing, so d_income is constant
+        # Income range has uniform $100 spacing
         window = 10
-        d_income = income_range[window] - income_range[0]  # Constant $1000
+        d_income_central = income_range[window] - income_range[0]  # $1000 for edges
+        d_income_window = 2 * d_income_central  # $2000 for central differences
 
         mtr_baseline = np.zeros_like(income_range)
         mtr_reform = np.zeros_like(income_range)
 
+        # Central differences for interior points
         for i in range(window, len(income_range) - window):
             d_net_baseline = net_income_baseline[i+window] - net_income_baseline[i-window]
             d_net_reform = net_income_reform[i+window] - net_income_reform[i-window]
 
-            mtr_baseline[i] = 1 - d_net_baseline / d_income
-            mtr_reform[i] = 1 - d_net_reform / d_income
+            mtr_baseline[i] = 1 - d_net_baseline / d_income_window
+            mtr_reform[i] = 1 - d_net_reform / d_income_window
 
         # Handle edges with forward differences
         for i in range(window):
             d_net_baseline = net_income_baseline[i+window] - net_income_baseline[i]
             d_net_reform = net_income_reform[i+window] - net_income_reform[i]
-            mtr_baseline[i] = 1 - d_net_baseline / d_income
-            mtr_reform[i] = 1 - d_net_reform / d_income
+            mtr_baseline[i] = 1 - d_net_baseline / d_income_central
+            mtr_reform[i] = 1 - d_net_reform / d_income_central
 
         # Handle trailing edges with backward differences
         for i in range(len(income_range) - window, len(income_range)):
             d_net_baseline = net_income_baseline[i] - net_income_baseline[i-window]
             d_net_reform = net_income_reform[i] - net_income_reform[i-window]
-            mtr_baseline[i] = 1 - d_net_baseline / d_income
-            mtr_reform[i] = 1 - d_net_reform / d_income
+            mtr_baseline[i] = 1 - d_net_baseline / d_income_central
+            mtr_reform[i] = 1 - d_net_reform / d_income_central
 
         # Bound MTR at +/- 100%
         mtr_baseline = np.clip(mtr_baseline, -1.0, 1.0)
