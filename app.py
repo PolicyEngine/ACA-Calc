@@ -24,7 +24,7 @@ try:
     # Import calculation functions from package
     from aca_calc.calculations.ptc import calculate_ptc
     from aca_calc.calculations.household import build_household_situation
-    from aca_calc.calculations.reforms import create_enhanced_ptc_reform
+    from aca_calc.calculations.reforms import create_enhanced_ptc_reform, create_700fpl_reform
 
     # Try to import reform capability
     try:
@@ -138,6 +138,26 @@ def main():
 
     # Sidebar for household configuration
     with st.sidebar:
+        st.header("Reform scenarios")
+        st.markdown("Select which reform(s) to compare against baseline:")
+
+        show_ira = st.checkbox(
+            "IRA Extension",
+            value=True,
+            help="Extends current enhanced subsidies indefinitely with 8.5% cap and no income limit above 400% FPL"
+        )
+
+        show_700fpl = st.checkbox(
+            "700% FPL Extension (Bipartisan Bill)",
+            value=False,
+            help="Bipartisan Health Insurance Affordability Act: extends eligibility to 700% FPL with 9.25% cap"
+        )
+
+        if not show_ira and not show_700fpl:
+            st.warning("Please select at least one reform to compare.")
+
+        st.markdown("---")
+
         st.header("Household configuration")
 
         married = st.checkbox("Are you married?", value=False)
@@ -276,6 +296,8 @@ def main():
                 "county": county,
                 "married": married,
                 "zip_code": zip_code,
+                "show_ira": show_ira,
+                "show_700fpl": show_700fpl,
             }
             # Clear cached charts if params changed
             if hasattr(st.session_state, "params") and st.session_state.params != new_params:
@@ -297,9 +319,11 @@ def main():
             - The income range where extending enhanced subsidies would benefit you
             - Your specific impact at any income level you choose
 
-            The analysis compares two scenarios:
-            - **Current law**: Enhanced premium tax credits expire after 2025
-            - **Extended**: Enhanced PTCs continue through 2026
+            **Available reform scenarios:**
+            - **IRA Extension**: Continues current enhanced subsidies with 8.5% cap and no income limit
+            - **700% FPL Extension**: [Bipartisan Health Insurance Affordability Act](https://punchbowl.news/wp-content/uploads/Bipartisan-Health-Insurance-Affordability-Act-Section-by-Section-copy.pdf) extending eligibility to 700% FPL with 9.25% cap
+
+            Select one or both reforms in the sidebar to compare against baseline (current law after IRA expiration).
             """
         )
     else:
@@ -318,6 +342,7 @@ def main():
                     income_range,
                     ptc_baseline_range,
                     ptc_reform_range,
+                    ptc_700fpl_range,
                     slcsp_2026,
                     fpl,
                     x_axis_max,
@@ -328,6 +353,8 @@ def main():
                     params["state"],
                     county_name,
                     zip_code,
+                    show_ira=params.get("show_ira", True),
+                    show_700fpl=params.get("show_700fpl", False),
                 )
 
                 # Store arrays and charts in session state for later use
@@ -335,6 +362,7 @@ def main():
                     st.session_state.income_range = income_range
                     st.session_state.ptc_baseline_range = ptc_baseline_range
                     st.session_state.ptc_reform_range = ptc_reform_range
+                    st.session_state.ptc_700fpl_range = ptc_700fpl_range
                     st.session_state.slcsp_2026 = slcsp_2026
                     st.session_state.fpl = fpl
                     st.session_state.benefit_info = benefit_info
@@ -387,6 +415,8 @@ def main():
                             params.get("county"),
                             params.get("zip_code"),
                             x_axis_max,
+                            show_ira=params.get("show_ira", True),
+                            show_700fpl=params.get("show_700fpl", False),
                         )
 
                         # Store in session state
@@ -422,6 +452,8 @@ def main():
                             params.get("county"),
                             params.get("zip_code"),
                             x_axis_max,
+                            show_ira=params.get("show_ira", True),
+                            show_700fpl=params.get("show_700fpl", False),
                         )
 
                         # Store in session state
@@ -550,9 +582,11 @@ def main():
 
             # Move "About this calculator" below the tabs
             with st.expander("About this calculator"):
-                from importlib.metadata import version
-
-                pe_version = version("policyengine-us")
+                try:
+                    from importlib.metadata import version
+                    pe_version = version("policyengine-us")
+                except Exception:
+                    pe_version = "development"
 
                 st.markdown(
                     f"""
@@ -564,12 +598,19 @@ def main():
 
                 📖 [Learn more about enhanced premium tax credits](https://policyengine.org/us/research/enhanced-premium-tax-credits-extension)
 
-                **Enhanced PTCs extended:**
+                **Reform scenarios:**
+
+                *IRA Extension:*
                 - No income cap - households above 400% FPL can still receive credits
                 - Lower premium contribution percentages (0-8.5% of income)
                 - More generous subsidies at all income levels
 
-                **Current law (enhanced PTCs expire):**
+                *700% FPL Extension ([Bipartisan Health Insurance Affordability Act](https://punchbowl.news/wp-content/uploads/Bipartisan-Health-Insurance-Affordability-Act-Section-by-Section-copy.pdf)):*
+                - Eligibility extends to 700% FPL (vs no limit under IRA extension)
+                - Contribution percentages: 2-9.25% of income
+                - Different phase-out schedule than IRA extension
+
+                **Current law (baseline - enhanced PTCs expire):**
                 - Hard cap at 400% FPL - no credits above this level (the "subsidy cliff")
                 - Higher contribution percentages (2.1-9.96% of income, per IRS Revenue Procedure 2025-25)
                 - Less generous subsidies, especially for middle incomes
@@ -591,14 +632,18 @@ def create_chart(
     county=None,
     zip_code=None,
     income=None,
+    show_ira=True,
+    show_700fpl=False,
 ):
     """Create income curve charts showing PTC across income range
 
     Args:
         zip_code: 5-digit ZIP code string (required for LA County)
         income: Optional income to mark on chart. If None, no marker shown.
+        show_ira: Whether to show IRA extension reform
+        show_700fpl: Whether to show 700% FPL extension reform
 
-    Returns tuple of (comparison_fig, delta_fig, benefit_info, income_range, ptc_baseline_range, ptc_reform_range, slcsp, fpl, x_axis_max)
+    Returns tuple of (comparison_fig, delta_fig, benefit_info, income_range, ptc_baseline_range, ptc_reform_range, ptc_700fpl_range, slcsp, fpl, x_axis_max)
         Arrays are returned for interpolation
 
     Note: Caching removed to prevent signature mismatch issues on Streamlit Cloud
@@ -616,13 +661,16 @@ def create_chart(
         with_axes=True,
     )
 
-    try:
-        # Create reform for chart calculation
-        reform = create_enhanced_ptc_reform()
+    # Color for 700% FPL reform
+    PURPLE = "#9467BD"
 
-        # Calculate both curves - baseline and reform for 2026
+    try:
+        # Create reforms for chart calculation
+        reform_ira = create_enhanced_ptc_reform()
+        reform_700fpl = create_700fpl_reform()
+
+        # Calculate baseline
         sim_baseline = Simulation(situation=base_household)
-        sim_reform = Simulation(situation=base_household, reform=reform)
 
         income_range = sim_baseline.calculate(
             "employment_income", map_to="household", period=2026
@@ -630,9 +678,22 @@ def create_chart(
         ptc_range_baseline = sim_baseline.calculate(
             "aca_ptc", map_to="household", period=2026
         )
-        ptc_range_reform = sim_reform.calculate(
-            "aca_ptc", map_to="household", period=2026
-        )
+
+        # Calculate IRA reform if selected
+        ptc_range_reform = None
+        if show_ira:
+            sim_ira = Simulation(situation=base_household, reform=reform_ira)
+            ptc_range_reform = sim_ira.calculate(
+                "aca_ptc", map_to="household", period=2026
+            )
+
+        # Calculate 700% FPL reform if selected
+        ptc_range_700fpl = None
+        if show_700fpl and reform_700fpl is not None:
+            sim_700fpl = Simulation(situation=base_household, reform=reform_700fpl)
+            ptc_range_700fpl = sim_700fpl.calculate(
+                "aca_ptc", map_to="household", period=2026
+            )
 
         # Calculate Medicaid and CHIP values
         medicaid_range = sim_baseline.calculate(
@@ -643,19 +704,30 @@ def create_chart(
         )
 
         # Find where PTC goes to zero for dynamic x-axis range
-        # Use reform PTC since it always extends to higher incomes than baseline
-        # (baseline has 400% FPL cliff, reform removes it)
         max_income_with_ptc = 200000  # Default fallback
-        for i in range(len(ptc_range_reform) - 1, -1, -1):
-            if ptc_range_reform[i] > 0:
-                max_income_with_ptc = income_range[i]
-                break
+        # Check all active reform PTCs
+        ptc_arrays_to_check = [ptc_range_baseline]
+        if ptc_range_reform is not None:
+            ptc_arrays_to_check.append(ptc_range_reform)
+        if ptc_range_700fpl is not None:
+            ptc_arrays_to_check.append(ptc_range_700fpl)
+
+        for ptc_arr in ptc_arrays_to_check:
+            for i in range(len(ptc_arr) - 1, -1, -1):
+                if ptc_arr[i] > 0:
+                    max_income_with_ptc = max(max_income_with_ptc, income_range[i])
+                    break
 
         # Add 10% padding to the range
         x_axis_max = min(1000000, max_income_with_ptc * 1.1)
 
-        # Calculate delta
-        delta_range = ptc_range_reform - ptc_range_baseline
+        # Calculate delta (use IRA if available, otherwise 700% FPL)
+        if ptc_range_reform is not None:
+            delta_range = ptc_range_reform - ptc_range_baseline
+        elif ptc_range_700fpl is not None:
+            delta_range = ptc_range_700fpl - ptc_range_baseline
+        else:
+            delta_range = np.zeros_like(ptc_range_baseline)
 
         # Create hover text based on program eligibility
         import numpy as np
@@ -664,8 +736,8 @@ def create_chart(
         for i in range(len(income_range)):
             inc = income_range[i]
             ptc_base = ptc_range_baseline[i]
-            ptc_ref = ptc_range_reform[i]
-            delta = delta_range[i]
+            ptc_ira = ptc_range_reform[i] if ptc_range_reform is not None else 0
+            ptc_700 = ptc_range_700fpl[i] if ptc_range_700fpl is not None else 0
             medicaid = medicaid_range[i]
             chip = chip_range[i]
 
@@ -678,33 +750,30 @@ def create_chart(
                 text += f"<b>CHIP:</b> ${chip:,.0f}/year<br>"
 
             # Always show PTC information if present
-            if ptc_base > 0 or ptc_ref > 0:
-                text += f"<b>PTC (current law):</b> ${ptc_base:,.0f}/year<br>"
-                text += f"<b>PTC (extended):</b> ${ptc_ref:,.0f}/year<br>"
-                if delta > 0:
-                    text += f"<b>PTC difference:</b> +${delta:,.0f}/year"
-                elif delta < 0:
-                    text += f"<b>PTC difference:</b> -${abs(delta):,.0f}/year"
-                else:
-                    text += f"<b>PTC difference:</b> $0"
+            if ptc_base > 0 or ptc_ira > 0 or ptc_700 > 0:
+                text += f"<b>PTC (baseline):</b> ${ptc_base:,.0f}/year<br>"
+                if show_ira and ptc_range_reform is not None:
+                    text += f"<b>PTC (IRA extension):</b> ${ptc_ira:,.0f}/year<br>"
+                if show_700fpl and ptc_range_700fpl is not None:
+                    text += f"<b>PTC (700% FPL):</b> ${ptc_700:,.0f}/year<br>"
 
             hover_text.append(text)
 
         # Create the plot
         fig = go.Figure()
 
+        # Build list of arrays to find max for hover trace
+        arrays_for_max = [medicaid_range, chip_range, ptc_range_baseline]
+        if ptc_range_reform is not None:
+            arrays_for_max.append(ptc_range_reform)
+        if ptc_range_700fpl is not None:
+            arrays_for_max.append(ptc_range_700fpl)
+
         # Add invisible hover trace with unified information
         fig.add_trace(
             go.Scatter(
                 x=income_range,
-                y=np.maximum.reduce(
-                    [
-                        medicaid_range,
-                        chip_range,
-                        ptc_range_baseline,
-                        ptc_range_reform,
-                    ]
-                ),
+                y=np.maximum.reduce(arrays_for_max),
                 mode="lines",
                 line=dict(width=0),
                 hovertext=hover_text,
@@ -747,23 +816,37 @@ def create_chart(
                 x=income_range,
                 y=ptc_range_baseline,
                 mode="lines",
-                name="PTC (current law)",
+                name="PTC (baseline)",
                 line=dict(color=COLORS["gray"], width=3),
                 hoverinfo="skip",
             )
         )
 
-        # Add reform line (enhanced PTCs extended)
-        fig.add_trace(
-            go.Scatter(
-                x=income_range,
-                y=ptc_range_reform,
-                mode="lines",
-                name="PTC (enhanced PTCs extended)",
-                line=dict(color=COLORS["primary"], width=3),
-                hoverinfo="skip",
+        # Add IRA extension line if selected
+        if show_ira and ptc_range_reform is not None:
+            fig.add_trace(
+                go.Scatter(
+                    x=income_range,
+                    y=ptc_range_reform,
+                    mode="lines",
+                    name="PTC (IRA extension)",
+                    line=dict(color=COLORS["primary"], width=3),
+                    hoverinfo="skip",
+                )
             )
-        )
+
+        # Add 700% FPL extension line if selected
+        if show_700fpl and ptc_range_700fpl is not None:
+            fig.add_trace(
+                go.Scatter(
+                    x=income_range,
+                    y=ptc_range_700fpl,
+                    mode="lines",
+                    name="PTC (700% FPL extension)",
+                    line=dict(color=PURPLE, width=3),
+                    hoverinfo="skip",
+                )
+            )
 
         # Add user's position markers (only if income is provided)
         if income is not None and income > 10000:
@@ -771,29 +854,12 @@ def create_chart(
             ptc_baseline_user = np.interp(
                 income, income_range, ptc_range_baseline
             )
-            ptc_reform_user = np.interp(income, income_range, ptc_range_reform)
 
-            fig.add_trace(
-                go.Scatter(
-                    x=[income, income],
-                    y=[ptc_baseline_user, ptc_reform_user],
-                    mode="markers",
-                    name="Your Household",
-                    marker=dict(
-                        color=[COLORS["gray"], COLORS["primary"]],
-                        size=12,
-                        symbol="diamond",
-                        line=dict(width=2, color="white"),
-                    ),
-                    hoverinfo="skip",
-                    showlegend=False,
-                )
-            )
-
+            # Add baseline marker
             fig.add_annotation(
                 x=income,
                 y=ptc_baseline_user,
-                text=f"Current law: ${ptc_baseline_user:,.0f}",
+                text=f"Baseline: ${ptc_baseline_user:,.0f}",
                 showarrow=True,
                 arrowhead=2,
                 arrowsize=1,
@@ -806,21 +872,41 @@ def create_chart(
                 borderwidth=2,
             )
 
-            fig.add_annotation(
-                x=income,
-                y=ptc_reform_user,
-                text=f"Extended: ${ptc_reform_user:,.0f}",
-                showarrow=True,
-                arrowhead=2,
-                arrowsize=1,
-                arrowwidth=2,
-                arrowcolor=COLORS["primary"],
-                ax=60,
-                ay=-40,
-                bgcolor="white",
-                bordercolor=COLORS["primary"],
-                borderwidth=2,
-            )
+            if show_ira and ptc_range_reform is not None:
+                ptc_ira_user = np.interp(income, income_range, ptc_range_reform)
+                fig.add_annotation(
+                    x=income,
+                    y=ptc_ira_user,
+                    text=f"IRA: ${ptc_ira_user:,.0f}",
+                    showarrow=True,
+                    arrowhead=2,
+                    arrowsize=1,
+                    arrowwidth=2,
+                    arrowcolor=COLORS["primary"],
+                    ax=60,
+                    ay=-40,
+                    bgcolor="white",
+                    bordercolor=COLORS["primary"],
+                    borderwidth=2,
+                )
+
+            if show_700fpl and ptc_range_700fpl is not None:
+                ptc_700_user = np.interp(income, income_range, ptc_range_700fpl)
+                fig.add_annotation(
+                    x=income,
+                    y=ptc_700_user,
+                    text=f"700% FPL: ${ptc_700_user:,.0f}",
+                    showarrow=True,
+                    arrowhead=2,
+                    arrowsize=1,
+                    arrowwidth=2,
+                    arrowcolor=PURPLE,
+                    ax=-60,
+                    ay=-40,
+                    bgcolor="white",
+                    bordercolor=PURPLE,
+                    borderwidth=2,
+                )
 
         # Update layout for comparison chart
         fig.update_layout(
@@ -856,7 +942,8 @@ def create_chart(
             inc = income_range[i]
             delta = delta_range[i]
             ptc_base = ptc_range_baseline[i]
-            ptc_ref = ptc_range_reform[i]
+            ptc_ira = ptc_range_reform[i] if ptc_range_reform is not None else 0
+            ptc_700 = ptc_range_700fpl[i] if ptc_range_700fpl is not None else 0
             medicaid = medicaid_range[i]
             chip = chip_range[i]
 
@@ -868,72 +955,46 @@ def create_chart(
             if chip > 0:
                 text += f"<b>CHIP:</b> ${chip:,.0f}/year<br>"
 
-            # Show PTC amounts and gain from extension
-            if ptc_base > 0 or ptc_ref > 0:
-                text += f"<b>PTC (current law):</b> ${ptc_base:,.0f}/year<br>"
-                text += f"<b>PTC (extended):</b> ${ptc_ref:,.0f}/year<br>"
-                if delta > 0:
-                    text += f"<b>Gain from extension:</b> ${delta:,.0f}/year"
-                else:
-                    text += f"<b>No change</b>"
+            # Show PTC amounts
+            text += f"<b>PTC (baseline):</b> ${ptc_base:,.0f}/year<br>"
+            if show_ira and ptc_range_reform is not None:
+                text += f"<b>PTC (IRA extension):</b> ${ptc_ira:,.0f}/year<br>"
+            if show_700fpl and ptc_range_700fpl is not None:
+                text += f"<b>PTC (700% FPL):</b> ${ptc_700:,.0f}/year<br>"
 
             delta_hover_text.append(text)
 
-        # Add delta line
-        fig_delta.add_trace(
-            go.Scatter(
-                x=income_range,
-                y=delta_range,
-                mode="lines",
-                name="PTC gain from extension",
-                line=dict(color=COLORS["primary"], width=3),
-                fill="tozeroy",
-                fillcolor=f"rgba(44, 100, 150, 0.2)",
-                hovertext=delta_hover_text,
-                hoverinfo="text",
-            )
-        )
-
-        # Add user's position marker (only if income is provided)
-        if income is not None and income > 10000:
-            # Interpolate values at user's income
-            ptc_baseline_user = np.interp(
-                income, income_range, ptc_range_baseline
-            )
-            ptc_reform_user = np.interp(income, income_range, ptc_range_reform)
-            user_difference = ptc_reform_user - ptc_baseline_user
-
+        # Add delta lines for each selected reform
+        if show_ira and ptc_range_reform is not None:
+            delta_ira = ptc_range_reform - ptc_range_baseline
             fig_delta.add_trace(
                 go.Scatter(
-                    x=[income],
-                    y=[user_difference],
-                    mode="markers",
-                    name="Your household",
-                    marker=dict(
-                        color=COLORS["primary"],
-                        size=12,
-                        symbol="diamond",
-                        line=dict(width=2, color="white"),
-                    ),
-                    hoverinfo="skip",
-                    showlegend=False,
+                    x=income_range,
+                    y=delta_ira,
+                    mode="lines",
+                    name="IRA extension gain",
+                    line=dict(color=COLORS["primary"], width=3),
+                    fill="tozeroy",
+                    fillcolor="rgba(44, 100, 150, 0.2)",
+                    hovertext=delta_hover_text,
+                    hoverinfo="text",
                 )
             )
 
-            fig_delta.add_annotation(
-                x=income,
-                y=user_difference,
-                text=f"You: ${user_difference:,.0f}",
-                showarrow=True,
-                arrowhead=2,
-                arrowsize=1,
-                arrowwidth=2,
-                arrowcolor=COLORS["primary"],
-                ax=60,
-                ay=-40,
-                bgcolor="white",
-                bordercolor=COLORS["primary"],
-                borderwidth=2,
+        if show_700fpl and ptc_range_700fpl is not None:
+            delta_700 = ptc_range_700fpl - ptc_range_baseline
+            fig_delta.add_trace(
+                go.Scatter(
+                    x=income_range,
+                    y=delta_700,
+                    mode="lines",
+                    name="700% FPL extension gain",
+                    line=dict(color=PURPLE, width=3),
+                    fill="tozeroy" if not show_ira else None,
+                    fillcolor="rgba(148, 103, 189, 0.2)" if not show_ira else None,
+                    hovertext=delta_hover_text,
+                    hoverinfo="text",
+                )
             )
 
         fig_delta.update_layout(
@@ -1050,6 +1111,7 @@ def create_chart(
             income_range,
             ptc_range_baseline,
             ptc_range_reform,
+            ptc_range_700fpl,
             slcsp,
             fpl,
             x_axis_max,
@@ -1061,7 +1123,7 @@ def create_chart(
         import traceback
 
         st.error(traceback.format_exc())
-        return None, None, None, None, None, None, 0, 0, 200000
+        return None, None, None, None, None, None, None, 0, 0, 200000
 
 
 def create_net_income_and_mtr_charts(
@@ -1072,14 +1134,21 @@ def create_net_income_and_mtr_charts(
     county=None,
     zip_code=None,
     x_axis_max=200000,
+    show_ira=True,
+    show_700fpl=False,
 ):
     """Create net income and MTR charts including health benefits
 
     Args:
         x_axis_max: Maximum income for x-axis (from PTC charts)
+        show_ira: Whether to show IRA extension reform
+        show_700fpl: Whether to show 700% FPL extension reform
 
     Returns tuple of (net_income_fig, mtr_fig, income_range, net_income_baseline, net_income_reform)
     """
+
+    # Color for 700% FPL reform
+    PURPLE = "#9467BD"
 
     # Create base household structure for income sweep
     base_household = build_household_situation(
@@ -1098,69 +1167,41 @@ def create_net_income_and_mtr_charts(
     base_household["tax_units"]["your tax unit"]["tax_unit_itemizes"] = {2026: False}
 
     try:
-        # Create reform for extended PTCs
-        reform = create_enhanced_ptc_reform()
+        # Create reforms
+        reform_ira = create_enhanced_ptc_reform()
+        reform_700fpl = create_700fpl_reform()
 
         # Run simulations (itemization already set to False via input)
         sim_baseline = Simulation(situation=base_household)
-        sim_reform = Simulation(situation=base_household, reform=reform)
+
+        sim_ira = None
+        if show_ira:
+            sim_ira = Simulation(situation=base_household, reform=reform_ira)
+
+        sim_700fpl = None
+        if show_700fpl and reform_700fpl is not None:
+            sim_700fpl = Simulation(situation=base_household, reform=reform_700fpl)
 
         income_range = sim_baseline.calculate(
             "employment_income", map_to="household", period=2026
         )
 
         # Calculate net income including health benefits
-        # Use PolicyEngine's built-in variable that includes PTCs, Medicaid, CHIP
         net_income_baseline = sim_baseline.calculate(
             "household_net_income_including_health_benefits", map_to="household", period=2026
         )
-        net_income_reform = sim_reform.calculate(
-            "household_net_income_including_health_benefits", map_to="household", period=2026
-        )
 
-        # Calculate PTC values to understand MTR contributions
-        ptc_baseline = sim_baseline.calculate("aca_ptc", map_to="household", period=2026)
-        ptc_reform = sim_reform.calculate("aca_ptc", map_to="household", period=2026)
+        net_income_ira = None
+        if sim_ira is not None:
+            net_income_ira = sim_ira.calculate(
+                "household_net_income_including_health_benefits", map_to="household", period=2026
+            )
 
-        # Calculate PTC's marginal effect using numerical differentiation
-        # MTR_ptc = -d(PTC)/d(income) (negative because PTC increases net income)
-        ptc_mtr_baseline = np.zeros_like(income_range)
-        ptc_mtr_reform = np.zeros_like(income_range)
-
-        # Use simple forward differences
-        for i in range(len(income_range) - 1):
-            d_income = income_range[i+1] - income_range[i]
-            d_ptc_baseline = ptc_baseline[i+1] - ptc_baseline[i]
-            d_ptc_reform = ptc_reform[i+1] - ptc_reform[i]
-
-            # MTR contribution from PTC (negative d_ptc means positive MTR)
-            ptc_mtr_baseline[i] = -d_ptc_baseline / d_income
-            ptc_mtr_reform[i] = -d_ptc_reform / d_income
-
-        # Last point same as second-to-last
-        ptc_mtr_baseline[-1] = ptc_mtr_baseline[-2] if len(income_range) > 1 else 0
-        ptc_mtr_reform[-1] = ptc_mtr_reform[-2] if len(income_range) > 1 else 0
-
-        # Clip extreme values (shouldn't exceed +/-50% from PTC alone)
-        ptc_mtr_baseline = np.clip(ptc_mtr_baseline, -0.5, 0.5)
-        ptc_mtr_reform = np.clip(ptc_mtr_reform, -0.5, 0.5)
-
-        # Calculate MTR from net income using simple forward differences
-        # MTR = 1 - d(net_income)/d(income)
-        mtr_baseline_raw = np.zeros_like(income_range)
-        mtr_reform_raw = np.zeros_like(income_range)
-
-        for i in range(len(income_range) - 1):
-            d_income = income_range[i+1] - income_range[i]
-            d_net_baseline = net_income_baseline[i+1] - net_income_baseline[i]
-            d_net_reform = net_income_reform[i+1] - net_income_reform[i]
-
-            mtr_baseline_raw[i] = 1 - d_net_baseline / d_income
-            mtr_reform_raw[i] = 1 - d_net_reform / d_income
-
-        # Last point same as second-to-last
-        mtr_baseline_raw[-1] = mtr_baseline_raw[-2] if len(income_range) > 1 else 0
-        mtr_reform_raw[-1] = mtr_reform_raw[-2] if len(income_range) > 1 else 0
+        net_income_700fpl = None
+        if sim_700fpl is not None:
+            net_income_700fpl = sim_700fpl.calculate(
+                "household_net_income_including_health_benefits", map_to="household", period=2026
+            )
 
         # Apply 10-step ($1k) moving average to smooth IRS truncation artifacts
         window = 10
@@ -1173,37 +1214,41 @@ def create_net_income_and_mtr_charts(
                 result[i] = np.mean(arr[start:end])
             return result
 
-        mtr_baseline_viz = moving_average(mtr_baseline_raw, window)
-        mtr_reform_viz = moving_average(mtr_reform_raw, window)
+        def calc_mtr(net_income_arr):
+            """Calculate MTR from net income array."""
+            mtr_raw = np.zeros_like(income_range)
+            for i in range(len(income_range) - 1):
+                d_income = income_range[i+1] - income_range[i]
+                d_net = net_income_arr[i+1] - net_income_arr[i]
+                mtr_raw[i] = 1 - d_net / d_income
+            mtr_raw[-1] = mtr_raw[-2] if len(income_range) > 1 else 0
+            mtr_viz = moving_average(mtr_raw, window)
+            return np.clip(mtr_viz, -1.0, 1.5)
 
-        # Clip to reasonable bounds after smoothing
-        mtr_baseline_viz = np.clip(mtr_baseline_viz, -1.0, 1.5)
-        mtr_reform_viz = np.clip(mtr_reform_viz, -1.0, 1.5)
+        mtr_baseline_viz = calc_mtr(net_income_baseline)
+        mtr_ira_viz = calc_mtr(net_income_ira) if net_income_ira is not None else None
+        mtr_700fpl_viz = calc_mtr(net_income_700fpl) if net_income_700fpl is not None else None
 
         # Create hover text for net income chart
         net_income_hover = []
         for i in range(len(income_range)):
             text = f"<b>Income: ${income_range[i]:,.0f}</b><br><br>"
-            text += f"<b>Net income (current law):</b> ${net_income_baseline[i]:,.0f}<br>"
-            text += f"<b>Net income (extended):</b> ${net_income_reform[i]:,.0f}<br>"
-            diff = net_income_reform[i] - net_income_baseline[i]
-            if diff > 0:
-                text += f"<b>Gain from extension:</b> ${diff:,.0f}"
-            else:
-                text += "<b>No difference</b>"
+            text += f"<b>Net income (baseline):</b> ${net_income_baseline[i]:,.0f}<br>"
+            if net_income_ira is not None:
+                text += f"<b>Net income (IRA extension):</b> ${net_income_ira[i]:,.0f}<br>"
+            if net_income_700fpl is not None:
+                text += f"<b>Net income (700% FPL):</b> ${net_income_700fpl[i]:,.0f}<br>"
             net_income_hover.append(text)
 
         # Create MTR hover text
         mtr_hover = []
         for i in range(len(income_range)):
             text = f"<b>Income: ${income_range[i]:,.0f}</b><br><br>"
-            text += f"<b>MTR (current law):</b> {mtr_baseline_viz[i]*100:.1f}%<br>"
-            text += f"<b>MTR (extended):</b> {mtr_reform_viz[i]*100:.1f}%<br>"
-            diff = (mtr_reform_viz[i] - mtr_baseline_viz[i]) * 100
-            if abs(diff) > 0.1:
-                text += f"<b>Difference:</b> {diff:+.1f} pp"
-            else:
-                text += "<b>No difference</b>"
+            text += f"<b>MTR (baseline):</b> {mtr_baseline_viz[i]*100:.1f}%<br>"
+            if mtr_ira_viz is not None:
+                text += f"<b>MTR (IRA extension):</b> {mtr_ira_viz[i]*100:.1f}%<br>"
+            if mtr_700fpl_viz is not None:
+                text += f"<b>MTR (700% FPL):</b> {mtr_700fpl_viz[i]*100:.1f}%<br>"
             mtr_hover.append(text)
 
         # Create net income chart
@@ -1214,32 +1259,48 @@ def create_net_income_and_mtr_charts(
                 x=income_range,
                 y=net_income_baseline,
                 mode="lines",
-                name="Current law",
+                name="Baseline",
                 line=dict(color=COLORS["gray"], width=3),
                 hovertext=net_income_hover,
                 hoverinfo="text",
             )
         )
 
-        fig_net_income.add_trace(
-            go.Scatter(
-                x=income_range,
-                y=net_income_reform,
-                mode="lines",
-                name="Enhanced PTCs extended",
-                line=dict(color=COLORS["primary"], width=3),
-                hovertext=net_income_hover,
-                hoverinfo="text",
+        if net_income_ira is not None:
+            fig_net_income.add_trace(
+                go.Scatter(
+                    x=income_range,
+                    y=net_income_ira,
+                    mode="lines",
+                    name="IRA extension",
+                    line=dict(color=COLORS["primary"], width=3),
+                    hovertext=net_income_hover,
+                    hoverinfo="text",
+                )
             )
-        )
+
+        if net_income_700fpl is not None:
+            fig_net_income.add_trace(
+                go.Scatter(
+                    x=income_range,
+                    y=net_income_700fpl,
+                    mode="lines",
+                    name="700% FPL extension",
+                    line=dict(color=PURPLE, width=3),
+                    hovertext=net_income_hover,
+                    hoverinfo="text",
+                )
+            )
 
         # Set y-axis range to 1.2x the max value within visible x range
         # Find indices within x_axis_max
         visible_indices = income_range <= x_axis_max
-        net_income_max = max(
-            np.max(net_income_baseline[visible_indices]),
-            np.max(net_income_reform[visible_indices])
-        )
+        net_income_arrays = [net_income_baseline[visible_indices]]
+        if net_income_ira is not None:
+            net_income_arrays.append(net_income_ira[visible_indices])
+        if net_income_700fpl is not None:
+            net_income_arrays.append(net_income_700fpl[visible_indices])
+        net_income_max = max(np.max(arr) for arr in net_income_arrays)
         net_income_y_max = net_income_max * 1.2
 
         fig_net_income.update_layout(
@@ -1274,24 +1335,38 @@ def create_net_income_and_mtr_charts(
                 x=income_range,
                 y=mtr_baseline_viz,
                 mode="lines",
-                name="Current law",
+                name="Baseline",
                 line=dict(color=COLORS["gray"], width=3),
                 hovertext=mtr_hover,
                 hoverinfo="text",
             )
         )
 
-        fig_mtr.add_trace(
-            go.Scatter(
-                x=income_range,
-                y=mtr_reform_viz,
-                mode="lines",
-                name="Enhanced PTCs extended",
-                line=dict(color=COLORS["primary"], width=3),
-                hovertext=mtr_hover,
-                hoverinfo="text",
+        if mtr_ira_viz is not None:
+            fig_mtr.add_trace(
+                go.Scatter(
+                    x=income_range,
+                    y=mtr_ira_viz,
+                    mode="lines",
+                    name="IRA extension",
+                    line=dict(color=COLORS["primary"], width=3),
+                    hovertext=mtr_hover,
+                    hoverinfo="text",
+                )
             )
-        )
+
+        if mtr_700fpl_viz is not None:
+            fig_mtr.add_trace(
+                go.Scatter(
+                    x=income_range,
+                    y=mtr_700fpl_viz,
+                    mode="lines",
+                    name="700% FPL extension",
+                    line=dict(color=PURPLE, width=3),
+                    hovertext=mtr_hover,
+                    hoverinfo="text",
+                )
+            )
 
         fig_mtr.update_layout(
             title={
@@ -1325,7 +1400,7 @@ def create_net_income_and_mtr_charts(
             fig_mtr,
             income_range,
             net_income_baseline,
-            net_income_reform,
+            net_income_ira,
         )
 
     except Exception as e:
