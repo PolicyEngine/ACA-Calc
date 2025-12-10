@@ -1,0 +1,154 @@
+.cliff-table {
+  background: white;
+  border-radius: var(--pe-radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--pe-shadow-md);
+}
+
+.table-header {
+  margin-bottom: 1rem;
+}
+
+.table-header h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--pe-gray-800);
+  margin: 0 0 0.25rem 0;
+}
+
+.table-header p {
+  font-size: 0.85rem;
+  color: var(--pe-gray-500);
+  margin: 0;
+}
+
+.cliff-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.cliff-table th {
+  text-align: left;
+  padding: 0.75rem 0.5rem;
+  border-bottom: 2px solid var(--pe-gray-200);
+  color: var(--pe-gray-600);
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cliff-table td {
+  padding: 0.75rem 0.5rem;
+  border-bottom: 1px solid var(--pe-gray-100);
+}
+
+.cliff-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.row-2025 {
+  background: rgba(37, 99, 235, 0.05);
+}
+
+.row-baseline {
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.row-ira {
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.row-700fpl {
+  background: rgba(124, 58, 237, 0.05);
+}
+
+.ptc-cell {
+  font-weight: 600;
+  font-family: var(--pe-font-mono);
+}
+
+.ptc-cell.positive {
+  color: var(--pe-teal-600);
+}
+
+.ptc-cell.zero {
+  color: var(--pe-gray-400);
+}
+
+.premium-cliff {
+  color: #dc2626;
+  font-weight: 600;
+  font-family: var(--pe-font-mono);
+}
+
+.premium-increase {
+  font-weight: 600;
+  font-family: var(--pe-font-mono);
+}
+
+.cliff-breakdown {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--pe-gray-200);
+}
+
+.breakdown-title {
+  font-size: 0.75rem;
+  color: var(--pe-gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+}
+
+.breakdown-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.breakdown-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+}
+
+.breakdown-item.total {
+  border-top: 1px solid var(--pe-gray-200);
+  margin-top: 0.25rem;
+  padding-top: 0.75rem;
+  font-weight: 600;
+}
+
+.breakdown-label {
+  font-size: 0.9rem;
+  color: var(--pe-gray-700);
+}
+
+.breakdown-value {
+  font-family: var(--pe-font-mono);
+  font-size: 0.9rem;
+  color: var(--pe-gray-800);
+}
+
+@media (max-width: 640px) {
+  .cliff-table {
+    padding: 1rem;
+  }
+
+  .cliff-table table {
+    font-size: 0.8rem;
+  }
+
+  .cliff-table th,
+  .cliff-table td {
+    padding: 0.5rem 0.25rem;
+  }
+
+  .cliff-impact {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}

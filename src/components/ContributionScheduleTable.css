@@ -1,0 +1,109 @@
+.contribution-schedule {
+  background: white;
+  border-radius: var(--pe-radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--pe-shadow-md);
+}
+
+.schedule-header {
+  margin-bottom: 1.5rem;
+}
+
+.schedule-header h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--pe-gray-800);
+  margin: 0 0 0.25rem 0;
+}
+
+.schedule-header p {
+  font-size: 0.85rem;
+  color: var(--pe-gray-500);
+  margin: 0;
+}
+
+.schedules-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+
+.schedule-column {
+  border: 1px solid var(--pe-gray-200);
+  border-radius: var(--pe-radius-md);
+  overflow: hidden;
+}
+
+.schedule-column.arpa_ira {
+  border-color: var(--pe-teal-300);
+  background: rgba(49, 151, 149, 0.02);
+}
+
+.schedule-column.post_ira {
+  border-color: var(--pe-gray-300);
+}
+
+.schedule-column.bill_700fpl {
+  border-color: #7c3aed;
+  background: rgba(124, 58, 237, 0.02);
+}
+
+.schedule-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--pe-gray-800);
+  padding: 0.75rem 1rem 0.25rem;
+}
+
+.schedule-description {
+  font-size: 0.75rem;
+  color: var(--pe-gray-500);
+  padding: 0 1rem 0.75rem;
+}
+
+.schedule-column table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.schedule-column th {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  background: var(--pe-gray-50);
+  border-top: 1px solid var(--pe-gray-200);
+  border-bottom: 1px solid var(--pe-gray-200);
+  color: var(--pe-gray-600);
+  font-weight: 500;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.schedule-column td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--pe-gray-100);
+}
+
+.schedule-column tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.schedule-column tr.no-subsidy {
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.no-subsidy-cell {
+  color: var(--pe-gray-400);
+  font-style: italic;
+}
+
+@media (max-width: 640px) {
+  .schedules-container {
+    grid-template-columns: 1fr;
+  }
+
+  .contribution-schedule {
+    padding: 1rem;
+  }
+}

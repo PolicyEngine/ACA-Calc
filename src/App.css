@@ -1,0 +1,180 @@
+/* Main App Styles - Scrollytelling Layout */
+
+.app {
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--pe-gray-50) 0%, #f0f4f8 100%);
+}
+
+/* Header */
+.header {
+  background: var(--pe-surface);
+  border-bottom: 1px solid var(--pe-border);
+  padding: var(--pe-space-xl) var(--pe-space-lg);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--pe-gray-900);
+  margin: 0 0 var(--pe-space-xs) 0;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: var(--pe-text-secondary);
+  margin: 0;
+}
+
+/* Household Selector */
+.household-selector-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--pe-space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pe-space-sm);
+}
+
+.household-info {
+  display: flex;
+  align-items: center;
+  gap: var(--pe-space-md);
+  font-size: 0.875rem;
+}
+
+.location {
+  color: var(--pe-text-secondary);
+}
+
+.expansion-badge {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.expansion-badge.expansion {
+  background: var(--pe-teal-100);
+  color: var(--pe-teal-700);
+}
+
+.expansion-badge.non-expansion {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* Scrollytelling Container */
+.scrollytelling-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 55% 45%;
+  gap: var(--pe-space-xl);
+  padding: 0 var(--pe-space-lg);
+}
+
+/* Chart Column - Sticky */
+.chart-column {
+  position: relative;
+}
+
+.chart-sticky {
+  position: sticky;
+  top: 120px;
+  height: calc(100vh - 180px);
+  background: var(--pe-surface);
+  border-radius: var(--pe-radius-lg);
+  box-shadow: var(--pe-shadow-lg);
+  padding: var(--pe-space-lg);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Text Column - Scrollable */
+.text-column {
+  padding-bottom: 50vh;
+}
+
+/* Footer */
+.footer {
+  text-align: center;
+  padding: var(--pe-space-2xl) var(--pe-space-lg);
+  color: var(--pe-text-muted);
+  font-size: 0.875rem;
+}
+
+.footer a {
+  color: var(--pe-accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.footer a:hover {
+  color: var(--pe-accent-dark);
+  text-decoration: underline;
+}
+
+.calc-link {
+  background: var(--pe-accent);
+  color: white !important;
+  padding: 8px 16px;
+  border-radius: var(--pe-radius-md);
+  margin-left: var(--pe-space-md);
+}
+
+.calc-link:hover {
+  background: var(--pe-accent-dark);
+  text-decoration: none !important;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .scrollytelling-container {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-sticky {
+    position: relative;
+    top: 0;
+    height: 400px;
+    margin-bottom: var(--pe-space-xl);
+  }
+
+  .text-column {
+    padding-bottom: var(--pe-space-2xl);
+  }
+}
+
+@media (max-width: 640px) {
+  .header h1 {
+    font-size: 1.25rem;
+  }
+
+  .subtitle {
+    font-size: 0.875rem;
+  }
+
+  .household-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--pe-space-xs);
+  }
+
+  .chart-sticky {
+    height: 300px;
+    padding: var(--pe-space-md);
+  }
+}

@@ -1,0 +1,92 @@
+.contribution-chart {
+  background: white;
+  border-radius: var(--pe-radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--pe-shadow-md);
+}
+
+.chart-header {
+  margin-bottom: 0.75rem;
+}
+
+.chart-header h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--pe-gray-800);
+  margin: 0 0 0.25rem 0;
+}
+
+.chart-header p {
+  font-size: 0.8rem;
+  color: var(--pe-gray-500);
+  margin: 0;
+}
+
+.chart-legend {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legend-color {
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.legend-label {
+  font-size: 0.8rem;
+  color: var(--pe-gray-700);
+}
+
+.chart-axis-labels {
+  text-align: center;
+  margin-top: -0.5rem;
+}
+
+.x-axis-label {
+  font-size: 0.75rem;
+  color: var(--pe-gray-500);
+}
+
+.chart-note {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--pe-gray-100);
+  font-size: 0.75rem;
+  color: var(--pe-gray-500);
+}
+
+.note-marker {
+  color: #ef4444;
+  font-weight: bold;
+}
+
+/* Recharts customizations */
+.contribution-chart .recharts-cartesian-axis-tick-value {
+  fill: var(--pe-gray-600);
+}
+
+.contribution-chart .recharts-tooltip-wrapper {
+  outline: none;
+}
+
+@media (max-width: 640px) {
+  .contribution-chart {
+    padding: 1rem;
+  }
+
+  .chart-legend {
+    gap: 1rem;
+  }
+}

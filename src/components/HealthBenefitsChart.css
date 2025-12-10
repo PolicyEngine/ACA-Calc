@@ -1,0 +1,47 @@
+.chart-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--pe-gray-800);
+  margin-bottom: var(--pe-space-md);
+  text-align: center;
+}
+
+/* Custom Tooltip */
+.chart-tooltip {
+  background: var(--pe-surface);
+  border: 1px solid var(--pe-border);
+  border-radius: var(--pe-radius-md);
+  padding: var(--pe-space-md);
+  box-shadow: var(--pe-shadow-lg);
+  min-width: 180px;
+}
+
+.tooltip-income {
+  font-weight: 600;
+  color: var(--pe-gray-800);
+  margin-bottom: var(--pe-space-sm);
+  padding-bottom: var(--pe-space-sm);
+  border-bottom: 1px solid var(--pe-border-light);
+}
+
+.tooltip-item {
+  font-size: 0.875rem;
+  margin: 4px 0;
+  font-weight: 500;
+}
+
+/* Legend customization */
+.recharts-legend-item {
+  margin-right: var(--pe-space-md) !important;
+}
+
+.recharts-legend-item-text {
+  color: var(--pe-text-secondary) !important;
+  font-size: 0.8125rem !important;
+}

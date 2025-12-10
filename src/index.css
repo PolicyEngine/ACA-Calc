@@ -1,0 +1,97 @@
+/* PolicyEngine Design System */
+:root {
+  /* Primary Colors - Teal */
+  --pe-teal-50: #f0fdfa;
+  --pe-teal-100: #ccfbf1;
+  --pe-teal-200: #99f6e4;
+  --pe-teal-300: #5eead4;
+  --pe-teal-400: #2dd4bf;
+  --pe-teal-500: #319795;
+  --pe-teal-600: #0d9488;
+  --pe-teal-700: #0f766e;
+  --pe-teal-800: #115e59;
+  --pe-teal-900: #134e4a;
+
+  /* Gray Palette */
+  --pe-gray-50: #f9fafb;
+  --pe-gray-100: #f3f4f6;
+  --pe-gray-200: #e5e7eb;
+  --pe-gray-300: #d1d5db;
+  --pe-gray-400: #9ca3af;
+  --pe-gray-500: #6b7280;
+  --pe-gray-600: #4b5563;
+  --pe-gray-700: #374151;
+  --pe-gray-800: #1f2937;
+  --pe-gray-900: #111827;
+
+  /* Chart Colors */
+  --pe-baseline: #9ca3af;
+  --pe-ira-reform: #2563eb;
+  --pe-bipartisan-reform: #7c3aed;
+  --pe-medicaid: #319795;
+  --pe-chip: #14b8a6;
+
+  /* Semantic Colors */
+  --pe-text-primary: var(--pe-gray-800);
+  --pe-text-secondary: var(--pe-gray-600);
+  --pe-text-muted: var(--pe-gray-500);
+  --pe-background: var(--pe-gray-50);
+  --pe-surface: #ffffff;
+  --pe-border: var(--pe-gray-200);
+  --pe-border-light: var(--pe-gray-100);
+  --pe-accent: var(--pe-teal-500);
+  --pe-accent-hover: var(--pe-teal-600);
+  --pe-accent-dark: var(--pe-teal-700);
+
+  /* Typography */
+  --pe-font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+  --pe-font-mono: "SF Mono", "Monaco", "Inconsolata", "Fira Mono",
+    "Droid Sans Mono", monospace;
+
+  /* Spacing */
+  --pe-space-xs: 4px;
+  --pe-space-sm: 8px;
+  --pe-space-md: 16px;
+  --pe-space-lg: 24px;
+  --pe-space-xl: 32px;
+  --pe-space-2xl: 48px;
+
+  /* Border Radius */
+  --pe-radius-sm: 4px;
+  --pe-radius-md: 8px;
+  --pe-radius-lg: 12px;
+  --pe-radius-xl: 16px;
+
+  /* Shadows */
+  --pe-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --pe-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --pe-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+  /* Transitions */
+  --pe-transition-fast: 150ms ease;
+  --pe-transition-base: 200ms ease;
+  --pe-transition-slow: 300ms ease;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--pe-font-family);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--pe-text-primary);
+  background-color: var(--pe-background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
