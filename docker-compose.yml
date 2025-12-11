@@ -1,0 +1,11 @@
+services:
+  api:
+    build: .
+    ports:
+      - "5001:8080"
+    environment:
+      - PORT=8080
+    volumes:
+      - ./aca_calc:/app/aca_calc
+      - ./src/aca_api:/app/src/aca_api
+    command: uvicorn src.aca_api.api:app --host 0.0.0.0 --port 8080 --reload

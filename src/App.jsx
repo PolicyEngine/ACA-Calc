@@ -5,6 +5,7 @@ import CliffComparisonTable from "./components/CliffComparisonTable";
 import ContributionScheduleTable from "./components/ContributionScheduleTable";
 import ContributionScheduleChart from "./components/ContributionScheduleChart";
 import HouseholdExplorer from "./components/HouseholdExplorer";
+import Calculator from "./components/Calculator";
 import "./App.css";
 
 // Import precomputed household data
@@ -249,6 +250,13 @@ function App() {
     </main>
   );
 
+  // Render the calculator page
+  const renderCalculatorPage = () => (
+    <main className="calculator-page">
+      <Calculator />
+    </main>
+  );
+
   return (
     <div className="app">
       <header className="header">
@@ -270,12 +278,19 @@ function App() {
             >
               Explore Households
             </button>
+            <button
+              className={`page-tab ${currentPage === "calculator" ? "active" : ""}`}
+              onClick={() => setCurrentPage("calculator")}
+            >
+              Calculator
+            </button>
           </div>
         </div>
       </header>
 
       {currentPage === "main" && renderMainPage()}
       {currentPage === "households" && renderHouseholdsPage()}
+      {currentPage === "calculator" && renderCalculatorPage()}
 
       <footer className="footer">
         <p>
