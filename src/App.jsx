@@ -8,7 +8,7 @@ import HouseholdExplorer from "./components/HouseholdExplorer";
 import "./App.css";
 
 // Import precomputed household data
-import cliffDemoData from "../data/households/cliff_demo.json";
+import cliffDemoData from "./data/households/cliff_demo.json";
 
 // Scroll sections content - background first, then household example, then health programs, then reforms
 const SECTIONS = [

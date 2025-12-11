@@ -4,7 +4,7 @@ import HealthBenefitsChart from "./HealthBenefitsChart";
 import "./HouseholdExplorer.css";
 
 // Import precomputed household data
-import householdData from "../../data/households/all_households.json";
+import householdData from "../data/households/all_households.json";
 
 // Household definitions with detailed narratives and chart states
 const HOUSEHOLDS = {
