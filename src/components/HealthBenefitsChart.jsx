@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import {
-  LineChart,
+  ComposedChart,
   Line,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -12,12 +13,12 @@ import {
 } from "recharts";
 import "./HealthBenefitsChart.css";
 
-// Chart colors
+// Chart colors - PolicyEngine appv2 design tokens
 const COLORS = {
-  medicaid: "#319795",
-  chip: "#14b8a6",
-  baseline: "#9ca3af",
-  ira: "#2563eb",
+  medicaid: "#319795",  // primary teal
+  chip: "#38B2AC",      // teal-400
+  baseline: "#9CA3AF",  // gray-400
+  ira: "#0284C7",       // blue-600 from appv2
   bipartisan: "#7c3aed",
 };
 
@@ -27,7 +28,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo }) {
     if (!data) return [];
 
     const income = data.income || [];
-    const fpl = data.fpl || 31200; // Default FPL for family of 4
+    const fpl = data.fpl || 31200;
 
     // Filter to reasonable income range
     const maxIncome = chartState === "cliff_focus" ? fpl * 5 : fpl * 8;
@@ -62,6 +63,8 @@ function HealthBenefitsChart({ data, chartState, householdInfo }) {
         return ["ptcBaseline"];
       case "ira_reform":
         return ["ptcBaseline", "ptcIRA"];
+      case "ira_impact":
+        return ["ptcIRA", "ptcBaseline", "iraGain"];
       case "both_reforms":
         return ["ptcBaseline", "ptcIRA", "ptc700FPL"];
       case "impact":
@@ -73,6 +76,17 @@ function HealthBenefitsChart({ data, chartState, householdInfo }) {
 
   const visibleLines = getVisibleLines();
   const fpl = data?.fpl || 31200;
+
+  // Find where baseline PTC actually drops to zero (the cliff)
+  const baselineCliffIncome = useMemo(() => {
+    if (!data?.ptc_baseline || !data?.income) return fpl * 4;
+    for (let i = 1; i < data.ptc_baseline.length; i++) {
+      if (data.ptc_baseline[i] === 0 && data.ptc_baseline[i - 1] > 0) {
+        return data.income[i];
+      }
+    }
+    return fpl * 4; // fallback
+  }, [data, fpl]);
 
   // For impact view, calculate deltas
   const impactData = useMemo(() => {
@@ -128,6 +142,18 @@ function HealthBenefitsChart({ data, chartState, householdInfo }) {
         return "Change in Annual Benefits from Reform";
       case "cliff_focus":
         return "The 400% FPL Subsidy Cliff";
+      case "medicaid_focus":
+        return "Medicaid Coverage by Income";
+      case "chip_focus":
+        return "CHIP Coverage by Income";
+      case "ira_reform":
+        return "Baseline vs IRA Extension";
+      case "ira_impact":
+        return "IRA Extension vs Current Law";
+      case "both_reforms":
+        return "Comparing All Policy Options";
+      case "all_programs":
+        return "Health Coverage Programs by Income";
       default:
         return "Annual Health Benefits by Income (2026)";
     }
@@ -152,7 +178,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo }) {
     <div className="chart-container">
       <h3 className="chart-title">{getChartTitle()}</h3>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart
+        <ComposedChart
           data={displayData}
           margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
         >
@@ -197,10 +223,17 @@ function HealthBenefitsChart({ data, chartState, householdInfo }) {
             label={{ value: "100%", position: "top", fill: "#9ca3af", fontSize: 10 }}
           />
           <ReferenceLine
-            x={fpl * 4}
-            stroke="#d1d5db"
-            strokeDasharray="5 5"
-            label={{ value: "400%", position: "top", fill: "#9ca3af", fontSize: 10 }}
+            x={baselineCliffIncome}
+            stroke={chartState === "cliff_focus" ? "#ef4444" : "#d1d5db"}
+            strokeDasharray={chartState === "cliff_focus" ? "8 4" : "5 5"}
+            strokeWidth={chartState === "cliff_focus" ? 2 : 1}
+            label={{
+              value: chartState === "cliff_focus" ? "400% FPL Cliff" : "400%",
+              position: "top",
+              fill: chartState === "cliff_focus" ? "#ef4444" : "#9ca3af",
+              fontSize: chartState === "cliff_focus" ? 12 : 10,
+              fontWeight: chartState === "cliff_focus" ? 600 : 400,
+            }}
           />
           {chartState === "both_reforms" && (
             <ReferenceLine
@@ -209,6 +242,32 @@ function HealthBenefitsChart({ data, chartState, householdInfo }) {
               strokeDasharray="5 5"
               label={{ value: "700%", position: "top", fill: "#9ca3af", fontSize: 10 }}
             />
+          )}
+
+          {/* IRA Impact Area - shaded region showing benefit of IRA extension over baseline */}
+          {chartState === "ira_impact" && (
+            <>
+              {/* First draw IRA as filled area */}
+              <Area
+                type="monotone"
+                dataKey="ptcIRA"
+                name="IRA Extension"
+                fill={COLORS.ira}
+                fillOpacity={0.3}
+                stroke={COLORS.ira}
+                strokeWidth={2}
+              />
+              {/* Then draw baseline on top to "cut out" the overlap, showing only the difference */}
+              <Area
+                type="monotone"
+                dataKey="ptcBaseline"
+                name="Baseline (Current Law)"
+                fill="#ffffff"
+                fillOpacity={1}
+                stroke={COLORS.baseline}
+                strokeWidth={2}
+              />
+            </>
           )}
 
           {/* Medicaid */}
@@ -237,8 +296,8 @@ function HealthBenefitsChart({ data, chartState, householdInfo }) {
             />
           )}
 
-          {/* PTC Baseline */}
-          {visibleLines.includes("ptcBaseline") && (
+          {/* PTC Baseline - skip if ira_impact since Area handles it */}
+          {visibleLines.includes("ptcBaseline") && chartState !== "ira_impact" && (
             <Line
               type="monotone"
               dataKey="ptcBaseline"
@@ -249,8 +308,8 @@ function HealthBenefitsChart({ data, chartState, householdInfo }) {
             />
           )}
 
-          {/* PTC IRA Reform */}
-          {visibleLines.includes("ptcIRA") && (
+          {/* PTC IRA Reform - skip if ira_impact since Area handles it */}
+          {visibleLines.includes("ptcIRA") && chartState !== "ira_impact" && (
             <Line
               type="monotone"
               dataKey="ptcIRA"
@@ -297,7 +356,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo }) {
               dot={false}
             />
           )}
-        </LineChart>
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );

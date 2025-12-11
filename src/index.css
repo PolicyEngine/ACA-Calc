@@ -1,42 +1,54 @@
-/* PolicyEngine Design System */
+/* PolicyEngine Design System - appv2 colors */
 :root {
-  /* Primary Colors - Teal */
-  --pe-teal-50: #f0fdfa;
-  --pe-teal-100: #ccfbf1;
-  --pe-teal-200: #99f6e4;
-  --pe-teal-300: #5eead4;
-  --pe-teal-400: #2dd4bf;
+  /* Primary Colors - Teal (from PolicyEngine appv2 designTokens) */
+  --pe-teal-50: #E6FFFA;
+  --pe-teal-100: #B2F5EA;
+  --pe-teal-200: #81E6D9;
+  --pe-teal-300: #4FD1C5;
+  --pe-teal-400: #38B2AC;
   --pe-teal-500: #319795;
-  --pe-teal-600: #0d9488;
-  --pe-teal-700: #0f766e;
-  --pe-teal-800: #115e59;
-  --pe-teal-900: #134e4a;
+  --pe-teal-600: #2C7A7B;
+  --pe-teal-700: #285E61;
+  --pe-teal-800: #234E52;
+  --pe-teal-900: #1D4044;
 
-  /* Gray Palette */
-  --pe-gray-50: #f9fafb;
-  --pe-gray-100: #f3f4f6;
-  --pe-gray-200: #e5e7eb;
-  --pe-gray-300: #d1d5db;
-  --pe-gray-400: #9ca3af;
-  --pe-gray-500: #6b7280;
-  --pe-gray-600: #4b5563;
-  --pe-gray-700: #374151;
-  --pe-gray-800: #1f2937;
-  --pe-gray-900: #111827;
+  /* Gray Palette (from PolicyEngine appv2 designTokens) */
+  --pe-gray-50: #F9FAFB;
+  --pe-gray-100: #F2F4F7;
+  --pe-gray-200: #E2E8F0;
+  --pe-gray-300: #D1D5DB;
+  --pe-gray-400: #9CA3AF;
+  --pe-gray-500: #6B7280;
+  --pe-gray-600: #4B5563;
+  --pe-gray-700: #344054;
+  --pe-gray-800: #1F2937;
+  --pe-gray-900: #101828;
 
-  /* Chart Colors */
-  --pe-baseline: #9ca3af;
-  --pe-ira-reform: #2563eb;
+  /* Blue Colors (from PolicyEngine appv2 designTokens) */
+  --pe-blue-50: #F0F9FF;
+  --pe-blue-100: #E0F2FE;
+  --pe-blue-200: #BAE6FD;
+  --pe-blue-300: #7DD3FC;
+  --pe-blue-400: #38BDF8;
+  --pe-blue-500: #0EA5E9;
+  --pe-blue-600: #0284C7;
+  --pe-blue-700: #026AA2;
+  --pe-blue-800: #075985;
+  --pe-blue-900: #0C4A6E;
+
+  /* Chart Colors - updated to match appv2 */
+  --pe-baseline: #9CA3AF;
+  --pe-ira-reform: #0284C7;
   --pe-bipartisan-reform: #7c3aed;
   --pe-medicaid: #319795;
-  --pe-chip: #14b8a6;
+  --pe-chip: #38B2AC;
 
   /* Semantic Colors */
-  --pe-text-primary: var(--pe-gray-800);
-  --pe-text-secondary: var(--pe-gray-600);
-  --pe-text-muted: var(--pe-gray-500);
+  --pe-text-primary: #000000;
+  --pe-text-secondary: #5A5A5A;
+  --pe-text-muted: var(--pe-gray-400);
   --pe-background: var(--pe-gray-50);
-  --pe-surface: #ffffff;
+  --pe-surface: #FFFFFF;
   --pe-border: var(--pe-gray-200);
   --pe-border-light: var(--pe-gray-100);
   --pe-accent: var(--pe-teal-500);
@@ -63,12 +75,12 @@
   --pe-radius-lg: 12px;
   --pe-radius-xl: 16px;
 
-  /* Shadows */
-  --pe-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --pe-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --pe-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
-    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  /* Shadows (from PolicyEngine appv2 designTokens) */
+  --pe-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --pe-shadow-md: 0 4px 6px -1px rgba(16, 24, 40, 0.1),
+    0 2px 4px -1px rgba(16, 24, 40, 0.05);
+  --pe-shadow-lg: 0 10px 15px -3px rgba(16, 24, 40, 0.1),
+    0 4px 6px -2px rgba(16, 24, 40, 0.05);
 
   /* Transitions */
   --pe-transition-fast: 150ms ease;

@@ -76,9 +76,10 @@ const generateContributionData = () => {
 
 const data = generateContributionData();
 
+// Chart colors - PolicyEngine appv2 design tokens
 const COLORS = {
-  baseline: "#9ca3af", // gray
-  ira: "#2563eb",      // blue
+  baseline: "#9CA3AF", // gray-400
+  ira: "#0284C7",      // blue-600 from appv2
   bill700: "#7c3aed",  // purple
 };
 

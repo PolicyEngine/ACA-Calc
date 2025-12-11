@@ -1,0 +1,215 @@
+/* Household Explorer - Tabbed interface with scrolly content */
+
+.household-explorer {
+  width: 100%;
+}
+
+/* Tabs */
+.household-tabs {
+  display: flex;
+  gap: var(--pe-space-sm);
+  padding: var(--pe-space-md) 0;
+  border-bottom: 2px solid var(--pe-border);
+  margin-bottom: var(--pe-space-lg);
+  overflow-x: auto;
+}
+
+.household-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: var(--pe-space-md) var(--pe-space-lg);
+  background: var(--pe-surface);
+  border: 2px solid var(--pe-border);
+  border-radius: var(--pe-radius-lg);
+  cursor: pointer;
+  transition: all var(--pe-transition-fast);
+  min-width: 160px;
+  text-align: left;
+}
+
+.household-tab:hover {
+  border-color: var(--pe-accent);
+  background: var(--pe-teal-50);
+}
+
+.household-tab.active {
+  border-color: var(--pe-accent);
+  background: var(--pe-teal-50);
+  box-shadow: 0 0 0 3px rgba(49, 151, 149, 0.15);
+}
+
+.tab-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--pe-text-primary);
+  margin-bottom: 2px;
+}
+
+.tab-location {
+  font-size: 0.75rem;
+  color: var(--pe-text-secondary);
+}
+
+.household-tab.active .tab-name {
+  color: var(--pe-accent-dark);
+}
+
+/* Info bar */
+.household-info-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--pe-space-md);
+  padding: var(--pe-space-md);
+  background: var(--pe-gray-50);
+  border-radius: var(--pe-radius-md);
+  margin-bottom: var(--pe-space-lg);
+  flex-wrap: wrap;
+}
+
+.household-description {
+  font-size: 0.9375rem;
+  color: var(--pe-text-secondary);
+}
+
+.household-info-bar .expansion-badge {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.household-info-bar .expansion-badge.expansion {
+  background: var(--pe-teal-100);
+  color: var(--pe-teal-700);
+}
+
+.household-info-bar .expansion-badge.non-expansion {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* Scrollytelling container within household */
+.household-scrolly-container {
+  display: grid;
+  grid-template-columns: 55% 45%;
+  gap: var(--pe-space-xl);
+}
+
+.household-chart-column {
+  position: relative;
+}
+
+.household-chart-sticky {
+  position: sticky;
+  top: 80px;
+  height: calc(100vh - 200px);
+  min-height: 400px;
+  background: var(--pe-surface);
+  border-radius: var(--pe-radius-lg);
+  box-shadow: var(--pe-shadow-lg);
+  padding: var(--pe-space-lg);
+  display: flex;
+  flex-direction: column;
+}
+
+.household-text-column {
+  padding-bottom: 30vh;
+}
+
+/* Scroll sections within household */
+.household-scroll-section {
+  min-height: 50vh;
+  padding: var(--pe-space-xl);
+  margin-bottom: var(--pe-space-xl);
+  background: var(--pe-surface);
+  border-radius: var(--pe-radius-lg);
+  border: 2px solid transparent;
+  box-shadow: var(--pe-shadow-sm);
+  transition: all var(--pe-transition-base);
+  opacity: 0.6;
+}
+
+.household-scroll-section.active {
+  opacity: 1;
+  border-color: var(--pe-accent);
+  box-shadow: var(--pe-shadow-md), 0 0 0 4px rgba(49, 151, 149, 0.1);
+}
+
+.household-section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--pe-accent-dark);
+  margin-bottom: var(--pe-space-md);
+}
+
+.household-section-content {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--pe-text-primary);
+}
+
+.household-section-content p {
+  margin-bottom: var(--pe-space-md);
+}
+
+.household-section-content p:last-child {
+  margin-bottom: 0;
+}
+
+.household-section-content strong {
+  color: var(--pe-gray-900);
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .household-scrolly-container {
+    grid-template-columns: 1fr;
+  }
+
+  .household-chart-sticky {
+    position: relative;
+    top: 0;
+    height: 350px;
+    min-height: 350px;
+    margin-bottom: var(--pe-space-xl);
+  }
+
+  .household-text-column {
+    padding-bottom: var(--pe-space-2xl);
+  }
+
+  .household-tabs {
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .household-tab {
+    min-width: 140px;
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .household-tab {
+    min-width: 120px;
+    padding: var(--pe-space-sm) var(--pe-space-md);
+  }
+
+  .tab-name {
+    font-size: 0.875rem;
+  }
+
+  .household-scroll-section {
+    min-height: 40vh;
+    padding: var(--pe-space-lg);
+  }
+
+  .household-chart-sticky {
+    height: 300px;
+    min-height: 300px;
+  }
+}

@@ -20,8 +20,45 @@
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--pe-accent-dark);
-  margin-bottom: var(--pe-space-lg);
+  margin-bottom: var(--pe-space-md);
   letter-spacing: -0.01em;
+}
+
+/* Household badges */
+.household-badge-row {
+  display: flex;
+  align-items: center;
+  gap: var(--pe-space-sm);
+  margin-bottom: var(--pe-space-lg);
+  flex-wrap: wrap;
+}
+
+.location-badge {
+  padding: 4px 12px;
+  background: var(--pe-gray-100);
+  color: var(--pe-gray-700);
+  border-radius: 20px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.expansion-badge {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.expansion-badge.expansion {
+  background: var(--pe-teal-100);
+  color: var(--pe-teal-700);
+}
+
+.expansion-badge.non-expansion {
+  background: #fef3c7;
+  color: #92400e;
 }
 
 .section-content {
@@ -43,31 +80,39 @@
   font-weight: 600;
 }
 
+.explore-button,
 .calculator-button {
   display: inline-flex;
   align-items: center;
   gap: var(--pe-space-sm);
   margin-top: var(--pe-space-xl);
+  margin-right: var(--pe-space-md);
   padding: 12px 24px;
   background: var(--pe-accent);
   color: white;
+  font-family: var(--pe-font-family);
   font-size: 1rem;
   font-weight: 600;
   text-decoration: none;
+  border: none;
   border-radius: var(--pe-radius-md);
+  cursor: pointer;
   transition: all var(--pe-transition-fast);
 }
 
+.explore-button:hover,
 .calculator-button:hover {
   background: var(--pe-accent-dark);
   transform: translateY(-1px);
   box-shadow: var(--pe-shadow-md);
 }
 
+.explore-button svg,
 .calculator-button svg {
   transition: transform var(--pe-transition-fast);
 }
 
+.explore-button:hover svg,
 .calculator-button:hover svg {
   transform: translateX(4px);
 }

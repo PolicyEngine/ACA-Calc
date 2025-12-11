@@ -1,51 +1,14 @@
-import { useState, useEffect, useRef } from "react";
-import { useInView } from "react-intersection-observer";
-import HouseholdSelector from "./components/HouseholdSelector";
+import { useState, useRef } from "react";
 import HealthBenefitsChart from "./components/HealthBenefitsChart";
 import ScrollSection from "./components/ScrollSection";
 import CliffComparisonTable from "./components/CliffComparisonTable";
 import ContributionScheduleTable from "./components/ContributionScheduleTable";
 import ContributionScheduleChart from "./components/ContributionScheduleChart";
+import HouseholdExplorer from "./components/HouseholdExplorer";
 import "./App.css";
 
-// Calculator URL - uses environment variable or defaults to localhost for development
-const CALCULATOR_URL = import.meta.env.VITE_CALCULATOR_URL || "http://localhost:8501";
-
 // Import precomputed household data
-import householdData from "../data/households/all_households.json";
 import cliffDemoData from "../data/households/cliff_demo.json";
-
-// Preset household definitions
-const HOUSEHOLDS = {
-  florida_family: {
-    name: "Florida Family",
-    shortName: "Florida",
-    description: "Two parents (40) with two kids (10, 8) in Florida",
-    location: "Hillsborough County, FL",
-    isExpansion: false,
-  },
-  california_couple: {
-    name: "California Couple",
-    shortName: "California",
-    description: "Older couple (64, 62) in California",
-    location: "San Benito County, CA",
-    isExpansion: true,
-  },
-  texas_single: {
-    name: "Texas Single",
-    shortName: "Texas",
-    description: "Single adult (35) in Texas",
-    location: "Harris County, TX",
-    isExpansion: false,
-  },
-  ny_family: {
-    name: "NY Family",
-    shortName: "New York",
-    description: "Young parents (30, 28) with toddler (2) in NYC",
-    location: "New York County, NY",
-    isExpansion: true,
-  },
-};
 
 // Scroll sections content - background first, then household example, then health programs, then reforms
 const SECTIONS = [
@@ -125,13 +88,13 @@ Net premium rises from $720/month to **$1,003/month**—an increase of **$283/mo
   {
     id: "reform_options",
     title: "Policy Options",
-    content: `Two proposals would preserve subsidies for this household:
+    content: `Two proposals under consideration:
 
-**IRA Extension:** Maintain the current 8.5% cap structure
-- Tax credit: **$265/month** → Net premium: **$738/month** (−26% vs baseline)
+**IRA Extension:** Maintains the current 8.5% cap structure
+- Tax credit: **$265/month** → Net premium: **$738/month**
 
-**700% FPL Proposal:** Extend eligibility to 700% FPL with 9.25% cap
-- Tax credit: **$223/month** → Net premium: **$780/month** (−22% vs baseline)`,
+**700% FPL Proposal:** Extends eligibility to 700% FPL with 9.25% cap
+- Tax credit: **$223/month** → Net premium: **$780/month**`,
     useCliffData: true,
     showCliffTable: true,
     showSlcsp: false,
@@ -163,66 +126,55 @@ For our 45-year-old, this means Medicaid covers incomes up to about $22,000. Abo
   {
     id: "reforms_chart",
     title: "Premium Tax Credits Under Different Policies",
-    content: `The chart shows premium tax credits across income levels under:
+    content: `The chart shows premium tax credits across income levels under three scenarios:
 
 - **Gray line:** Baseline (post-IRA expiration)
 - **Blue line:** IRA extension
 - **Purple line:** 700% FPL proposal
 
-Notice how the baseline drops to zero at 400% FPL, while both reform options continue providing credits at higher incomes.`,
+The baseline drops to zero at 400% FPL. Both reform options continue providing credits at higher incomes.`,
     useCliffData: true,
     chartState: "both_reforms",
   },
-
-  // PART 5: Explore other households
   {
-    id: "explore_households",
-    title: "Explore Other Households",
-    content: `The impact varies significantly by household type, location, and income level.
+    id: "ira_impact_chart",
+    title: "IRA Extension: The Difference",
+    content: `The **blue shaded area** represents the additional premium tax credits available under the IRA extension compared to baseline.
 
-Use the selector above to explore how different households are affected by ACA policy changes.`,
-    useCliffData: false,
-    chartState: "both_reforms",
-    showHouseholdExplorer: true,
+For this Pennsylvania household:
+- Below 400% FPL: The IRA provides **lower required contributions**
+- Above 400% FPL: The IRA provides **full subsidy access** where baseline provides none
+
+The size of the shaded area shows the dollar value of the difference at each income level.`,
+    useCliffData: true,
+    chartState: "ira_impact",
   },
 
-  // PART 6: Calculator
+  // PART 5: Household case studies - links to explorer
   {
-    id: "calculator",
-    title: "Model Your Own Household",
-    content: `Want to see results for your specific situation?
+    id: "explore_households",
+    title: "Explore Different Households",
+    content: `The impact of ACA policy changes varies significantly by household type, location, and income level.
 
-**Use our full calculator** to enter your own age, location, family size, and income.`,
-    useCliffData: false,
+Click below to explore how four different households are affected—with details on Medicaid expansion, CHIP eligibility, and the subsidy cliff for each.`,
+    useCliffData: true,
     chartState: "both_reforms",
-    showHouseholdExplorer: true,
-    showCalculatorLink: true,
+    showHouseholdExplorerLink: true,
   },
 ];
 
 function App() {
-  const [selectedHousehold, setSelectedHousehold] = useState("florida_family");
   const [activeSection, setActiveSection] = useState(0);
+  const [currentPage, setCurrentPage] = useState("main"); // "main", "households", or "calculator"
   const chartRef = useRef(null);
-
-  // Get data for selected household
-  const householdChartData = householdData[selectedHousehold];
-  const householdInfo = HOUSEHOLDS[selectedHousehold];
 
   // Get current section
   const currentSection = SECTIONS[activeSection] || SECTIONS[0];
-
-  // Use cliff demo data when section specifies it
-  const useCliffData = currentSection.useCliffData;
-  const chartData = useCliffData ? cliffDemoData : householdChartData;
 
   // Handle section visibility changes
   const handleSectionInView = (index) => {
     setActiveSection(index);
   };
-
-  // Show household selector when section enables it
-  const showHouseholdSelector = currentSection.showHouseholdExplorer;
 
   // Determine what to show in the chart area
   const renderChartArea = () => {
@@ -251,40 +203,16 @@ function App() {
     }
     return (
       <HealthBenefitsChart
-        data={chartData}
+        data={cliffDemoData}
         chartState={currentSection.chartState || "both_reforms"}
-        householdInfo={useCliffData ? cliffDemoData.household_info : householdInfo}
+        householdInfo={cliffDemoData.household_info}
       />
     );
   };
 
-  return (
-    <div className="app">
-      <header className="header">
-        <div className="header-content">
-          <h1>ACA Premium Tax Credits: 2025 vs 2026</h1>
-          <p className="subtitle">
-            Modeling how the scheduled expiration of IRA enhancements affects health insurance costs
-          </p>
-        </div>
-      </header>
-
-      {showHouseholdSelector && (
-        <div className="household-selector-container">
-          <HouseholdSelector
-            households={HOUSEHOLDS}
-            selected={selectedHousehold}
-            onSelect={setSelectedHousehold}
-          />
-          <div className="household-info">
-            <span className="location">{householdInfo.location}</span>
-            <span className={`expansion-badge ${householdInfo.isExpansion ? "expansion" : "non-expansion"}`}>
-              {householdInfo.isExpansion ? "Medicaid Expansion" : "Non-Expansion State"}
-            </span>
-          </div>
-        </div>
-      )}
-
+  // Render the main scrolly page
+  const renderMainPage = () => (
+    <>
       <main className="scrollytelling-container">
         <div className="chart-column" ref={chartRef}>
           <div className="chart-sticky">
@@ -300,16 +228,58 @@ function App() {
               index={index}
               isActive={activeSection === index}
               onInView={handleSectionInView}
+              onExploreHouseholds={() => setCurrentPage("households")}
             />
           ))}
         </div>
       </main>
+    </>
+  );
+
+  // Render the households explorer page
+  const renderHouseholdsPage = () => (
+    <main className="households-page">
+      <button
+        className="back-button"
+        onClick={() => setCurrentPage("main")}
+      >
+        ← Back to Overview
+      </button>
+      <HouseholdExplorer />
+    </main>
+  );
+
+  return (
+    <div className="app">
+      <header className="header">
+        <div className="header-content">
+          <h1>ACA Premium Tax Credits: 2025 vs 2026</h1>
+          <p className="subtitle">
+            Modeling how the scheduled expiration of IRA enhancements affects health insurance costs
+          </p>
+          <div className="page-tabs">
+            <button
+              className={`page-tab ${currentPage === "main" ? "active" : ""}`}
+              onClick={() => setCurrentPage("main")}
+            >
+              Overview
+            </button>
+            <button
+              className={`page-tab ${currentPage === "households" ? "active" : ""}`}
+              onClick={() => setCurrentPage("households")}
+            >
+              Explore Households
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {currentPage === "main" && renderMainPage()}
+      {currentPage === "households" && renderHouseholdsPage()}
 
       <footer className="footer">
         <p>
           Built by <a href="https://policyengine.org" target="_blank" rel="noopener noreferrer">PolicyEngine</a>
-          {" | "}
-          <a href={CALCULATOR_URL} target="_blank" rel="noopener noreferrer" className="calc-link">Custom Calculator</a>
         </p>
       </footer>
     </div>

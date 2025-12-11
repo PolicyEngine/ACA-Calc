@@ -36,6 +36,37 @@
   margin: 0;
 }
 
+/* Page tabs in header */
+.page-tabs {
+  display: flex;
+  gap: var(--pe-space-sm);
+  margin-top: var(--pe-space-md);
+}
+
+.page-tab {
+  padding: 8px 20px;
+  border: 2px solid var(--pe-border);
+  border-radius: 24px;
+  background: var(--pe-surface);
+  font-family: var(--pe-font-family);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--pe-text-secondary);
+  cursor: pointer;
+  transition: all var(--pe-transition-fast);
+}
+
+.page-tab:hover {
+  border-color: var(--pe-accent);
+  color: var(--pe-accent);
+}
+
+.page-tab.active {
+  background: var(--pe-accent);
+  border-color: var(--pe-accent);
+  color: white;
+}
+
 /* Household Selector */
 .household-selector-container {
   max-width: 1200px;
@@ -138,6 +169,48 @@
 .calc-link:hover {
   background: var(--pe-accent-dark);
   text-decoration: none !important;
+}
+
+/* Households page */
+.households-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--pe-space-lg);
+}
+
+/* Calculator page */
+.calculator-page {
+  width: 100%;
+  height: calc(100vh - 140px);
+  padding: 0;
+}
+
+.calculator-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pe-space-sm);
+  padding: 8px 16px;
+  margin-bottom: var(--pe-space-lg);
+  background: var(--pe-surface);
+  border: 2px solid var(--pe-border);
+  border-radius: var(--pe-radius-md);
+  font-family: var(--pe-font-family);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--pe-text-secondary);
+  cursor: pointer;
+  transition: all var(--pe-transition-fast);
+}
+
+.back-button:hover {
+  border-color: var(--pe-accent);
+  color: var(--pe-accent);
 }
 
 /* Responsive Design */
