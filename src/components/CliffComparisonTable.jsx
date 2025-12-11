@@ -1,6 +1,6 @@
 import "./CliffComparisonTable.css";
 
-function CliffComparisonTable({ data, showReforms = false, showSlcsp = false }) {
+function CliffComparisonTable({ data, showReforms = false, showSlcsp = false, showBaseline2026 = true }) {
   const { at_650_fpl, household_info } = data;
 
   const formatCurrency = (value) => {
@@ -50,13 +50,15 @@ function CliffComparisonTable({ data, showReforms = false, showSlcsp = false }) 
             <td className="ptc-cell positive">{formatCurrencyMonthly(at_650_fpl.ptc_2025_ira)}</td>
             <td>{formatCurrencyMonthly(netPremium2025)}</td>
           </tr>
-          <tr className="row-baseline">
-            <td>2026</td>
-            <td>Baseline (IRA expires)</td>
-            {showSlcsp && <td>{formatCurrencyMonthly(at_650_fpl.slcsp_2026)}</td>}
-            <td className="ptc-cell zero">$0/mo</td>
-            <td className="premium-increase">{formatCurrencyMonthly(netPremium2026Baseline)}</td>
-          </tr>
+          {showBaseline2026 && (
+            <tr className="row-baseline">
+              <td>2026</td>
+              <td>Baseline (IRA expires)</td>
+              {showSlcsp && <td>{formatCurrencyMonthly(at_650_fpl.slcsp_2026)}</td>}
+              <td className="ptc-cell zero">$0/mo</td>
+              <td className="premium-increase">{formatCurrencyMonthly(netPremium2026Baseline)}</td>
+            </tr>
+          )}
           {showReforms && (
             <>
               <tr className="row-ira">

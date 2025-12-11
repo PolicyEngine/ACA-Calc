@@ -16,7 +16,7 @@ const SECTIONS = [
   // PART 1: Background on how ACA subsidies work
   {
     id: "intro",
-    title: "How the ACA Makes Health Insurance Affordable",
+    title: "How ACA Premium Tax Credits Work",
     content: `The Affordable Care Act (ACA) created **premium tax credits** to help Americans afford health insurance purchased through the marketplace.
 
 These credits work by capping how much of your income you're required to pay for a benchmark health plan—the **second-lowest cost silver plan (SLCSP)** in your area.
@@ -67,6 +67,7 @@ In 2025, under the IRA enhancements:
     useCliffData: true,
     showCliffTable: true,
     showSlcsp: true,
+    showBaseline2026: false,
     showReforms: false,
   },
   {
@@ -81,7 +82,8 @@ In 2025, under the IRA enhancements:
 Net premium rises from $720/month to **$1,003/month**—an increase of **$283/month (+39%)**.`,
     useCliffData: true,
     showCliffTable: true,
-    showSlcsp: false,
+    showSlcsp: true,
+    showBaseline2026: true,
     showReforms: false,
   },
 
@@ -199,6 +201,7 @@ function App() {
           data={cliffDemoData}
           showReforms={currentSection.showReforms}
           showSlcsp={currentSection.showSlcsp}
+          showBaseline2026={currentSection.showBaseline2026 !== false}
         />
       );
     }
@@ -240,12 +243,6 @@ function App() {
   // Render the households explorer page
   const renderHouseholdsPage = () => (
     <main className="households-page">
-      <button
-        className="back-button"
-        onClick={() => setCurrentPage("main")}
-      >
-        ← Back to Overview
-      </button>
       <HouseholdExplorer />
     </main>
   );

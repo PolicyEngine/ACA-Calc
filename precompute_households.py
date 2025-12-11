@@ -40,16 +40,16 @@ PRESET_HOUSEHOLDS = {
         "is_expansion_state": True,
         "key_insight": "This older couple faces high premiums due to age-based rating, making subsidies especially valuable.",
     },
-    "texas_single": {
-        "name": "Single Adult in Texas",
-        "description": "A single 35-year-old in Harris County, Texas",
-        "age_head": 35,
-        "age_spouse": None,
+    "texas_couple": {
+        "name": "Young Texas Couple",
+        "description": "A married couple (ages 28 and 27) in Harris County, Texas",
+        "age_head": 28,
+        "age_spouse": 27,
         "dependent_ages": [],
         "state": "TX",
         "county": "Harris County",
         "is_expansion_state": False,
-        "key_insight": "Texas didn't expand Medicaid. Single adults below 100% FPL fall into the coverage gap with no affordable options.",
+        "key_insight": "Texas didn't expand Medicaid. Adults below 100% FPL fall into the coverage gap with no affordable options.",
     },
     "ny_family": {
         "name": "Young Family in New York",

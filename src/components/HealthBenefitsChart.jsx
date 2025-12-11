@@ -196,7 +196,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo }) {
             }}
           />
           <YAxis
-            tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+            tickFormatter={(v) => v === 0 ? "$0" : `$${(v / 1000).toFixed(0)}k`}
             stroke="#6b7280"
             fontSize={12}
             domain={getYDomain()}

@@ -103,14 +103,6 @@ Above the Medicaid threshold, they transition to marketplace coverage with premi
         chartState: "medicaid_focus",
       },
       {
-        id: "ca_no_chip",
-        title: "No CHIP: Childless Household",
-        content: `As a couple **without dependent children**, they are not eligible for CHIP. This program only covers children.
-
-Their coverage pathway is simpler: Medicaid at low incomes, then marketplace plans with PTCs at higher incomes.`,
-        chartState: "all_programs",
-      },
-      {
         id: "ca_cliff",
         title: "The Cliff and Age-Based Rating",
         content: `**Age-based rating** allows insurers to charge older adults up to **3x more** than younger people. This couple's benchmark plan costs significantly more than a younger person's.
@@ -145,20 +137,20 @@ For this couple, 400% FPL is about **$78,000** and 700% FPL is about **$137,000*
       },
     ],
   },
-  texas_single: {
-    name: "Single Adult in Texas",
-    shortName: "Texas Single",
-    description: "Single adult (35)",
+  texas_couple: {
+    name: "Young Texas Couple",
+    shortName: "Texas Couple",
+    description: "Married couple (28, 27)",
     location: "Harris County, TX",
     isExpansion: false,
     hasChildren: false,
     sections: [
       {
         id: "tx_intro",
-        title: "Meet the Texas Single Adult",
-        content: `A 35-year-old single adult in **Harris County, Texas** (Houston area).
+        title: "Meet the Texas Couple",
+        content: `A married couple in their late 20s in **Harris County, Texas** (Houston area): ages 28 and 27.
 
-As a single adult without children in a non-expansion state, this person has the **fewest coverage options** of our example households.`,
+As a childless couple in a non-expansion state, they face unique challenges in accessing affordable coverage.`,
         chartState: "all_programs",
       },
       {
@@ -166,25 +158,17 @@ As a single adult without children in a non-expansion state, this person has the
         title: "Medicaid: The Coverage Gap",
         content: `Texas has **not expanded Medicaid**, creating a significant problem for low-income adults.
 
-Single adults without disabilities typically don't qualify for Texas Medicaid regardless of how low their income is. Yet they also may not qualify for marketplace subsidies below 100% FPL.
+Adults without disabilities or dependent children typically don't qualify for Texas Medicaid regardless of how low their income is. Yet they also may not qualify for marketplace subsidies below 100% FPL.
 
 This is the infamous **"coverage gap"**—too poor for subsidies, not eligible for Medicaid.`,
         chartState: "medicaid_focus",
       },
       {
-        id: "tx_no_chip",
-        title: "No CHIP: Adults Don't Qualify",
-        content: `**CHIP is only for children.** As a single adult without dependents, this person has no CHIP eligibility.
-
-Their only subsidized coverage option is marketplace plans with premium tax credits—assuming their income is between 100% and 400% FPL.`,
-        chartState: "all_programs",
-      },
-      {
         id: "tx_cliff",
-        title: "A Lower Dollar Cliff",
-        content: `For a single adult, 400% FPL is about **$60,000** in 2026.
+        title: "The 400% FPL Cliff",
+        content: `For a couple, 400% FPL is about **$78,000** in 2026.
 
-The cliff occurs at a lower dollar amount for single adults than for families, where 400% FPL represents a higher threshold due to larger household size.`,
+Above this threshold, baseline subsidies drop to zero. The cliff occurs at a higher dollar amount for couples than for single adults due to larger household size.`,
         chartState: "cliff_focus",
       },
       {
@@ -192,7 +176,7 @@ The cliff occurs at a lower dollar amount for single adults than for families, w
         title: "IRA Extension Impact",
         content: `The **blue shaded area** shows the additional subsidies available with the IRA extension:
 
-- Subsidies continue above $60,000
+- Subsidies continue above $78,000
 - **8.5% cap** on required contributions
 - Coverage available below 100% FPL (where baseline provides none in non-expansion states)`,
         chartState: "ira_impact",
@@ -202,9 +186,9 @@ The cliff occurs at a lower dollar amount for single adults than for families, w
         title: "Reform Comparison",
         content: `The chart shows all three scenarios:
 - **IRA Extension** (blue): No income limit, 8.5% cap
-- **700% FPL Proposal** (purple): Extends to ~$112,000, 9.25% cap
+- **700% FPL Proposal** (purple): Extends to ~$137,000, 9.25% cap
 
-For a single adult, 400% FPL is about **$60,000** and 700% FPL is about **$112,000**.`,
+For this couple, 400% FPL is about **$78,000** and 700% FPL is about **$137,000**.`,
         chartState: "both_reforms",
       },
     ],
@@ -275,7 +259,7 @@ For this family of three, 400% FPL is about **$97,000** and 700% FPL is about **
   },
 };
 
-const HOUSEHOLD_KEYS = ["florida_family", "california_couple", "texas_single", "ny_family"];
+const HOUSEHOLD_KEYS = ["florida_family", "california_couple", "texas_couple", "ny_family"];
 
 // Parse markdown-style bold text
 const parseContent = (text) => {

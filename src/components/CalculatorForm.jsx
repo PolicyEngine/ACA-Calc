@@ -70,10 +70,17 @@ function CalculatorForm({ onCalculate, loading }) {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
+    setFormData(prev => {
+      const newData = {
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      };
+      // When married is checked, default spouse age to head's age
+      if (name === "married" && checked) {
+        newData.age_spouse = prev.age_head;
+      }
+      return newData;
+    });
   };
 
   const handleNumberChange = (e) => {
@@ -201,7 +208,7 @@ function CalculatorForm({ onCalculate, loading }) {
       <div className="form-section">
         <h3 className="form-section-title">Location</h3>
 
-        <div className="form-row form-row-inline">
+        <div className="form-row">
           <div className="form-field">
             <label htmlFor="state">State</label>
             <select
@@ -218,7 +225,9 @@ function CalculatorForm({ onCalculate, loading }) {
               ))}
             </select>
           </div>
+        </div>
 
+        <div className="form-row">
           <div className="form-field">
             <label htmlFor="county">County</label>
             <select
