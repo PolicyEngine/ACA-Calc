@@ -85,12 +85,12 @@ function CliffComparisonTable({ data, showReforms = false, showSlcsp = false, sh
           <div className="breakdown-title">Net premium change breakdown (2025 → 2026 baseline)</div>
           <div className="breakdown-items">
             <div className="breakdown-item">
-              <span className="breakdown-label">Premium increase (SLCSP)</span>
-              <span className="breakdown-value">+{formatCurrencyMonthly(slcspIncrease)}</span>
-            </div>
-            <div className="breakdown-item">
               <span className="breakdown-label">Subsidy expiration</span>
               <span className="breakdown-value">+{formatCurrencyMonthly(subsidyLoss)}</span>
+            </div>
+            <div className="breakdown-item">
+              <span className="breakdown-label">Premium increase (SLCSP)</span>
+              <span className="breakdown-value">+{formatCurrencyMonthly(slcspIncrease)}</span>
             </div>
             <div className="breakdown-item total">
               <span className="breakdown-label">Total net premium change</span>
