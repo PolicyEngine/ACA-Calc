@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import HealthBenefitsChart from "./components/HealthBenefitsChart";
 import ScrollSection from "./components/ScrollSection";
 import CliffComparisonTable from "./components/CliffComparisonTable";
@@ -49,9 +49,9 @@ Without congressional action, the subsidy structure will revert to the **origina
 - Required contributions increase
 - Millions of households will see higher premiums or lose subsidies entirely
 
-Notice how the gray baseline line ends at 400% FPL—the "subsidy cliff."`,
+Notice how the baseline contribution schedule now requires **higher payments** and ends at 400% FPL—the "subsidy cliff."`,
     showContributionChart: true,
-    chartPolicies: ["baseline", "ira"],
+    chartPolicies: ["baseline"],
   },
 
   // PART 2: Household example
@@ -96,7 +96,7 @@ Net premium rises from $720/month to **$1,003/month**—an increase of **$283/mo
 **IRA Extension:** Maintains the current 8.5% cap structure
 - Tax credit: **$265/month** → Net premium: **$738/month**
 
-**700% FPL Proposal:** Extends eligibility to 700% FPL with 9.25% cap
+**Bipartisan Health Insurance Affordability Act:** Introduced in the House on December 9, 2025, this bill would extend eligibility to 700% FPL with a 9.25% cap
 - Tax credit: **$223/month** → Net premium: **$780/month**`,
     useCliffData: true,
     showCliffTable: true,
@@ -133,7 +133,7 @@ For our 45-year-old, this means Medicaid covers incomes up to about $22,000. Abo
 
 - **Gray line:** Baseline (post-IRA expiration)
 - **Blue line:** IRA extension
-- **Purple line:** 700% FPL proposal
+- **Purple line:** Bipartisan Health Insurance Affordability Act
 
 The baseline drops to zero at 400% FPL. Both reform options continue providing credits at higher incomes.`,
     useCliffData: true,
@@ -170,6 +170,11 @@ function App() {
   const [activeSection, setActiveSection] = useState(0);
   const [currentPage, setCurrentPage] = useState("main"); // "main", "households", or "calculator"
   const chartRef = useRef(null);
+
+  // Scroll to top when page changes
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [currentPage]);
 
   // Get current section
   const currentSection = SECTIONS[activeSection] || SECTIONS[0];

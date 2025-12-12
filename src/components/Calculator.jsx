@@ -187,7 +187,7 @@ function Calculator() {
             <div className="calculator-loading">
               <div className="loading-spinner"></div>
               <p>Calculating premium tax credits...</p>
-              <p className="loading-note">This may take 10-30 seconds</p>
+              <p className="loading-note">This may take up to a minute</p>
             </div>
           )}
 

@@ -47,7 +47,20 @@ function CalculatorResults({ data }) {
   // Calculate values at user's income
   const userResults = useMemo(() => {
     const income = parseFloat(userIncome) || 0;
-    if (income <= 0 || !data) return null;
+    if (!data) return null;
+
+    // At 0 income, show $0 PTC values (user would be on Medicaid)
+    if (income <= 0) {
+      return {
+        income: 0,
+        baseline: 0,
+        ira: 0,
+        fpl700: 0,
+        iraGain: 0,
+        fpl700Gain: 0,
+        fplPct: 0,
+      };
+    }
 
     const baseline = interpolatePTC(income, data.income, data.ptc_baseline);
     const ira = interpolatePTC(income, data.income, data.ptc_ira);

@@ -88,17 +88,17 @@ function HealthBenefitsChart({ data, chartState, householdInfo }) {
     return fpl * 4; // fallback
   }, [data, fpl]);
 
-  // For impact view, calculate deltas
+  // For impact view and ira_impact, calculate deltas
   const impactData = useMemo(() => {
-    if (chartState !== "impact") return chartData;
+    if (chartState !== "impact" && chartState !== "ira_impact") return chartData;
     return chartData.map((d) => ({
       ...d,
-      deltaIRA: d.ptcIRA - d.ptcBaseline,
+      deltaIRA: Math.max(0, d.ptcIRA - d.ptcBaseline),
       delta700FPL: d.ptc700FPL - d.ptcBaseline,
     }));
   }, [chartData, chartState]);
 
-  const displayData = chartState === "impact" ? impactData : chartData;
+  const displayData = (chartState === "impact" || chartState === "ira_impact") ? impactData : chartData;
 
   // Format currency for tooltip
   const formatCurrency = (value) => {
@@ -180,7 +180,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo }) {
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart
           data={displayData}
-          margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+          margin={{ top: 20, right: 30, left: 45, bottom: 60 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis
@@ -244,28 +244,30 @@ function HealthBenefitsChart({ data, chartState, householdInfo }) {
             />
           )}
 
-          {/* IRA Impact Area - shaded region showing benefit of IRA extension over baseline */}
+          {/* IRA Impact Area - stacked to show baseline + gain from IRA */}
           {chartState === "ira_impact" && (
             <>
-              {/* First draw IRA as filled area */}
-              <Area
-                type="monotone"
-                dataKey="ptcIRA"
-                name="IRA Extension"
-                fill={COLORS.ira}
-                fillOpacity={0.3}
-                stroke={COLORS.ira}
-                strokeWidth={2}
-              />
-              {/* Then draw baseline on top to "cut out" the overlap, showing only the difference */}
+              {/* Baseline area in gray */}
               <Area
                 type="monotone"
                 dataKey="ptcBaseline"
                 name="Baseline (Current Law)"
-                fill="#ffffff"
-                fillOpacity={1}
+                fill={COLORS.baseline}
+                fillOpacity={0.3}
                 stroke={COLORS.baseline}
                 strokeWidth={2}
+                stackId="ira_stack"
+              />
+              {/* IRA gain stacked on top in blue */}
+              <Area
+                type="monotone"
+                dataKey="deltaIRA"
+                name="Additional from IRA"
+                fill={COLORS.ira}
+                fillOpacity={0.4}
+                stroke={COLORS.ira}
+                strokeWidth={2}
+                stackId="ira_stack"
               />
             </>
           )}

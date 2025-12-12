@@ -47,7 +47,7 @@ In Florida, children can qualify for CHIP at higher income levels than their par
         title: "The 400% FPL Cliff",
         content: `The **gray baseline line** shows premium tax credits under the original ACA rules (returning in 2026). Notice how it drops to **zero at 400% FPL**—that's the "subsidy cliff."
 
-For this family of four, 400% FPL is about **$124,800**. Above that income, they'd lose all subsidies under baseline 2026 rules.
+For this family of four, 400% FPL is about **$132,000**. Above that income, they'd lose all subsidies under baseline 2026 rules.
 
 With children, their FPL threshold is higher than a single adult's, giving them more room before hitting the cliff.`,
         chartState: "cliff_focus",
@@ -71,7 +71,7 @@ Key differences from baseline:
 - **Blue:** IRA Extension
 - **Purple:** 700% FPL Proposal
 
-For this family of four, 400% FPL is about **$124,800** and 700% FPL is about **$218,000**.`,
+For this family of four, 400% FPL is about **$132,000** and 700% FPL is about **$231,000**.`,
         chartState: "both_reforms",
       },
     ],
@@ -107,7 +107,7 @@ Above the Medicaid threshold, they transition to marketplace coverage with premi
         title: "The Cliff and Age-Based Rating",
         content: `**Age-based rating** allows insurers to charge older adults up to **3x more** than younger people. This couple's benchmark plan costs significantly more than a younger person's.
 
-At 400% FPL (~$78,000 for a couple), losing subsidies means paying the full, age-rated premium.
+At 400% FPL (~$87,000 for a couple), losing subsidies means paying the full, age-rated premium.
 
 The cliff's dollar impact is larger for older adults due to their higher baseline premiums.`,
         chartState: "cliff_focus",
@@ -130,9 +130,9 @@ The shaded area is larger for older adults due to their higher premiums.`,
         title: "Reform Comparison",
         content: `The chart shows all three scenarios:
 - **IRA Extension** (blue): 8.5% cap, no income limit
-- **700% FPL Proposal** (purple): Extends to ~$137,000, 9.25% cap
+- **700% FPL Proposal** (purple): Extends to ~$152,000, 9.25% cap
 
-For this couple, 400% FPL is about **$78,000** and 700% FPL is about **$137,000**.`,
+For this couple, 400% FPL is about **$87,000** and 700% FPL is about **$152,000**.`,
         chartState: "both_reforms",
       },
     ],
@@ -166,7 +166,7 @@ This is the infamous **"coverage gap"**—too poor for subsidies, not eligible f
       {
         id: "tx_cliff",
         title: "The 400% FPL Cliff",
-        content: `For a couple, 400% FPL is about **$78,000** in 2026.
+        content: `For a couple, 400% FPL is about **$87,000** in 2026.
 
 Above this threshold, baseline subsidies drop to zero. The cliff occurs at a higher dollar amount for couples than for single adults due to larger household size.`,
         chartState: "cliff_focus",
@@ -176,7 +176,7 @@ Above this threshold, baseline subsidies drop to zero. The cliff occurs at a hig
         title: "IRA Extension Impact",
         content: `The **blue shaded area** shows the additional subsidies available with the IRA extension:
 
-- Subsidies continue above $78,000
+- Subsidies continue above $87,000
 - **8.5% cap** on required contributions
 - Coverage available below 100% FPL (where baseline provides none in non-expansion states)`,
         chartState: "ira_impact",
@@ -186,9 +186,9 @@ Above this threshold, baseline subsidies drop to zero. The cliff occurs at a hig
         title: "Reform Comparison",
         content: `The chart shows all three scenarios:
 - **IRA Extension** (blue): No income limit, 8.5% cap
-- **700% FPL Proposal** (purple): Extends to ~$137,000, 9.25% cap
+- **700% FPL Proposal** (purple): Extends to ~$152,000, 9.25% cap
 
-For this couple, 400% FPL is about **$78,000** and 700% FPL is about **$137,000**.`,
+For this couple, 400% FPL is about **$87,000** and 700% FPL is about **$152,000**.`,
         chartState: "both_reforms",
       },
     ],
@@ -230,7 +230,7 @@ This means the 2-year-old may have coverage through Child Health Plus even when 
       {
         id: "ny_cliff",
         title: "The Cliff for a Family of Three",
-        content: `For a family of 3, 400% FPL is about **$97,000** in 2026.
+        content: `For a family of 3, 400% FPL is about **$109,000** in 2026.
 
 Above this threshold, baseline subsidies drop to zero. The FPL threshold is the same regardless of local cost of living.`,
         chartState: "cliff_focus",
@@ -240,7 +240,7 @@ Above this threshold, baseline subsidies drop to zero. The FPL threshold is the 
         title: "IRA Extension Impact",
         content: `The **blue shaded area** shows the additional premium tax credits available under the IRA extension:
 
-- Subsidies continue above $97,000
+- Subsidies continue above $109,000
 - **8.5% cap** on required contributions
 - Gradual phase-out instead of cliff`,
         chartState: "ira_impact",
@@ -250,9 +250,9 @@ Above this threshold, baseline subsidies drop to zero. The FPL threshold is the 
         title: "Reform Comparison",
         content: `The chart shows all three scenarios:
 - **IRA Extension** (blue): No cliff, 8.5% cap at any income
-- **700% FPL Proposal** (purple): Extends to ~$170,000, 9.25% cap
+- **700% FPL Proposal** (purple): Extends to ~$191,000, 9.25% cap
 
-For this family of three, 400% FPL is about **$97,000** and 700% FPL is about **$170,000**.`,
+For this family of three, 400% FPL is about **$109,000** and 700% FPL is about **$191,000**.`,
         chartState: "both_reforms",
       },
     ],

@@ -104,8 +104,8 @@
 
 .household-chart-sticky {
   position: sticky;
-  top: 80px;
-  height: calc(100vh - 200px);
+  top: 160px;
+  height: calc(100vh - 280px);
   min-height: 400px;
   background: var(--pe-surface);
   border-radius: var(--pe-radius-lg);
