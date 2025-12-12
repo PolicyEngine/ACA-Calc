@@ -4,8 +4,10 @@ This module provides a REST API endpoint for calculating how ACA policy
 changes affect household premium tax credits across income levels.
 """
 
+import json
 import os
 
+import anthropic
 import numpy as np
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,7 +19,13 @@ from aca_calc.calculations.reforms import (
     create_700fpl_reform,
 )
 
-from .models import CalculateRequest, CalculateResponse
+from .models import (
+    CalculateRequest,
+    CalculateResponse,
+    ExplainRequest,
+    ExplainResponse,
+    ScrollySection,
+)
 
 app = FastAPI(
     title="ACA Premium Tax Credit Calculator API",
@@ -132,6 +140,158 @@ async def calculate_ptc(data: CalculateRequest):
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy"}
+
+
+# State names for narrative
+STATE_NAMES = {
+    "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas",
+    "CA": "California", "CO": "Colorado", "CT": "Connecticut", "DE": "Delaware",
+    "FL": "Florida", "GA": "Georgia", "HI": "Hawaii", "ID": "Idaho",
+    "IL": "Illinois", "IN": "Indiana", "IA": "Iowa", "KS": "Kansas",
+    "KY": "Kentucky", "LA": "Louisiana", "ME": "Maine", "MD": "Maryland",
+    "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota", "MS": "Mississippi",
+    "MO": "Missouri", "MT": "Montana", "NE": "Nebraska", "NV": "Nevada",
+    "NH": "New Hampshire", "NJ": "New Jersey", "NM": "New Mexico", "NY": "New York",
+    "NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio", "OK": "Oklahoma",
+    "OR": "Oregon", "PA": "Pennsylvania", "RI": "Rhode Island", "SC": "South Carolina",
+    "SD": "South Dakota", "TN": "Tennessee", "TX": "Texas", "UT": "Utah",
+    "VT": "Vermont", "VA": "Virginia", "WA": "Washington", "WV": "West Virginia",
+    "WI": "Wisconsin", "WY": "Wyoming", "DC": "District of Columbia",
+}
+
+
+def build_explain_prompt(data: ExplainRequest) -> str:
+    """Build the prompt for Claude to generate scrolly sections."""
+
+    # Build household description
+    household_parts = []
+    household_parts.append(f"a {data.age_head}-year-old")
+    if data.age_spouse:
+        household_parts.append(f"and their {data.age_spouse}-year-old spouse")
+    if data.dependent_ages:
+        if len(data.dependent_ages) == 1:
+            household_parts.append(f"with a {data.dependent_ages[0]}-year-old child")
+        else:
+            ages_str = ", ".join(str(a) for a in data.dependent_ages[:-1])
+            ages_str += f" and {data.dependent_ages[-1]}"
+            household_parts.append(f"with children ages {ages_str}")
+
+    household_desc = " ".join(household_parts)
+    state_name = STATE_NAMES.get(data.state, data.state)
+    location = f"{data.county}, {state_name}"
+
+    # Household size
+    household_size = 1 + (1 if data.age_spouse else 0) + len(data.dependent_ages)
+    has_children = len(data.dependent_ages) > 0
+
+    prompt = f"""You are creating a personalized scrollytelling narrative explaining ACA premium tax credits for a specific household.
+
+HOUSEHOLD DETAILS:
+- Description: {household_desc}
+- Location: {location}
+- Household size: {household_size}
+- Medicaid expansion state: {"Yes" if data.is_expansion_state else "No"}
+- Has children: {"Yes" if has_children else "No"}
+
+KEY FINANCIAL DATA:
+- Federal Poverty Level (FPL) for this household: ${data.fpl:,.0f}
+- 400% FPL (baseline cliff): ${data.fpl_400_income:,.0f}
+- 700% FPL (proposed cliff): ${data.fpl_700_income:,.0f}
+- Annual benchmark plan (SLCSP): ${data.slcsp:,.0f} (${data.slcsp/12:,.0f}/month)
+
+AT SAMPLE INCOME OF ${data.sample_income:,.0f}:
+- Baseline PTC (2026 if IRA expires): ${data.ptc_baseline_at_sample:,.0f}/year
+- IRA Extension PTC: ${data.ptc_ira_at_sample:,.0f}/year
+- 700% FPL Bill PTC: ${data.ptc_700fpl_at_sample:,.0f}/year
+
+Generate exactly 5 scrollytelling sections in JSON format. Each section should have:
+- id: unique identifier (e.g., "intro", "medicaid", "cliff", "ira_impact", "comparison")
+- title: engaging section title (5-10 words)
+- content: 2-3 paragraphs of markdown text using **bold** for emphasis. Be specific with dollar amounts and percentages. Make it personal to this household.
+- chartState: one of "all_programs", "medicaid_focus", "chip_focus", "cliff_focus", "ira_impact", "both_reforms"
+
+SECTION REQUIREMENTS:
+1. **Introduction** (chartState: "all_programs"): Introduce this specific household and their location. Mention the SLCSP cost and what programs might help them.
+
+2. **Medicaid** (chartState: "medicaid_focus"): Explain Medicaid {"availability since " + state_name + " expanded Medicaid" if data.is_expansion_state else "limitations since " + state_name + " has NOT expanded Medicaid"}. {"Mention the coverage gap if applicable." if not data.is_expansion_state else ""}
+
+3. {"**CHIP Coverage** (chartState: 'chip_focus'): Explain how CHIP helps cover the children in this household." if has_children else "**The 400% FPL Cliff** (chartState: 'cliff_focus'): Explain what happens at $" + f"{data.fpl_400_income:,.0f}" + " when baseline subsidies end."}
+
+4. **IRA Extension Impact** (chartState: "ira_impact"): Explain the blue shaded area showing additional subsidies. Use specific dollar amounts from the sample income data. Calculate monthly savings.
+
+5. **Policy Comparison** (chartState: "both_reforms"): Compare all three scenarios. Mention specific income thresholds and what each policy means for this household.
+
+Return ONLY valid JSON in this exact format:
+{{
+  "sections": [
+    {{"id": "...", "title": "...", "content": "...", "chartState": "..."}},
+    ...
+  ],
+  "household_description": "Short 10-word description like 'Single 35-year-old in Harris County, Texas'"
+}}"""
+
+    return prompt
+
+
+@app.post("/api/explain", response_model=ExplainResponse)
+async def explain_with_ai(data: ExplainRequest):
+    """Generate AI-powered scrollytelling narrative for a household."""
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise HTTPException(
+            status_code=500,
+            detail="ANTHROPIC_API_KEY not configured"
+        )
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        prompt = build_explain_prompt(data)
+
+        message = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=2000,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+
+        # Parse the response
+        response_text = message.content[0].text
+
+        # Extract JSON from response (handle potential markdown code blocks)
+        if "```json" in response_text:
+            response_text = response_text.split("```json")[1].split("```")[0]
+        elif "```" in response_text:
+            response_text = response_text.split("```")[1].split("```")[0]
+
+        result = json.loads(response_text.strip())
+
+        sections = [
+            ScrollySection(**section)
+            for section in result["sections"]
+        ]
+
+        return ExplainResponse(
+            sections=sections,
+            household_description=result["household_description"]
+        )
+
+    except json.JSONDecodeError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to parse AI response: {e}"
+        )
+    except anthropic.APIError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Anthropic API error: {e}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error generating explanation: {e}"
+        )
 
 
 def main():
