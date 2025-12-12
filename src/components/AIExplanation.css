@@ -42,7 +42,7 @@
 }
 
 .ai-badge {
-  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  background: var(--pe-primary);
   color: white;
   font-size: 0.75rem;
   font-weight: 600;

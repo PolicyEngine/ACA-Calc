@@ -194,9 +194,6 @@ function Calculator() {
           {results && !loading && (
             <>
               <div className="explain-ai-section">
-                <p className="explain-ai-hint">
-                  Get a personalized walkthrough of how these policies affect your household
-                </p>
                 <button
                   className="explain-ai-button"
                   onClick={handleExplainWithAI}
@@ -216,6 +213,9 @@ function Calculator() {
                     </>
                   )}
                 </button>
+                <p className="explain-ai-hint">
+                  Get a personalized walkthrough of how these policies affect your household
+                </p>
               </div>
               <CalculatorResults data={results} />
             </>
