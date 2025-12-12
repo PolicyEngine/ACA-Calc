@@ -482,38 +482,37 @@
 
 /* Explain with AI Section */
 .explain-ai-section {
-  margin-top: var(--pe-space-xl);
-  padding-top: var(--pe-space-xl);
-  border-top: 1px solid var(--pe-border);
-  text-align: center;
+  margin-bottom: var(--pe-space-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pe-space-md);
+  flex-wrap: wrap;
 }
 
 .explain-ai-button {
   display: inline-flex;
   align-items: center;
   gap: var(--pe-space-sm);
-  padding: 14px 28px;
-  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  padding: 10px 20px;
+  background: var(--pe-primary);
   color: white;
   font-family: var(--pe-font-family);
-  font-size: 1rem;
+  font-size: 0.9375rem;
   font-weight: 600;
   border: none;
-  border-radius: 30px;
+  border-radius: var(--pe-radius-md);
   cursor: pointer;
   transition: all var(--pe-transition-fast);
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
 }
 
 .explain-ai-button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+  background: var(--pe-primary-dark);
 }
 
 .explain-ai-button:disabled {
   opacity: 0.7;
   cursor: not-allowed;
-  transform: none;
 }
 
 .explain-ai-button svg {
@@ -521,8 +520,8 @@
 }
 
 .ai-spinner {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-top-color: white;
   border-radius: 50%;
@@ -536,9 +535,9 @@
 }
 
 .explain-ai-hint {
-  margin-top: var(--pe-space-md);
   font-size: 0.875rem;
-  color: var(--pe-text-muted);
+  color: var(--pe-text-secondary);
+  margin: 0;
 }
 
 /* Responsive */

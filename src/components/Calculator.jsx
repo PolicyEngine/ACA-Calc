@@ -193,8 +193,10 @@ function Calculator() {
 
           {results && !loading && (
             <>
-              <CalculatorResults data={results} />
               <div className="explain-ai-section">
+                <p className="explain-ai-hint">
+                  Get a personalized walkthrough of how these policies affect your household
+                </p>
                 <button
                   className="explain-ai-button"
                   onClick={handleExplainWithAI}
@@ -203,21 +205,19 @@ function Calculator() {
                   {aiLoading ? (
                     <>
                       <span className="ai-spinner"></span>
-                      Generating explanation...
+                      Generating...
                     </>
                   ) : (
                     <>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h-1a2 2 0 100 4h1a7 7 0 01-7 7h-4a7 7 0 01-7-7h1a2 2 0 100-4H2a7 7 0 017-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2z" />
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                       </svg>
                       Explain with AI
                     </>
                   )}
                 </button>
-                <p className="explain-ai-hint">
-                  Get a personalized, interactive explanation of how these policies affect your household
-                </p>
               </div>
+              <CalculatorResults data={results} />
             </>
           )}
 
