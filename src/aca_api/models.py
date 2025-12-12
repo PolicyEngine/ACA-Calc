@@ -89,6 +89,11 @@ class ExplainRequest(BaseModel):
     fpl_400_income: float = Field(description="Income at 400% FPL")
     fpl_700_income: float = Field(description="Income at 700% FPL")
 
+    # Program eligibility thresholds (% of FPL)
+    medicaid_adult_threshold_pct: int = Field(description="Medicaid eligibility for adults (% FPL)")
+    medicaid_child_threshold_pct: int = Field(description="Medicaid eligibility for children (% FPL)")
+    chip_threshold_pct: int = Field(default=0, description="CHIP eligibility (% FPL), 0 if no children")
+
     # Key data points for narrative
     sample_income: float = Field(description="Sample income to analyze")
     ptc_baseline_at_sample: float = Field(description="Baseline PTC at sample income")

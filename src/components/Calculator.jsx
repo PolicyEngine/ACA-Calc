@@ -15,6 +15,49 @@ const EXPANSION_STATES = [
   "VT", "VA", "WA", "WV"
 ];
 
+// Medicaid adult thresholds by state (% FPL) - expansion states are 138%, non-expansion varies
+const getMedicaidAdultThreshold = (state) => {
+  if (EXPANSION_STATES.includes(state)) return 138;
+  // Non-expansion states have very low or no coverage for adults
+  const nonExpansionThresholds = {
+    "AL": 18, "FL": 19, "GA": 33, "KS": 38, "MS": 27,
+    "SC": 67, "TN": 96, "TX": 17, "WI": 100, "WY": 53
+  };
+  return nonExpansionThresholds[state] || 0;
+};
+
+// Medicaid child thresholds by state (% FPL)
+const getMedicaidChildThreshold = (state) => {
+  const thresholds = {
+    "AL": 146, "AK": 208, "AZ": 147, "AR": 216, "CA": 269, "CO": 147,
+    "CT": 201, "DE": 217, "DC": 324, "FL": 215, "GA": 252, "HI": 313,
+    "ID": 190, "IL": 147, "IN": 218, "IA": 375, "KS": 174, "KY": 218,
+    "LA": 217, "ME": 213, "MD": 322, "MA": 205, "MI": 217, "MN": 288,
+    "MS": 215, "MO": 196, "MT": 266, "NE": 218, "NV": 205, "NH": 323,
+    "NJ": 355, "NM": 303, "NY": 405, "NC": 216, "ND": 175, "OH": 211,
+    "OK": 210, "OR": 305, "PA": 319, "RI": 266, "SC": 213, "SD": 209,
+    "TN": 213, "TX": 206, "UT": 147, "VT": 317, "VA": 148, "WA": 317,
+    "WV": 305, "WI": 306, "WY": 159
+  };
+  return thresholds[state] || 200;
+};
+
+// CHIP thresholds by state (% FPL) - upper limit for children
+const getChipThreshold = (state) => {
+  const thresholds = {
+    "AL": 317, "AK": 208, "AZ": 209, "AR": 216, "CA": 269, "CO": 265,
+    "CT": 323, "DE": 217, "DC": 324, "FL": 215, "GA": 252, "HI": 313,
+    "ID": 190, "IL": 318, "IN": 262, "IA": 375, "KS": 250, "KY": 218,
+    "LA": 255, "ME": 213, "MD": 322, "MA": 305, "MI": 217, "MN": 288,
+    "MS": 215, "MO": 305, "MT": 266, "NE": 218, "NV": 205, "NH": 323,
+    "NJ": 355, "NM": 303, "NY": 405, "NC": 216, "ND": 181, "OH": 211,
+    "OK": 210, "OR": 305, "PA": 319, "RI": 266, "SC": 213, "SD": 209,
+    "TN": 255, "TX": 206, "UT": 209, "VT": 317, "VA": 205, "WA": 317,
+    "WV": 305, "WI": 306, "WY": 209
+  };
+  return thresholds[state] || 200;
+};
+
 function Calculator() {
   const [results, setResults] = useState(null);
   const [formData, setFormData] = useState(null);
@@ -76,6 +119,8 @@ function Calculator() {
     // Calculate sample income at 300% FPL (a typical middle-income point)
     const sampleIncome = results.fpl * 3;
 
+    const hasChildren = (formData.dependent_ages || []).length > 0;
+
     const explainRequest = {
       age_head: formData.age_head,
       age_spouse: formData.age_spouse,
@@ -87,6 +132,9 @@ function Calculator() {
       slcsp: results.slcsp,
       fpl_400_income: results.fpl * 4,
       fpl_700_income: results.fpl * 7,
+      medicaid_adult_threshold_pct: getMedicaidAdultThreshold(formData.state),
+      medicaid_child_threshold_pct: getMedicaidChildThreshold(formData.state),
+      chip_threshold_pct: hasChildren ? getChipThreshold(formData.state) : 0,
       sample_income: sampleIncome,
       ptc_baseline_at_sample: findValueAtIncome(sampleIncome, results.income, results.ptc_baseline),
       ptc_ira_at_sample: findValueAtIncome(sampleIncome, results.income, results.ptc_ira),

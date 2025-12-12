@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { useInView } from "react-intersection-observer";
+import { useState, useEffect, useRef, useCallback } from "react";
 import HealthBenefitsChart from "./HealthBenefitsChart";
 import "./AIExplanation.css";
 
@@ -15,22 +14,12 @@ const parseContent = (text) => {
 };
 
 // Individual scroll section
-function AIScrollSection({ section, index, isActive, onInView }) {
-  const { ref, inView } = useInView({
-    threshold: 0.5,
-    rootMargin: "-20% 0px -40% 0px",
-  });
-
-  useEffect(() => {
-    if (inView) {
-      onInView(index);
-    }
-  }, [inView, index, onInView]);
-
+function AIScrollSection({ section, index, isActive, sectionRef }) {
   return (
     <div
-      ref={ref}
+      ref={sectionRef}
       className={`ai-scroll-section ${isActive ? "active" : ""}`}
+      data-index={index}
     >
       <h3 className="ai-section-title">{section.title}</h3>
       <div className="ai-section-content">
@@ -44,8 +33,55 @@ function AIScrollSection({ section, index, isActive, onInView }) {
 
 function AIExplanation({ sections, chartData, householdDescription, onClose }) {
   const [activeSection, setActiveSection] = useState(0);
+  const textColumnRef = useRef(null);
+  const sectionRefs = useRef([]);
 
   const currentSection = sections[activeSection] || sections[0];
+
+  // Handle scroll to detect which section is in view
+  const handleScroll = useCallback(() => {
+    if (!textColumnRef.current) return;
+
+    const container = textColumnRef.current;
+    const containerRect = container.getBoundingClientRect();
+    const containerMiddle = containerRect.top + containerRect.height / 3;
+
+    let closestIndex = 0;
+    let closestDistance = Infinity;
+
+    sectionRefs.current.forEach((ref, index) => {
+      if (ref) {
+        const rect = ref.getBoundingClientRect();
+        const sectionMiddle = rect.top + rect.height / 2;
+        const distance = Math.abs(sectionMiddle - containerMiddle);
+
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestIndex = index;
+        }
+      }
+    });
+
+    if (closestIndex !== activeSection) {
+      setActiveSection(closestIndex);
+    }
+  }, [activeSection]);
+
+  useEffect(() => {
+    const container = textColumnRef.current;
+    if (container) {
+      container.addEventListener("scroll", handleScroll);
+      return () => container.removeEventListener("scroll", handleScroll);
+    }
+  }, [handleScroll]);
+
+  // Click on indicator to scroll to section
+  const scrollToSection = (index) => {
+    const section = sectionRefs.current[index];
+    if (section && textColumnRef.current) {
+      section.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
 
   return (
     <div className="ai-explanation-overlay">
@@ -62,6 +98,21 @@ function AIExplanation({ sections, chartData, householdDescription, onClose }) {
           </button>
         </div>
 
+        {/* Section indicators */}
+        <div className="ai-section-indicators">
+          {sections.map((section, index) => (
+            <button
+              key={section.id}
+              className={`ai-indicator ${activeSection === index ? "active" : ""} ${index < activeSection ? "completed" : ""}`}
+              onClick={() => scrollToSection(index)}
+              title={section.title}
+            >
+              <span className="indicator-number">{index + 1}</span>
+              <span className="indicator-label">{section.title}</span>
+            </button>
+          ))}
+        </div>
+
         <div className="ai-scrolly-container">
           <div className="ai-chart-column">
             <div className="ai-chart-sticky">
@@ -73,14 +124,14 @@ function AIExplanation({ sections, chartData, householdDescription, onClose }) {
             </div>
           </div>
 
-          <div className="ai-text-column">
+          <div className="ai-text-column" ref={textColumnRef}>
             {sections.map((section, index) => (
               <AIScrollSection
                 key={section.id}
                 section={section}
                 index={index}
                 isActive={activeSection === index}
-                onInView={setActiveSection}
+                sectionRef={(el) => (sectionRefs.current[index] = el)}
               />
             ))}
           </div>

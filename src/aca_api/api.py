@@ -184,50 +184,84 @@ def build_explain_prompt(data: ExplainRequest) -> str:
     household_size = 1 + (1 if data.age_spouse else 0) + len(data.dependent_ages)
     has_children = len(data.dependent_ages) > 0
 
-    prompt = f"""You are creating a personalized scrollytelling narrative explaining ACA premium tax credits for a specific household.
+    # Calculate dollar thresholds from percentages
+    medicaid_adult_income = data.fpl * data.medicaid_adult_threshold_pct / 100
+    medicaid_child_income = data.fpl * data.medicaid_child_threshold_pct / 100
+    chip_income = data.fpl * data.chip_threshold_pct / 100 if data.chip_threshold_pct > 0 else 0
+
+    # Determine section 3 based on whether household has children
+    if has_children:
+        section3_id = "chip"
+        section3_chart = "chip_focus"
+        section3_instruction = f"Explain CHIP coverage for children up to {data.chip_threshold_pct}% FPL (${chip_income:,.0f})."
+    else:
+        section3_id = "cliff"
+        section3_chart = "cliff_focus"
+        section3_instruction = f"Explain the 400% FPL cliff at ${data.fpl_400_income:,.0f} where baseline subsidies end. Above this income, there are no premium tax credits under current law."
+
+    # Medicaid details
+    medicaid_children_note = f" Children qualify up to {data.medicaid_child_threshold_pct}% FPL." if has_children else ""
+    expansion_note = "This is a non-expansion state." if not data.is_expansion_state else "This is an expansion state."
+    chip_line = f"- CHIP for children: {data.chip_threshold_pct}% FPL (${chip_income:,.0f})" if has_children and data.chip_threshold_pct > 0 else ""
+
+    prompt = f"""You are creating a factual, neutral scrollytelling narrative explaining ACA premium tax credits for a specific household.
+
+IMPORTANT GUIDELINES:
+- Be strictly factual and neutral. Do NOT express opinions about whether policies are good, bad, beneficial, or harmful.
+- Do NOT use value-laden words like "unfortunately", "thankfully", "crucial", "vital", "struggle", etc.
+- Simply describe what the policies are and how they affect this household's numbers.
+- Use exact dollar amounts and percentages provided - do not round or approximate.
+{"- CRITICAL: This household has NO children. Do NOT mention CHIP at all." if not has_children else ""}
 
 HOUSEHOLD DETAILS:
 - Description: {household_desc}
 - Location: {location}
 - Household size: {household_size}
+- Has children: {"Yes" if has_children else "NO - DO NOT MENTION CHIP"}
+
+PROGRAM ELIGIBILITY THRESHOLDS FOR {state_name.upper()}:
+- Medicaid for adults: {data.medicaid_adult_threshold_pct}% FPL (${medicaid_adult_income:,.0f} for this household)
+{chip_line}
 - Medicaid expansion state: {"Yes" if data.is_expansion_state else "No"}
-- Has children: {"Yes" if has_children else "No"}
 
 KEY FINANCIAL DATA:
 - Federal Poverty Level (FPL) for this household: ${data.fpl:,.0f}
-- 400% FPL (baseline cliff): ${data.fpl_400_income:,.0f}
-- 700% FPL (proposed cliff): ${data.fpl_700_income:,.0f}
+- 400% FPL (baseline subsidy cliff): ${data.fpl_400_income:,.0f}
+- 700% FPL (proposed cliff under 700% FPL bill): ${data.fpl_700_income:,.0f}
 - Annual benchmark plan (SLCSP): ${data.slcsp:,.0f} (${data.slcsp/12:,.0f}/month)
 
-AT SAMPLE INCOME OF ${data.sample_income:,.0f}:
-- Baseline PTC (2026 if IRA expires): ${data.ptc_baseline_at_sample:,.0f}/year
-- IRA Extension PTC: ${data.ptc_ira_at_sample:,.0f}/year
-- 700% FPL Bill PTC: ${data.ptc_700fpl_at_sample:,.0f}/year
+AT SAMPLE INCOME OF ${data.sample_income:,.0f} ({data.sample_income/data.fpl*100:.0f}% FPL):
+- Baseline PTC (2026 if IRA expires): ${data.ptc_baseline_at_sample:,.0f}/year (${data.ptc_baseline_at_sample/12:,.0f}/month)
+- IRA Extension PTC: ${data.ptc_ira_at_sample:,.0f}/year (${data.ptc_ira_at_sample/12:,.0f}/month)
+- 700% FPL Bill PTC: ${data.ptc_700fpl_at_sample:,.0f}/year (${data.ptc_700fpl_at_sample/12:,.0f}/month)
 
 Generate exactly 5 scrollytelling sections in JSON format. Each section should have:
-- id: unique identifier (e.g., "intro", "medicaid", "cliff", "ira_impact", "comparison")
-- title: engaging section title (5-10 words)
-- content: 2-3 paragraphs of markdown text using **bold** for emphasis. Be specific with dollar amounts and percentages. Make it personal to this household.
-- chartState: one of "all_programs", "medicaid_focus", "chip_focus", "cliff_focus", "ira_impact", "both_reforms"
+- id: unique identifier
+- title: descriptive section title (5-10 words)
+- content: 2-3 short paragraphs using **bold** for key numbers. Use exact values provided above.
+- chartState: MUST be one of these exact strings: "all_programs", "medicaid_focus", "chip_focus", "cliff_focus", "ira_impact", "both_reforms"
 
-SECTION REQUIREMENTS:
-1. **Introduction** (chartState: "all_programs"): Introduce this specific household and their location. Mention the SLCSP cost and what programs might help them.
+REQUIRED SECTIONS (use these EXACT chartState values - do not change them):
+1. id: "intro", chartState: "all_programs" - Introduce this household and their location. State the SLCSP cost.
 
-2. **Medicaid** (chartState: "medicaid_focus"): Explain Medicaid {"availability since " + state_name + " expanded Medicaid" if data.is_expansion_state else "limitations since " + state_name + " has NOT expanded Medicaid"}. {"Mention the coverage gap if applicable." if not data.is_expansion_state else ""}
+2. id: "medicaid", chartState: "medicaid_focus" - Explain Medicaid eligibility in {state_name}. Adults qualify up to {data.medicaid_adult_threshold_pct}% FPL (${medicaid_adult_income:,.0f}).{medicaid_children_note} {expansion_note}
 
-3. {"**CHIP Coverage** (chartState: 'chip_focus'): Explain how CHIP helps cover the children in this household." if has_children else "**The 400% FPL Cliff** (chartState: 'cliff_focus'): Explain what happens at $" + f"{data.fpl_400_income:,.0f}" + " when baseline subsidies end."}
+3. id: "{section3_id}", chartState: "{section3_chart}" - {section3_instruction}
 
-4. **IRA Extension Impact** (chartState: "ira_impact"): Explain the blue shaded area showing additional subsidies. Use specific dollar amounts from the sample income data. Calculate monthly savings.
+4. id: "ira_impact", chartState: "ira_impact" - Describe the IRA extension. At ${data.sample_income:,.0f} income, IRA provides ${data.ptc_ira_at_sample:,.0f}/year vs baseline ${data.ptc_baseline_at_sample:,.0f}/year.
 
-5. **Policy Comparison** (chartState: "both_reforms"): Compare all three scenarios. Mention specific income thresholds and what each policy means for this household.
+5. id: "comparison", chartState: "both_reforms" - Compare baseline, IRA extension, and 700% FPL bill. Use the exact numbers provided.
 
-Return ONLY valid JSON in this exact format:
+Return ONLY valid JSON:
 {{
   "sections": [
-    {{"id": "...", "title": "...", "content": "...", "chartState": "..."}},
-    ...
+    {{"id": "intro", "title": "...", "content": "...", "chartState": "all_programs"}},
+    {{"id": "medicaid", "title": "...", "content": "...", "chartState": "medicaid_focus"}},
+    {{"id": "{section3_id}", "title": "...", "content": "...", "chartState": "{section3_chart}"}},
+    {{"id": "ira_impact", "title": "...", "content": "...", "chartState": "ira_impact"}},
+    {{"id": "comparison", "title": "...", "content": "...", "chartState": "both_reforms"}}
   ],
-  "household_description": "Short 10-word description like 'Single 35-year-old in Harris County, Texas'"
+  "household_description": "{household_desc} in {location}"
 }}"""
 
     return prompt

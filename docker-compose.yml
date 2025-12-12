@@ -5,6 +5,7 @@ services:
       - "5001:8080"
     environment:
       - PORT=8080
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     volumes:
       - ./aca_calc:/app/aca_calc
       - ./src/aca_api:/app/src/aca_api

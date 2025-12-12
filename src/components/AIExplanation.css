@@ -30,7 +30,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--pe-space-lg);
+  padding: var(--pe-space-md) var(--pe-space-lg);
   border-bottom: 1px solid var(--pe-border);
   background: var(--pe-gray-50);
 }
@@ -72,6 +72,103 @@
 .ai-close-button:hover {
   background: var(--pe-gray-100);
   color: var(--pe-gray-900);
+}
+
+/* Section Indicators - Progress Steps Style */
+.ai-section-indicators {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: var(--pe-space-md) var(--pe-space-lg);
+  background: var(--pe-surface);
+  border-bottom: 1px solid var(--pe-border);
+  overflow-x: auto;
+}
+
+.ai-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: transparent;
+  border: none;
+  font-family: var(--pe-font-family);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--pe-text-secondary);
+  cursor: pointer;
+  transition: all var(--pe-transition-fast);
+  white-space: nowrap;
+  position: relative;
+}
+
+.ai-indicator:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  right: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid var(--pe-gray-300);
+  border-right: 2px solid var(--pe-gray-300);
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.ai-indicator:hover {
+  color: var(--pe-gray-900);
+}
+
+.ai-indicator:hover .indicator-number {
+  background: var(--pe-gray-300);
+}
+
+.ai-indicator.active {
+  color: var(--pe-primary);
+}
+
+.ai-indicator.active .indicator-number {
+  background: var(--pe-primary);
+  color: white;
+}
+
+.ai-indicator.completed .indicator-number {
+  background: var(--pe-gray-400);
+  color: white;
+}
+
+.indicator-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--pe-gray-200);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--pe-text-secondary);
+  transition: all var(--pe-transition-fast);
+  flex-shrink: 0;
+}
+
+.indicator-label {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Hide labels on smaller screens, show only numbers */
+@media (max-width: 768px) {
+  .indicator-label {
+    display: none;
+  }
+
+  .ai-indicator {
+    padding: 10px 16px;
+  }
 }
 
 /* Scrolly Container */
