@@ -155,11 +155,14 @@ function CalculatorForm({ onCalculate, loading }) {
               id="age_head"
               name="age_head"
               min="18"
-              max="100"
+              max="64"
               value={formData.age_head}
               onChange={handleNumberChange}
               disabled={loading}
             />
+            {formData.age_head > 64 && (
+              <span className="form-hint form-hint-warning">Adults 65+ are typically eligible for Medicare, not marketplace coverage</span>
+            )}
           </div>
 
           {formData.married && (
@@ -170,11 +173,14 @@ function CalculatorForm({ onCalculate, loading }) {
                 id="age_spouse"
                 name="age_spouse"
                 min="18"
-                max="100"
+                max="64"
                 value={formData.age_spouse}
                 onChange={handleNumberChange}
                 disabled={loading}
               />
+              {formData.age_spouse > 64 && (
+                <span className="form-hint form-hint-warning">Adults 65+ are typically eligible for Medicare, not marketplace coverage</span>
+              )}
             </div>
           )}
         </div>
