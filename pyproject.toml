@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "streamlit>=1.28.0",
-    "policyengine-us>=1.400.0",
+    "policyengine-us>=1.459.0",
     "numpy>=1.24.0",
     "pandas>=2.0.0",
     "plotly>=5.17.0",
