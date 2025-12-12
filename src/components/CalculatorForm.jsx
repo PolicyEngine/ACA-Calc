@@ -24,15 +24,27 @@ const STATE_NAMES = {
   DC: "District of Columbia",
 };
 
+// Generate random initial values
+const getRandomDefaults = () => {
+  const randomAge = Math.floor(Math.random() * (64 - 18 + 1)) + 18; // 18-64
+  const randomState = STATES[Math.floor(Math.random() * STATES.length)];
+  const stateCounties = counties[randomState] || [];
+  const randomCounty = stateCounties[Math.floor(Math.random() * stateCounties.length)] || "";
+
+  return { age: randomAge, state: randomState, county: randomCounty };
+};
+
+const initialDefaults = getRandomDefaults();
+
 function CalculatorForm({ onCalculate, loading }) {
   const [formData, setFormData] = useState({
-    age_head: 35,
-    age_spouse: 35,
+    age_head: initialDefaults.age,
+    age_spouse: initialDefaults.age,
     married: false,
     num_dependents: 0,
     dependent_ages: [],
-    state: "PA",
-    county: "",
+    state: initialDefaults.state,
+    county: initialDefaults.county,
     zip_code: "",
     show_ira: true,
     show_700fpl: true,
