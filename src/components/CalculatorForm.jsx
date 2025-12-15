@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import counties from "../../counties.json";
 import "./Calculator.css";
 
@@ -24,6 +24,65 @@ const STATE_NAMES = {
   DC: "District of Columbia",
 };
 
+// Parse URL query parameters from hash
+const getUrlParams = () => {
+  const hash = window.location.hash.slice(1);
+  const queryIndex = hash.indexOf("?");
+  if (queryIndex === -1) return new URLSearchParams();
+  return new URLSearchParams(hash.slice(queryIndex + 1));
+};
+
+// Build a shareable URL with household configuration
+const buildShareableUrl = (formData) => {
+  const params = new URLSearchParams();
+  // Use defaults for empty values in URL
+  const ageHead = formData.age_head === "" ? 40 : formData.age_head;
+  const ageSpouse = formData.age_spouse === "" ? 40 : formData.age_spouse;
+  const depAges = formData.dependent_ages.map(age => age === "" ? 10 : age);
+
+  params.set("age", ageHead);
+  if (formData.married) {
+    params.set("spouse", ageSpouse);
+  }
+  if (depAges.length > 0) {
+    params.set("deps", depAges.join(","));
+  }
+  params.set("state", formData.state);
+  params.set("county", formData.county);
+  if (formData.zip_code) {
+    params.set("zip", formData.zip_code);
+  }
+  if (!formData.show_ira) params.set("ira", "0");
+  if (!formData.show_700fpl) params.set("700fpl", "0");
+
+  const baseUrl = window.location.origin + window.location.pathname;
+  return `${baseUrl}#calculator?${params.toString()}`;
+};
+
+// Parse form data from URL parameters
+const getFormDataFromUrl = () => {
+  const params = getUrlParams();
+  if (!params.has("state") && !params.has("age")) return null;
+
+  const state = params.get("state") || "";
+  const county = params.get("county") || "";
+  const depsStr = params.get("deps");
+  const dependentAges = depsStr ? depsStr.split(",").map(a => parseInt(a, 10)).filter(a => !isNaN(a)) : [];
+
+  return {
+    age_head: parseInt(params.get("age"), 10) || 40,
+    age_spouse: parseInt(params.get("spouse"), 10) || 40,
+    married: params.has("spouse"),
+    num_dependents: dependentAges.length,
+    dependent_ages: dependentAges,
+    state: STATES.includes(state) ? state : "",
+    county: county,
+    zip_code: params.get("zip") || "",
+    show_ira: params.get("ira") !== "0",
+    show_700fpl: params.get("700fpl") !== "0",
+  };
+};
+
 // Generate random initial values
 const getRandomDefaults = () => {
   const randomAge = Math.floor(Math.random() * (64 - 18 + 1)) + 18; // 18-64
@@ -34,23 +93,50 @@ const getRandomDefaults = () => {
   return { age: randomAge, state: randomState, county: randomCounty };
 };
 
-const initialDefaults = getRandomDefaults();
-
-function CalculatorForm({ onCalculate, loading }) {
-  const [formData, setFormData] = useState({
-    age_head: initialDefaults.age,
-    age_spouse: initialDefaults.age,
+// Get initial form data - prefer URL params, fall back to random
+const getInitialFormData = () => {
+  const urlData = getFormDataFromUrl();
+  if (urlData && urlData.state) {
+    return urlData;
+  }
+  const defaults = getRandomDefaults();
+  return {
+    age_head: defaults.age,
+    age_spouse: defaults.age,
     married: false,
     num_dependents: 0,
     dependent_ages: [],
-    state: initialDefaults.state,
-    county: initialDefaults.county,
+    state: defaults.state,
+    county: defaults.county,
     zip_code: "",
     show_ira: true,
     show_700fpl: true,
-  });
+  };
+};
 
+function CalculatorForm({ onCalculate, loading }) {
+  const [formData, setFormData] = useState(getInitialFormData);
   const [availableCounties, setAvailableCounties] = useState([]);
+  const [shareMessage, setShareMessage] = useState("");
+
+  // Update URL when form is submitted
+  const updateUrl = useCallback((data) => {
+    const url = buildShareableUrl(data);
+    const hashPart = url.split("#")[1] || "";
+    window.history.replaceState(null, "", `#${hashPart}`);
+  }, []);
+
+  // Copy shareable URL to clipboard
+  const handleShare = useCallback(() => {
+    const url = buildShareableUrl(formData);
+    navigator.clipboard.writeText(url).then(() => {
+      setShareMessage("Link copied!");
+      setTimeout(() => setShareMessage(""), 2000);
+    }).catch(() => {
+      setShareMessage("Failed to copy");
+      setTimeout(() => setShareMessage(""), 2000);
+    });
+  }, [formData]);
 
   // Update available counties when state changes
   useEffect(() => {
@@ -68,11 +154,12 @@ function CalculatorForm({ onCalculate, loading }) {
 
   // Update dependent ages array when num_dependents changes
   useEffect(() => {
+    const numDeps = formData.num_dependents === "" ? 0 : formData.num_dependents;
     const newAges = [...formData.dependent_ages];
-    while (newAges.length < formData.num_dependents) {
+    while (newAges.length < numDeps) {
       newAges.push(10); // Default age for new dependents
     }
-    while (newAges.length > formData.num_dependents) {
+    while (newAges.length > numDeps) {
       newAges.pop();
     }
     if (JSON.stringify(newAges) !== JSON.stringify(formData.dependent_ages)) {
@@ -97,31 +184,50 @@ function CalculatorForm({ onCalculate, loading }) {
 
   const handleNumberChange = (e) => {
     const { name, value } = e.target;
+    // Allow empty string while typing, store as string temporarily
     setFormData(prev => ({
       ...prev,
-      [name]: parseInt(value, 10) || 0,
+      [name]: value === "" ? "" : parseInt(value, 10),
     }));
   };
 
   const handleDependentAgeChange = (index, value) => {
     const newAges = [...formData.dependent_ages];
-    newAges[index] = parseInt(value, 10) || 0;
+    // Allow empty string while typing
+    newAges[index] = value === "" ? "" : parseInt(value, 10);
     setFormData(prev => ({ ...prev, dependent_ages: newAges }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    // Convert any empty strings to default values for submission
+    const ageHead = formData.age_head === "" ? 40 : formData.age_head;
+    const ageSpouse = formData.age_spouse === "" ? 40 : formData.age_spouse;
+    const numDeps = formData.num_dependents === "" ? 0 : formData.num_dependents;
+    const depAges = formData.dependent_ages.slice(0, numDeps).map(age => age === "" ? 10 : age);
+
     const submitData = {
-      age_head: formData.age_head,
-      age_spouse: formData.married ? formData.age_spouse : null,
-      dependent_ages: formData.dependent_ages,
+      age_head: ageHead,
+      age_spouse: formData.married ? ageSpouse : null,
+      dependent_ages: depAges,
       state: formData.state,
       county: formData.county,
       zip_code: formData.zip_code || null,
       show_ira: formData.show_ira,
       show_700fpl: formData.show_700fpl,
     };
+
+    // Update form with normalized values
+    const normalizedFormData = {
+      ...formData,
+      age_head: ageHead,
+      age_spouse: ageSpouse,
+      dependent_ages: depAges,
+    };
+
+    // Update URL with form data for sharing
+    updateUrl(normalizedFormData);
 
     onCalculate(submitData);
   };
@@ -321,13 +427,29 @@ function CalculatorForm({ onCalculate, loading }) {
         </div>
       </div>
 
-      <button
-        type="submit"
-        className="calculate-button"
-        disabled={loading || (!formData.show_ira && !formData.show_700fpl)}
-      >
-        {loading ? "Calculating..." : "Calculate Premium Tax Credits"}
-      </button>
+      <div className="form-actions">
+        <button
+          type="submit"
+          className="calculate-button"
+          disabled={loading || (!formData.show_ira && !formData.show_700fpl)}
+        >
+          {loading ? "Calculating..." : "Calculate Premium Tax Credits"}
+        </button>
+
+        <button
+          type="button"
+          className="share-button"
+          onClick={handleShare}
+          disabled={loading}
+          title="Copy shareable link to clipboard"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" />
+          </svg>
+          Share
+        </button>
+        {shareMessage && <span className="share-message">{shareMessage}</span>}
+      </div>
 
       {!formData.show_ira && !formData.show_700fpl && (
         <p className="form-warning">Please select at least one policy scenario</p>

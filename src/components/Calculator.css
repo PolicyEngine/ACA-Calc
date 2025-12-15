@@ -165,8 +165,14 @@
   text-align: center;
 }
 
+.form-actions {
+  display: flex;
+  gap: var(--pe-space-sm);
+  align-items: center;
+}
+
 .calculate-button {
-  width: 100%;
+  flex: 1;
   padding: 14px 24px;
   background: var(--pe-accent);
   color: white;
@@ -185,6 +191,43 @@
 .calculate-button:disabled {
   background: var(--pe-gray-300);
   cursor: not-allowed;
+}
+
+.share-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 20px;
+  background: var(--pe-gray-100);
+  color: var(--pe-text-primary);
+  border: 2px solid var(--pe-border);
+  border-radius: var(--pe-radius-md);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--pe-transition-fast);
+  white-space: nowrap;
+}
+
+.share-button:hover:not(:disabled) {
+  background: var(--pe-gray-200);
+  border-color: var(--pe-gray-400);
+}
+
+.share-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.share-button svg {
+  flex-shrink: 0;
+}
+
+.share-message {
+  font-size: 0.875rem;
+  color: var(--pe-accent);
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .form-warning {
@@ -570,6 +613,18 @@
 
   .form-row-inline {
     flex-direction: column;
+  }
+
+  .form-actions {
+    flex-wrap: wrap;
+  }
+
+  .calculate-button {
+    flex: 1 1 100%;
+  }
+
+  .share-button {
+    flex: 1;
   }
 
   .results-tabs {

@@ -185,19 +185,72 @@ function CalculatorResults({ data }) {
 
                 <div className="impact-explanation">
                   <h4>What this means</h4>
-                  {userResults.fplPct > 400 ? (
-                    <p>
-                      At {userResults.fplPct.toFixed(0)}% FPL, you are <strong>above the 400% FPL cliff</strong>.
-                      Under baseline 2026 law, you would receive no premium tax credits.
-                      Both reform options would provide you with subsidies.
-                    </p>
-                  ) : (
-                    <p>
-                      At {userResults.fplPct.toFixed(0)}% FPL, you are <strong>below the 400% FPL cliff</strong>.
-                      You would receive some subsidies under baseline law, but the reform options
-                      would increase your credits by lowering your required contribution percentage.
-                    </p>
-                  )}
+                  {(() => {
+                    const hasBaseline = userResults.baseline > 0;
+                    const hasIra = userResults.ira > 0;
+                    const hasFpl700 = userResults.fpl700 > 0;
+                    const fpl = userResults.fplPct.toFixed(0);
+
+                    // Above 700% FPL - only IRA could help
+                    if (userResults.fplPct > 700) {
+                      return (
+                        <p>
+                          At {fpl}% FPL, you are <strong>above the 700% FPL threshold</strong>.
+                          {hasIra
+                            ? " The IRA Extension would provide subsidies, but the 700% FPL Bill only extends eligibility to 700% FPL."
+                            : " Your required contribution under the IRA Extension (8.5% of income) exceeds the benchmark premium cost, so you would not receive subsidies under either reform option."}
+                        </p>
+                      );
+                    }
+
+                    // Above 400% FPL but under 700%
+                    if (userResults.fplPct > 400) {
+                      if (hasIra && hasFpl700) {
+                        return (
+                          <p>
+                            At {fpl}% FPL, you are <strong>above the 400% FPL cliff</strong> but within range of both reform options.
+                            Under baseline 2026 law, you would receive no premium tax credits.
+                            Both reform options would provide you with subsidies.
+                          </p>
+                        );
+                      } else if (hasIra && !hasFpl700) {
+                        return (
+                          <p>
+                            At {fpl}% FPL, you are <strong>above the 400% FPL cliff</strong>.
+                            The IRA Extension would provide subsidies. The 700% FPL Bill would not provide subsidies because
+                            your required contribution (9.25% of income) would exceed the benchmark premium cost.
+                          </p>
+                        );
+                      } else {
+                        return (
+                          <p>
+                            At {fpl}% FPL, you are <strong>above the 400% FPL cliff</strong>.
+                            Your income is high enough that your required contribution would exceed the benchmark premium cost,
+                            so neither reform option would provide subsidies at this income level.
+                          </p>
+                        );
+                      }
+                    }
+
+                    // Below 400% FPL
+                    if (hasBaseline) {
+                      return (
+                        <p>
+                          At {fpl}% FPL, you are <strong>below the 400% FPL cliff</strong>.
+                          You would receive subsidies under baseline law, but the reform options
+                          would increase your credits by lowering your required contribution percentage.
+                        </p>
+                      );
+                    } else {
+                      return (
+                        <p>
+                          At {fpl}% FPL, you are <strong>below the 400% FPL cliff</strong>.
+                          Your required contribution under baseline law would exceed the benchmark premium cost,
+                          so you would not receive subsidies. The reform options lower required contributions and may provide credits.
+                        </p>
+                      );
+                    }
+                  })()}
                 </div>
               </div>
             )}

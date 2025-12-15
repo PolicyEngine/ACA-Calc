@@ -166,10 +166,56 @@ Click below to explore how four different households are affected—with details
   },
 ];
 
+// URL routing helpers
+const PAGE_ROUTES = {
+  "": "main",
+  "overview": "main",
+  "households": "households",
+  "calculator": "calculator",
+};
+
+const ROUTE_PAGES = {
+  "main": "",
+  "households": "households",
+  "calculator": "calculator",
+};
+
+function getPageFromHash() {
+  const hash = window.location.hash.slice(1); // Remove the #
+  const [route] = hash.split("?"); // Ignore query params for page routing
+  return PAGE_ROUTES[route] || "main";
+}
+
 function App() {
   const [activeSection, setActiveSection] = useState(0);
-  const [currentPage, setCurrentPage] = useState("main"); // "main", "households", or "calculator"
+  const [currentPage, setCurrentPage] = useState(() => getPageFromHash());
   const chartRef = useRef(null);
+
+  // Sync URL hash with page state
+  useEffect(() => {
+    const handleHashChange = () => {
+      const page = getPageFromHash();
+      setCurrentPage(page);
+    };
+
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
+  // Update URL when page changes (but not on initial load)
+  const navigateToPage = (page) => {
+    const route = ROUTE_PAGES[page];
+    const currentHash = window.location.hash.slice(1);
+    const [, queryString] = currentHash.split("?");
+
+    // Preserve query params when navigating to calculator
+    if (page === "calculator" && queryString) {
+      window.location.hash = `${route}?${queryString}`;
+    } else {
+      window.location.hash = route;
+    }
+    setCurrentPage(page);
+  };
 
   // Scroll to top when page changes
   useEffect(() => {
@@ -237,7 +283,7 @@ function App() {
               index={index}
               isActive={activeSection === index}
               onInView={handleSectionInView}
-              onExploreHouseholds={() => setCurrentPage("households")}
+              onExploreHouseholds={() => navigateToPage("households")}
             />
           ))}
         </div>
@@ -270,19 +316,19 @@ function App() {
           <div className="page-tabs">
             <button
               className={`page-tab ${currentPage === "main" ? "active" : ""}`}
-              onClick={() => setCurrentPage("main")}
+              onClick={() => navigateToPage("main")}
             >
               Overview
             </button>
             <button
               className={`page-tab ${currentPage === "households" ? "active" : ""}`}
-              onClick={() => setCurrentPage("households")}
+              onClick={() => navigateToPage("households")}
             >
               Explore Households
             </button>
             <button
               className={`page-tab ${currentPage === "calculator" ? "active" : ""}`}
-              onClick={() => setCurrentPage("calculator")}
+              onClick={() => navigateToPage("calculator")}
             >
               Calculator
             </button>
