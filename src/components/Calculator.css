@@ -526,12 +526,12 @@
 /* Explain with AI Section */
 .explain-ai-section {
   margin-bottom: var(--pe-space-lg);
-  padding: var(--pe-space-lg);
+  padding: var(--pe-space-lg) var(--pe-space-xl) var(--pe-space-lg) var(--pe-space-lg);
   background: var(--pe-primary);
   border-radius: var(--pe-radius-md);
   display: flex;
   align-items: center;
-  gap: var(--pe-space-md);
+  gap: var(--pe-space-lg);
 }
 
 .explain-ai-button {

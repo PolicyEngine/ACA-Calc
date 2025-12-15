@@ -1,5 +1,5 @@
-import { useState } from "react";
-import CalculatorForm from "./CalculatorForm";
+import { useState, useEffect, useRef } from "react";
+import CalculatorForm, { buildShareableUrl, shouldAutoLoadAi } from "./CalculatorForm";
 import CalculatorResults from "./CalculatorResults";
 import AIExplanation from "./AIExplanation";
 import "./Calculator.css";
@@ -65,6 +65,8 @@ function Calculator() {
   const [error, setError] = useState(null);
   const [aiExplanation, setAiExplanation] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [pendingAiLoad, setPendingAiLoad] = useState(shouldAutoLoadAi());
+  const aiTriggeredRef = useRef(false);
 
   const handleCalculate = async (data) => {
     setLoading(true);
@@ -111,7 +113,7 @@ function Calculator() {
     return valueArray[closest] || 0;
   };
 
-  const handleExplainWithAI = async () => {
+  const handleExplainWithAI = async (updateUrl = true) => {
     if (!results || !formData) return;
 
     setAiLoading(true);
@@ -157,12 +159,28 @@ function Calculator() {
 
       const data = await response.json();
       setAiExplanation(data);
+
+      // Update URL to include ai=1 so it can be shared
+      if (updateUrl) {
+        const url = buildShareableUrl(formData, true);
+        const hashPart = url.split("#")[1] || "";
+        window.history.replaceState(null, "", `#${hashPart}`);
+      }
     } catch (err) {
       setError(err.message || "Failed to generate AI explanation");
     } finally {
       setAiLoading(false);
+      setPendingAiLoad(false);
     }
   };
+
+  // Auto-trigger AI explanation if URL has ai=1 and results are available
+  useEffect(() => {
+    if (pendingAiLoad && results && formData && !aiExplanation && !aiLoading && !aiTriggeredRef.current) {
+      aiTriggeredRef.current = true;
+      handleExplainWithAI(false); // Don't update URL again since it already has ai=1
+    }
+  }, [pendingAiLoad, results, formData, aiExplanation, aiLoading]);
 
   return (
     <div className="calculator">

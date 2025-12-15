@@ -49,7 +49,26 @@ function CalculatorResults({ data }) {
     const income = parseFloat(userIncome) || 0;
     if (!data) return null;
 
-    // At 0 income, show $0 PTC values (user would be on Medicaid)
+    // Find closest index for medicaid/chip lookup
+    const findClosestIndex = (targetIncome, incomeArray) => {
+      if (!incomeArray || targetIncome <= 0) return 0;
+      let closest = 0;
+      let minDiff = Infinity;
+      for (let i = 0; i < incomeArray.length; i++) {
+        const diff = Math.abs(incomeArray[i] - targetIncome);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closest = i;
+        }
+      }
+      return closest;
+    };
+
+    const closestIdx = findClosestIndex(income, data.income);
+    const onMedicaid = data.medicaid?.[closestIdx] > 0;
+    const onChip = data.chip?.[closestIdx] > 0;
+
+    // At 0 income, check actual medicaid status
     if (income <= 0) {
       return {
         income: 0,
@@ -59,6 +78,8 @@ function CalculatorResults({ data }) {
         iraGain: 0,
         fpl700Gain: 0,
         fplPct: 0,
+        onMedicaid: data.medicaid?.[0] > 0,
+        onChip: data.chip?.[0] > 0,
       };
     }
 
@@ -75,6 +96,8 @@ function CalculatorResults({ data }) {
       iraGain: ira - baseline,
       fpl700Gain: fpl700 - baseline,
       fplPct,
+      onMedicaid,
+      onChip,
     };
   }, [userIncome, data]);
 
@@ -191,6 +214,32 @@ function CalculatorResults({ data }) {
                     const hasFpl700 = userResults.fpl700 > 0;
                     const fpl = userResults.fplPct.toFixed(0);
 
+                    // Check if on Medicaid or CHIP based on actual calculations
+                    if (userResults.onMedicaid || userResults.onChip) {
+                      const programs = [];
+                      if (userResults.onMedicaid) programs.push("Medicaid");
+                      if (userResults.onChip) programs.push("CHIP");
+                      const programList = programs.join(" and ");
+                      return (
+                        <p>
+                          At {fpl}% FPL, your household would be covered by <strong>{programList}</strong>.
+                          Premium tax credits are not available when eligible for these programs.
+                        </p>
+                      );
+                    }
+
+                    // Below 100% FPL with no Medicaid - coverage gap
+                    if (userResults.fplPct < 100 && !hasBaseline && !hasIra && !hasFpl700) {
+                      return (
+                        <p>
+                          At {fpl}% FPL, you fall into the <strong>coverage gap</strong>.
+                          Your state has not expanded Medicaid, so adults at this income level don't qualify.
+                          Marketplace subsidies are only available starting at 100% FPL,
+                          leaving a gap in coverage for those below 100% FPL in non-expansion states.
+                        </p>
+                      );
+                    }
+
                     // Above 700% FPL - only IRA could help
                     if (userResults.fplPct > 700) {
                       return (
@@ -232,11 +281,11 @@ function CalculatorResults({ data }) {
                       }
                     }
 
-                    // Below 400% FPL
+                    // Between 138% and 400% FPL
                     if (hasBaseline) {
                       return (
                         <p>
-                          At {fpl}% FPL, you are <strong>below the 400% FPL cliff</strong>.
+                          At {fpl}% FPL, you are <strong>in the marketplace subsidy range</strong>.
                           You would receive subsidies under baseline law, but the reform options
                           would increase your credits by lowering your required contribution percentage.
                         </p>
@@ -244,7 +293,7 @@ function CalculatorResults({ data }) {
                     } else {
                       return (
                         <p>
-                          At {fpl}% FPL, you are <strong>below the 400% FPL cliff</strong>.
+                          At {fpl}% FPL, you are <strong>in the marketplace subsidy range</strong>.
                           Your required contribution under baseline law would exceed the benchmark premium cost,
                           so you would not receive subsidies. The reform options lower required contributions and may provide credits.
                         </p>

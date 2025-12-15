@@ -4,11 +4,13 @@ This module provides a REST API endpoint for calculating how ACA policy
 changes affect household premium tax credits across income levels.
 """
 
+import hashlib
 import json
 import os
 
 import anthropic
 import numpy as np
+from cachetools import TTLCache
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from policyengine_us import Simulation
@@ -18,6 +20,12 @@ from aca_calc.calculations.reforms import (
     create_enhanced_ptc_reform,
     create_700fpl_reform,
 )
+
+# Cache for calculation results - stores up to 1000 results for 24 hours
+calculation_cache = TTLCache(maxsize=1000, ttl=86400)
+
+# Cache for AI explanations - stores up to 500 results for 7 days
+explanation_cache = TTLCache(maxsize=500, ttl=604800)
 
 from .models import (
     CalculateRequest,
@@ -57,6 +65,22 @@ def convert_to_native(obj):
     return obj
 
 
+def get_cache_key(data: CalculateRequest) -> str:
+    """Generate a cache key from request parameters."""
+    key_data = {
+        "age_head": data.age_head,
+        "age_spouse": data.age_spouse,
+        "dependent_ages": tuple(data.dependent_ages) if data.dependent_ages else (),
+        "state": data.state,
+        "county": data.county,
+        "zip_code": data.zip_code,
+        "show_ira": data.show_ira,
+        "show_700fpl": data.show_700fpl,
+    }
+    key_str = json.dumps(key_data, sort_keys=True)
+    return hashlib.md5(key_str.encode()).hexdigest()
+
+
 @app.post("/api/calculate", response_model=CalculateResponse)
 async def calculate_ptc(data: CalculateRequest):
     """Calculate premium tax credits across income range.
@@ -64,6 +88,11 @@ async def calculate_ptc(data: CalculateRequest):
     Returns arrays of PTC values under baseline, IRA extension, and 700% FPL
     scenarios for the specified household.
     """
+    # Check cache first
+    cache_key = get_cache_key(data)
+    if cache_key in calculation_cache:
+        return calculation_cache[cache_key]
+
     try:
         # Build household situation with income axis
         situation = build_household_situation(
@@ -119,7 +148,7 @@ async def calculate_ptc(data: CalculateRequest):
                     "aca_ptc", map_to="household", period=2026
                 )
 
-        return CalculateResponse(
+        response = CalculateResponse(
             income=convert_to_native(income),
             ptc_baseline=convert_to_native(ptc_baseline),
             ptc_ira=convert_to_native(ptc_ira),
@@ -129,6 +158,10 @@ async def calculate_ptc(data: CalculateRequest):
             medicaid=convert_to_native(medicaid),
             chip=convert_to_native(chip),
         )
+
+        # Cache the result
+        calculation_cache[cache_key] = response
+        return response
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -267,9 +300,30 @@ Return ONLY valid JSON:
     return prompt
 
 
+def get_explain_cache_key(data: ExplainRequest) -> str:
+    """Generate a cache key from explain request parameters."""
+    key_data = {
+        "age_head": data.age_head,
+        "age_spouse": data.age_spouse,
+        "dependent_ages": tuple(data.dependent_ages) if data.dependent_ages else (),
+        "state": data.state,
+        "county": data.county,
+        "is_expansion_state": data.is_expansion_state,
+        "fpl": round(data.fpl, 0),
+        "slcsp": round(data.slcsp, 0),
+    }
+    key_str = json.dumps(key_data, sort_keys=True)
+    return hashlib.md5(key_str.encode()).hexdigest()
+
+
 @app.post("/api/explain", response_model=ExplainResponse)
 async def explain_with_ai(data: ExplainRequest):
     """Generate AI-powered scrollytelling narrative for a household."""
+
+    # Check cache first
+    cache_key = get_explain_cache_key(data)
+    if cache_key in explanation_cache:
+        return explanation_cache[cache_key]
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
@@ -306,10 +360,14 @@ async def explain_with_ai(data: ExplainRequest):
             for section in result["sections"]
         ]
 
-        return ExplainResponse(
+        response = ExplainResponse(
             sections=sections,
             household_description=result["household_description"]
         )
+
+        # Cache the result
+        explanation_cache[cache_key] = response
+        return response
 
     except json.JSONDecodeError as e:
         raise HTTPException(

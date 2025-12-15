@@ -33,7 +33,7 @@ const getUrlParams = () => {
 };
 
 // Build a shareable URL with household configuration
-const buildShareableUrl = (formData) => {
+const buildShareableUrl = (formData, includeAi = false) => {
   const params = new URLSearchParams();
   // Use defaults for empty values in URL
   const ageHead = formData.age_head === "" ? 40 : formData.age_head;
@@ -54,10 +54,20 @@ const buildShareableUrl = (formData) => {
   }
   if (!formData.show_ira) params.set("ira", "0");
   if (!formData.show_700fpl) params.set("700fpl", "0");
+  if (includeAi) params.set("ai", "1");
 
   const baseUrl = window.location.origin + window.location.pathname;
   return `${baseUrl}#calculator?${params.toString()}`;
 };
+
+// Check if AI explanation should auto-load from URL
+const shouldAutoLoadAi = () => {
+  const params = getUrlParams();
+  return params.get("ai") === "1";
+};
+
+// Export for use in Calculator component
+export { buildShareableUrl, shouldAutoLoadAi };
 
 // Parse form data from URL parameters
 const getFormDataFromUrl = () => {
