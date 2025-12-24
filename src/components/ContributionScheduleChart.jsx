@@ -15,12 +15,15 @@ import "./ContributionScheduleChart.css";
 const generateContributionData = () => {
   const data = [];
 
-  // FPL points from 100% to 800%
-  for (let fpl = 100; fpl <= 800; fpl += 10) {
+  // FPL points from 0% to 800%
+  for (let fpl = 0; fpl <= 800; fpl += 10) {
     const point = { fpl };
 
     // Original ACA (2014-2020) / Post-IRA baseline
-    if (fpl <= 133) {
+    // Below 100% FPL: No ACA subsidies (Medicaid eligible in expansion states)
+    if (fpl < 100) {
+      point.baseline = null;
+    } else if (fpl <= 133) {
       point.baseline = 2.0;
     } else if (fpl <= 150) {
       point.baseline = 2.0 + (fpl - 133) / (150 - 133) * (4.0 - 2.0);
@@ -37,7 +40,10 @@ const generateContributionData = () => {
     }
 
     // ARPA/IRA (2021-2025)
-    if (fpl <= 150) {
+    // Below 100% FPL: 0% contribution (subsidies available in expansion states, or via special provision)
+    if (fpl < 100) {
+      point.ira = 0;
+    } else if (fpl <= 150) {
       point.ira = (fpl - 100) / (150 - 100) * 2.0;
     } else if (fpl <= 200) {
       point.ira = 2.0 + (fpl - 150) / (200 - 150) * (4.0 - 2.0);
@@ -50,7 +56,10 @@ const generateContributionData = () => {
     }
 
     // 700% FPL Proposal
-    if (fpl <= 150) {
+    // Below 100% FPL: 0% contribution
+    if (fpl < 100) {
+      point.bill700 = 0;
+    } else if (fpl <= 150) {
       point.bill700 = (fpl - 100) / (150 - 100) * 2.0;
     } else if (fpl <= 200) {
       point.bill700 = 2.0 + (fpl - 150) / (200 - 150) * (4.0 - 2.0);
