@@ -22,7 +22,7 @@ const generateContributionData = () => {
     // Original ACA (2014-2020) / Post-IRA baseline
     // Below 100% FPL: No ACA subsidies (Medicaid eligible in expansion states)
     if (fpl < 100) {
-      point.baseline = null;
+      point.baseline = 0;
     } else if (fpl <= 133) {
       point.baseline = 2.0;
     } else if (fpl <= 150) {
