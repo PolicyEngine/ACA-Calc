@@ -4,16 +4,22 @@ This module provides a REST API endpoint for calculating how ACA policy
 changes affect household premium tax credits across income levels.
 """
 
+import asyncio
 import hashlib
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor
 
 import anthropic
 import numpy as np
 from cachetools import TTLCache
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from policyengine_us import Simulation
+
+# Thread pool for parallel simulations
+simulation_executor = ThreadPoolExecutor(max_workers=3)
 
 from aca_calc.calculations.household import build_household_situation
 from aca_calc.calculations.reforms import (
@@ -129,24 +135,30 @@ async def calculate_ptc(data: CalculateRequest):
         slcsp = float(np.max(slcsp_array))
         fpl = float(fpl_array[len(fpl_array) // 2])
 
-        # Run IRA extension simulation
-        ptc_ira = np.zeros_like(ptc_baseline)
-        if data.show_ira:
+        # Run reform simulations in parallel
+        def run_ira_simulation():
+            if not data.show_ira:
+                return np.zeros_like(ptc_baseline)
             reform_ira = create_enhanced_ptc_reform()
             sim_ira = Simulation(situation=situation, reform=reform_ira)
-            ptc_ira = sim_ira.calculate(
-                "aca_ptc", map_to="household", period=2026
-            )
+            return sim_ira.calculate("aca_ptc", map_to="household", period=2026)
 
-        # Run 700% FPL simulation
-        ptc_700fpl = np.zeros_like(ptc_baseline)
-        if data.show_700fpl:
+        def run_700fpl_simulation():
+            if not data.show_700fpl:
+                return np.zeros_like(ptc_baseline)
             reform_700fpl = create_700fpl_reform()
-            if reform_700fpl:
-                sim_700fpl = Simulation(situation=situation, reform=reform_700fpl)
-                ptc_700fpl = sim_700fpl.calculate(
-                    "aca_ptc", map_to="household", period=2026
-                )
+            if not reform_700fpl:
+                return np.zeros_like(ptc_baseline)
+            sim_700fpl = Simulation(situation=situation, reform=reform_700fpl)
+            return sim_700fpl.calculate("aca_ptc", map_to="household", period=2026)
+
+        # Submit both simulations to run in parallel
+        ira_future = simulation_executor.submit(run_ira_simulation)
+        fpl700_future = simulation_executor.submit(run_700fpl_simulation)
+
+        # Wait for both to complete
+        ptc_ira = ira_future.result()
+        ptc_700fpl = fpl700_future.result()
 
         response = CalculateResponse(
             income=convert_to_native(income),
@@ -167,6 +179,118 @@ async def calculate_ptc(data: CalculateRequest):
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Calculation error: {e}")
+
+
+@app.post("/api/calculate-stream")
+async def calculate_ptc_stream(data: CalculateRequest):
+    """Calculate premium tax credits with streaming progress updates.
+
+    Returns Server-Sent Events with progress updates as each simulation completes.
+    """
+    # Check cache first - if cached, return immediately
+    cache_key = get_cache_key(data)
+    if cache_key in calculation_cache:
+        async def cached_response():
+            yield f"data: {json.dumps({'step': 'cached', 'progress': 100, 'message': 'Using cached results'})}\n\n"
+            result = calculation_cache[cache_key]
+            yield f"data: {json.dumps({'step': 'complete', 'result': result.model_dump()})}\n\n"
+        return StreamingResponse(cached_response(), media_type="text/event-stream")
+
+    async def generate():
+        try:
+            # Step 1: Build household situation
+            yield f"data: {json.dumps({'step': 'setup', 'progress': 10, 'message': 'Setting up household...'})}\n\n"
+            await asyncio.sleep(0)  # Allow event to be sent
+
+            situation = build_household_situation(
+                age_head=data.age_head,
+                age_spouse=data.age_spouse,
+                dependent_ages=list(data.dependent_ages),
+                state=data.state,
+                county=data.county,
+                zip_code=data.zip_code,
+                year=2026,
+                with_axes=True,
+            )
+
+            # Step 2: Run baseline simulation
+            yield f"data: {json.dumps({'step': 'baseline', 'progress': 25, 'message': 'Calculating baseline (2026)...'})}\n\n"
+            await asyncio.sleep(0)
+
+            sim_baseline = Simulation(situation=situation)
+            income = sim_baseline.calculate(
+                "employment_income", map_to="household", period=2026
+            )
+            ptc_baseline = sim_baseline.calculate(
+                "aca_ptc", map_to="household", period=2026
+            )
+            medicaid = sim_baseline.calculate(
+                "medicaid", map_to="household", period=2026
+            )
+            chip = sim_baseline.calculate(
+                "chip", map_to="household", period=2026
+            )
+            slcsp_array = sim_baseline.calculate(
+                "slcsp", map_to="household", period=2026
+            )
+            fpl_array = sim_baseline.calculate("tax_unit_fpg", period=2026)
+
+            slcsp = float(np.max(slcsp_array))
+            fpl = float(fpl_array[len(fpl_array) // 2])
+
+            # Step 3: Run reform simulations in parallel
+            yield f"data: {json.dumps({'step': 'reforms', 'progress': 50, 'message': 'Calculating policy reforms...'})}\n\n"
+            await asyncio.sleep(0)
+
+            def run_ira_simulation():
+                if not data.show_ira:
+                    return np.zeros_like(ptc_baseline)
+                reform_ira = create_enhanced_ptc_reform()
+                sim_ira = Simulation(situation=situation, reform=reform_ira)
+                return sim_ira.calculate("aca_ptc", map_to="household", period=2026)
+
+            def run_700fpl_simulation():
+                if not data.show_700fpl:
+                    return np.zeros_like(ptc_baseline)
+                reform_700fpl = create_700fpl_reform()
+                if not reform_700fpl:
+                    return np.zeros_like(ptc_baseline)
+                sim_700fpl = Simulation(situation=situation, reform=reform_700fpl)
+                return sim_700fpl.calculate("aca_ptc", map_to="household", period=2026)
+
+            # Run both reform simulations in parallel
+            loop = asyncio.get_event_loop()
+            ira_future = loop.run_in_executor(simulation_executor, run_ira_simulation)
+            fpl700_future = loop.run_in_executor(simulation_executor, run_700fpl_simulation)
+
+            ptc_ira, ptc_700fpl = await asyncio.gather(ira_future, fpl700_future)
+
+            # Step 4: Complete
+            yield f"data: {json.dumps({'step': 'finalizing', 'progress': 90, 'message': 'Finalizing results...'})}\n\n"
+            await asyncio.sleep(0)
+
+            response = CalculateResponse(
+                income=convert_to_native(income),
+                ptc_baseline=convert_to_native(ptc_baseline),
+                ptc_ira=convert_to_native(ptc_ira),
+                ptc_700fpl=convert_to_native(ptc_700fpl),
+                fpl=fpl,
+                slcsp=slcsp,
+                medicaid=convert_to_native(medicaid),
+                chip=convert_to_native(chip),
+            )
+
+            # Cache the result
+            calculation_cache[cache_key] = response
+
+            yield f"data: {json.dumps({'step': 'complete', 'progress': 100, 'result': response.model_dump()})}\n\n"
+
+        except ValueError as e:
+            yield f"data: {json.dumps({'step': 'error', 'error': str(e)})}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'step': 'error', 'error': f'Calculation error: {e}'})}\n\n"
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
 
 
 @app.get("/api/health")

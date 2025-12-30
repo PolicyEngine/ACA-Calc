@@ -58,10 +58,49 @@ const getChipThreshold = (state) => {
   return thresholds[state] || 200;
 };
 
+// Cache TTL: 24 hours in milliseconds
+const CACHE_TTL = 24 * 60 * 60 * 1000;
+
+function getCacheKey(data) {
+  const keyData = {
+    age_head: data.age_head,
+    age_spouse: data.age_spouse,
+    dependent_ages: data.dependent_ages || [],
+    state: data.state,
+    county: data.county,
+    zip_code: data.zip_code,
+  };
+  return `aca-calc-${JSON.stringify(keyData)}`;
+}
+
+function getFromCache(key) {
+  try {
+    const cached = localStorage.getItem(key);
+    if (!cached) return null;
+    const { data, timestamp } = JSON.parse(cached);
+    if (Date.now() - timestamp > CACHE_TTL) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function setInCache(key, data) {
+  try {
+    localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+  } catch {
+    // localStorage might be full or disabled
+  }
+}
+
 function Calculator() {
   const [results, setResults] = useState(null);
   const [formData, setFormData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState({ percent: 0, message: "" });
   const [error, setError] = useState(null);
   const [aiExplanation, setAiExplanation] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -74,9 +113,21 @@ function Calculator() {
     setResults(null);
     setFormData(data);
     setAiExplanation(null);
+    setProgress({ percent: 0, message: "Starting calculation..." });
+
+    // Check client-side cache first
+    const cacheKey = getCacheKey(data);
+    const cached = getFromCache(cacheKey);
+    if (cached) {
+      setProgress({ percent: 100, message: "Using cached results" });
+      setResults(cached);
+      setLoading(false);
+      return;
+    }
 
     try {
-      const response = await fetch(`${API_URL}/api/calculate`, {
+      // Use streaming endpoint for progress updates
+      const response = await fetch(`${API_URL}/api/calculate-stream`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -89,12 +140,68 @@ function Calculator() {
         throw new Error(errorData.detail || "Calculation failed");
       }
 
-      const result = await response.json();
-      setResults(result);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            try {
+              const event = JSON.parse(line.slice(6));
+
+              if (event.step === "error") {
+                throw new Error(event.error);
+              }
+
+              if (event.progress !== undefined) {
+                setProgress({ percent: event.progress, message: event.message || "" });
+              }
+
+              if (event.step === "complete" && event.result) {
+                setResults(event.result);
+                setInCache(cacheKey, event.result);
+              }
+            } catch (parseErr) {
+              if (parseErr.message !== "Unexpected end of JSON input") {
+                console.error("SSE parse error:", parseErr);
+              }
+            }
+          }
+        }
+      }
     } catch (err) {
-      setError(err.message || "An error occurred. Please try again.");
+      // Fallback to regular endpoint if streaming fails
+      try {
+        const response = await fetch(`${API_URL}/api/calculate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || "Calculation failed");
+        }
+
+        const result = await response.json();
+        setResults(result);
+        setInCache(cacheKey, result);
+      } catch (fallbackErr) {
+        setError(fallbackErr.message || "An error occurred. Please try again.");
+      }
     } finally {
       setLoading(false);
+      setProgress({ percent: 0, message: "" });
     }
   };
 
@@ -203,9 +310,19 @@ function Calculator() {
         <div className="calculator-results-container">
           {loading && (
             <div className="calculator-loading">
-              <div className="loading-spinner"></div>
-              <p>Calculating premium tax credits...</p>
-              <p className="loading-note">This may take up to a minute</p>
+              <div className="progress-container">
+                <div className="progress-bar">
+                  <div
+                    className="progress-fill"
+                    style={{ width: `${progress.percent}%` }}
+                  />
+                </div>
+                <div className="progress-text">
+                  <span className="progress-message">{progress.message || "Calculating..."}</span>
+                  <span className="progress-percent">{progress.percent}%</span>
+                </div>
+              </div>
+              <p className="loading-note">Running simulations for your household</p>
             </div>
           )}
 

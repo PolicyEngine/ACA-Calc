@@ -19,40 +19,47 @@ const generateContributionData = () => {
   for (let fpl = 0; fpl <= 800; fpl += 10) {
     const point = { fpl };
 
-    // Original ACA (2014-2020) / Post-IRA baseline
-    // Below 100% FPL: No ACA subsidies (Medicaid eligible in expansion states)
+    // Original ACA / 2026 baseline (IRS Rev Proc 2025-25)
+    // Jump at 133% is real - that's the Medicaid expansion threshold
     if (fpl < 100) {
       point.baseline = 0;
-    } else if (fpl <= 133) {
-      point.baseline = 2.0;
+    } else if (fpl < 133) {
+      // Below 133%: flat at 2.1%
+      point.baseline = 2.1;
     } else if (fpl <= 150) {
-      point.baseline = 2.0 + (fpl - 133) / (150 - 133) * (4.0 - 2.0);
+      // 133-150%: 3.14% to 4.19%
+      point.baseline = 3.14 + (fpl - 133) / (150 - 133) * (4.19 - 3.14);
     } else if (fpl <= 200) {
-      point.baseline = 4.0 + (fpl - 150) / (200 - 150) * (6.3 - 4.0);
+      // 150-200%: 4.19% to 6.6%
+      point.baseline = 4.19 + (fpl - 150) / (200 - 150) * (6.6 - 4.19);
     } else if (fpl <= 250) {
-      point.baseline = 6.3 + (fpl - 200) / (250 - 200) * (8.05 - 6.3);
+      // 200-250%: 6.6% to 8.44%
+      point.baseline = 6.6 + (fpl - 200) / (250 - 200) * (8.44 - 6.6);
     } else if (fpl <= 300) {
-      point.baseline = 8.05 + (fpl - 250) / (300 - 250) * (9.5 - 8.05);
+      // 250-300%: 8.44% to 9.96%
+      point.baseline = 8.44 + (fpl - 250) / (300 - 250) * (9.96 - 8.44);
     } else if (fpl <= 400) {
-      point.baseline = 9.5;
+      point.baseline = 9.96;
     } else {
       point.baseline = null; // No subsidy above 400%
     }
 
-    // ARPA/IRA (2021-2025)
-    // Below 100% FPL: 0% contribution (subsidies available in expansion states, or via special provision)
-    if (fpl < 100) {
+    // ARPA/IRA (2021-2025) - from IRS Revenue Procedure 2023-29
+    // 0% contribution up to 150% FPL, then gradual increase
+    if (fpl <= 150) {
       point.ira = 0;
-    } else if (fpl <= 150) {
-      point.ira = (fpl - 100) / (150 - 100) * 2.0;
     } else if (fpl <= 200) {
-      point.ira = 2.0 + (fpl - 150) / (200 - 150) * (4.0 - 2.0);
+      // 0% to 2%
+      point.ira = (fpl - 150) / (200 - 150) * 2.0;
     } else if (fpl <= 250) {
-      point.ira = 4.0 + (fpl - 200) / (250 - 200) * (6.0 - 4.0);
+      // 2% to 4%
+      point.ira = 2.0 + (fpl - 200) / (250 - 200) * (4.0 - 2.0);
     } else if (fpl <= 300) {
-      point.ira = 6.0 + (fpl - 250) / (300 - 250) * (8.5 - 6.0);
+      // 4% to 6%
+      point.ira = 4.0 + (fpl - 250) / (300 - 250) * (6.0 - 4.0);
     } else {
-      point.ira = 8.5; // Capped at 8.5% for all incomes above 300%
+      // 6% to 8.5% (capped at 8.5% for all incomes above 300%)
+      point.ira = 6.0 + Math.min((fpl - 300) / (400 - 300) * (8.5 - 6.0), 2.5);
     }
 
     // 700% FPL Proposal

@@ -39,12 +39,13 @@ def build_household_situation(
     }
 
     # Add axes if requested (for income sweeps)
+    # 1,001 points is sufficient for smooth charts while being 10x faster than 10,001
     if with_axes:
         situation["axes"] = [
             [
                 {
                     "name": "employment_income",
-                    "count": 10_001,
+                    "count": 1_001,
                     "min": 0,
                     "max": 1000000,
                     "period": year,
