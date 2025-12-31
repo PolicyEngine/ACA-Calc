@@ -20,6 +20,8 @@ const COLORS = {
   baseline: "#9CA3AF",  // gray-400
   ira: "#0284C7",       // blue-600 from appv2
   bipartisan: "#7c3aed",
+  additionalBracket: "#059669",  // emerald-600
+  simplifiedBracket: "#d97706",  // amber-600
 };
 
 function HealthBenefitsChart({ data, chartState, householdInfo }) {
@@ -42,6 +44,8 @@ function HealthBenefitsChart({ data, chartState, householdInfo }) {
         ptcBaseline: data.ptc_baseline?.[i] || 0,
         ptcIRA: data.ptc_ira?.[i] || 0,
         ptc700FPL: data.ptc_700fpl?.[i] || 0,
+        ptcAdditionalBracket: data.ptc_additional_bracket?.[i] || 0,
+        ptcSimplifiedBracket: data.ptc_simplified_bracket?.[i] || 0,
         netIncomeBaseline: data.net_income_baseline?.[i] || 0,
         netIncomeIRA: data.net_income_ira?.[i] || 0,
         netIncome700FPL: data.net_income_700fpl?.[i] || 0,
@@ -66,7 +70,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo }) {
       case "ira_impact":
         return ["ptcIRA", "ptcBaseline", "iraGain"];
       case "both_reforms":
-        return ["ptcBaseline", "ptcIRA", "ptc700FPL"];
+        return ["ptcBaseline", "ptcIRA", "ptc700FPL", "ptcAdditionalBracket", "ptcSimplifiedBracket"];
       case "impact":
         return ["deltaIRA", "delta700FPL"];
       default:
@@ -329,6 +333,30 @@ function HealthBenefitsChart({ data, chartState, householdInfo }) {
               dataKey="ptc700FPL"
               name="PTC (700% FPL Bill)"
               stroke={COLORS.bipartisan}
+              strokeWidth={2.5}
+              dot={false}
+            />
+          )}
+
+          {/* PTC Additional Bracket Reform */}
+          {visibleLines.includes("ptcAdditionalBracket") && (
+            <Line
+              type="monotone"
+              dataKey="ptcAdditionalBracket"
+              name="PTC (Additional Bracket)"
+              stroke={COLORS.additionalBracket}
+              strokeWidth={2.5}
+              dot={false}
+            />
+          )}
+
+          {/* PTC Simplified Bracket Reform */}
+          {visibleLines.includes("ptcSimplifiedBracket") && (
+            <Line
+              type="monotone"
+              dataKey="ptcSimplifiedBracket"
+              name="PTC (Simplified Bracket)"
+              stroke={COLORS.simplifiedBracket}
               strokeWidth={2.5}
               dot={false}
             />
