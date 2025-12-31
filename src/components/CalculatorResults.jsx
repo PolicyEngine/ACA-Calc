@@ -14,6 +14,8 @@ function CalculatorResults({ data }) {
       ptc_baseline: data.ptc_baseline,
       ptc_ira: data.ptc_ira,
       ptc_700fpl: data.ptc_700fpl,
+      ptc_additional_bracket: data.ptc_additional_bracket,
+      ptc_simplified_bracket: data.ptc_simplified_bracket,
       medicaid: data.medicaid,
       chip: data.chip,
       fpl: data.fpl,
@@ -75,8 +77,12 @@ function CalculatorResults({ data }) {
         baseline: 0,
         ira: 0,
         fpl700: 0,
+        additionalBracket: 0,
+        simplifiedBracket: 0,
         iraGain: 0,
         fpl700Gain: 0,
+        additionalBracketGain: 0,
+        simplifiedBracketGain: 0,
         fplPct: 0,
         onMedicaid: data.medicaid?.[0] > 0,
         onChip: data.chip?.[0] > 0,
@@ -86,6 +92,8 @@ function CalculatorResults({ data }) {
     const baseline = interpolatePTC(income, data.income, data.ptc_baseline);
     const ira = interpolatePTC(income, data.income, data.ptc_ira);
     const fpl700 = interpolatePTC(income, data.income, data.ptc_700fpl);
+    const additionalBracket = interpolatePTC(income, data.income, data.ptc_additional_bracket);
+    const simplifiedBracket = interpolatePTC(income, data.income, data.ptc_simplified_bracket);
     const fplPct = (income / data.fpl) * 100;
 
     return {
@@ -93,8 +101,12 @@ function CalculatorResults({ data }) {
       baseline,
       ira,
       fpl700,
+      additionalBracket,
+      simplifiedBracket,
       iraGain: ira - baseline,
       fpl700Gain: fpl700 - baseline,
+      additionalBracketGain: additionalBracket - baseline,
+      simplifiedBracketGain: simplifiedBracket - baseline,
       fplPct,
       onMedicaid,
       onChip,
@@ -204,6 +216,30 @@ function CalculatorResults({ data }) {
                       <p className="impact-gain">+{formatCurrency(userResults.fpl700Gain)}/year</p>
                     )}
                   </div>
+
+                  {userResults.additionalBracket > 0 && (
+                    <div className="impact-card additional-bracket">
+                      <h4>Additional Bracket</h4>
+                      <p className="impact-value">{formatCurrency(userResults.additionalBracket)}</p>
+                      <p className="impact-label">Annual PTC</p>
+                      <p className="impact-monthly">{formatCurrency(userResults.additionalBracket / 12)}/month</p>
+                      {userResults.additionalBracketGain > 0 && (
+                        <p className="impact-gain">+{formatCurrency(userResults.additionalBracketGain)}/year</p>
+                      )}
+                    </div>
+                  )}
+
+                  {userResults.simplifiedBracket > 0 && (
+                    <div className="impact-card simplified-bracket">
+                      <h4>Simplified Bracket</h4>
+                      <p className="impact-value">{formatCurrency(userResults.simplifiedBracket)}</p>
+                      <p className="impact-label">Annual PTC</p>
+                      <p className="impact-monthly">{formatCurrency(userResults.simplifiedBracket / 12)}/month</p>
+                      {userResults.simplifiedBracketGain > 0 && (
+                        <p className="impact-gain">+{formatCurrency(userResults.simplifiedBracketGain)}/year</p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="impact-explanation">

@@ -22,6 +22,12 @@ class CalculateRequest(BaseModel):
     show_700fpl: bool = Field(
         default=False, description="Calculate 700% FPL bill scenario"
     )
+    show_additional_bracket: bool = Field(
+        default=False, description="Calculate additional bracket reform scenario"
+    )
+    show_simplified_bracket: bool = Field(
+        default=False, description="Calculate simplified bracket reform scenario"
+    )
 
     @field_validator("dependent_ages")
     @classmethod
@@ -57,6 +63,12 @@ class CalculateResponse(BaseModel):
     ptc_baseline: list[float] = Field(description="PTC under baseline (2026 law)")
     ptc_ira: list[float] = Field(description="PTC under IRA extension")
     ptc_700fpl: list[float] = Field(description="PTC under 700% FPL bill")
+    ptc_additional_bracket: list[float] = Field(
+        default_factory=list, description="PTC under additional bracket reform"
+    )
+    ptc_simplified_bracket: list[float] = Field(
+        default_factory=list, description="PTC under simplified bracket reform"
+    )
     fpl: float = Field(description="Federal Poverty Level for household size")
     slcsp: float = Field(description="Second-lowest cost silver plan (annual)")
     medicaid: list[float] = Field(description="Medicaid value by income")

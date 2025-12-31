@@ -25,6 +25,8 @@ from aca_calc.calculations.household import build_household_situation
 from aca_calc.calculations.reforms import (
     create_enhanced_ptc_reform,
     create_700fpl_reform,
+    create_additional_bracket_reform,
+    create_simplified_bracket_reform,
 )
 
 # Cache for calculation results - stores up to 1000 results for 24 hours
@@ -82,6 +84,8 @@ def get_cache_key(data: CalculateRequest) -> str:
         "zip_code": data.zip_code,
         "show_ira": data.show_ira,
         "show_700fpl": data.show_700fpl,
+        "show_additional_bracket": data.show_additional_bracket,
+        "show_simplified_bracket": data.show_simplified_bracket,
     }
     key_str = json.dumps(key_data, sort_keys=True)
     return hashlib.md5(key_str.encode()).hexdigest()
@@ -152,19 +156,43 @@ async def calculate_ptc(data: CalculateRequest):
             sim_700fpl = Simulation(situation=situation, reform=reform_700fpl)
             return sim_700fpl.calculate("aca_ptc", map_to="household", period=2026)
 
-        # Submit both simulations to run in parallel
+        def run_additional_bracket_simulation():
+            if not data.show_additional_bracket:
+                return np.zeros_like(ptc_baseline)
+            reform = create_additional_bracket_reform()
+            if not reform:
+                return np.zeros_like(ptc_baseline)
+            sim = Simulation(situation=situation, reform=reform)
+            return sim.calculate("aca_ptc", map_to="household", period=2026)
+
+        def run_simplified_bracket_simulation():
+            if not data.show_simplified_bracket:
+                return np.zeros_like(ptc_baseline)
+            reform = create_simplified_bracket_reform()
+            if not reform:
+                return np.zeros_like(ptc_baseline)
+            sim = Simulation(situation=situation, reform=reform)
+            return sim.calculate("aca_ptc", map_to="household", period=2026)
+
+        # Submit all simulations to run in parallel
         ira_future = simulation_executor.submit(run_ira_simulation)
         fpl700_future = simulation_executor.submit(run_700fpl_simulation)
+        additional_bracket_future = simulation_executor.submit(run_additional_bracket_simulation)
+        simplified_bracket_future = simulation_executor.submit(run_simplified_bracket_simulation)
 
-        # Wait for both to complete
+        # Wait for all to complete
         ptc_ira = ira_future.result()
         ptc_700fpl = fpl700_future.result()
+        ptc_additional_bracket = additional_bracket_future.result()
+        ptc_simplified_bracket = simplified_bracket_future.result()
 
         response = CalculateResponse(
             income=convert_to_native(income),
             ptc_baseline=convert_to_native(ptc_baseline),
             ptc_ira=convert_to_native(ptc_ira),
             ptc_700fpl=convert_to_native(ptc_700fpl),
+            ptc_additional_bracket=convert_to_native(ptc_additional_bracket),
+            ptc_simplified_bracket=convert_to_native(ptc_simplified_bracket),
             fpl=fpl,
             slcsp=slcsp,
             medicaid=convert_to_native(medicaid),
@@ -258,12 +286,34 @@ async def calculate_ptc_stream(data: CalculateRequest):
                 sim_700fpl = Simulation(situation=situation, reform=reform_700fpl)
                 return sim_700fpl.calculate("aca_ptc", map_to="household", period=2026)
 
-            # Run both reform simulations in parallel
+            def run_additional_bracket_simulation():
+                if not data.show_additional_bracket:
+                    return np.zeros_like(ptc_baseline)
+                reform = create_additional_bracket_reform()
+                if not reform:
+                    return np.zeros_like(ptc_baseline)
+                sim = Simulation(situation=situation, reform=reform)
+                return sim.calculate("aca_ptc", map_to="household", period=2026)
+
+            def run_simplified_bracket_simulation():
+                if not data.show_simplified_bracket:
+                    return np.zeros_like(ptc_baseline)
+                reform = create_simplified_bracket_reform()
+                if not reform:
+                    return np.zeros_like(ptc_baseline)
+                sim = Simulation(situation=situation, reform=reform)
+                return sim.calculate("aca_ptc", map_to="household", period=2026)
+
+            # Run all reform simulations in parallel
             loop = asyncio.get_event_loop()
             ira_future = loop.run_in_executor(simulation_executor, run_ira_simulation)
             fpl700_future = loop.run_in_executor(simulation_executor, run_700fpl_simulation)
+            additional_bracket_future = loop.run_in_executor(simulation_executor, run_additional_bracket_simulation)
+            simplified_bracket_future = loop.run_in_executor(simulation_executor, run_simplified_bracket_simulation)
 
-            ptc_ira, ptc_700fpl = await asyncio.gather(ira_future, fpl700_future)
+            ptc_ira, ptc_700fpl, ptc_additional_bracket, ptc_simplified_bracket = await asyncio.gather(
+                ira_future, fpl700_future, additional_bracket_future, simplified_bracket_future
+            )
 
             # Step 4: Complete
             yield f"data: {json.dumps({'step': 'finalizing', 'progress': 90, 'message': 'Finalizing results...'})}\n\n"
@@ -274,6 +324,8 @@ async def calculate_ptc_stream(data: CalculateRequest):
                 ptc_baseline=convert_to_native(ptc_baseline),
                 ptc_ira=convert_to_native(ptc_ira),
                 ptc_700fpl=convert_to_native(ptc_700fpl),
+                ptc_additional_bracket=convert_to_native(ptc_additional_bracket),
+                ptc_simplified_bracket=convert_to_native(ptc_simplified_bracket),
                 fpl=fpl,
                 slcsp=slcsp,
                 medicaid=convert_to_native(medicaid),

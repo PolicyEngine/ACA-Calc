@@ -54,6 +54,8 @@ const buildShareableUrl = (formData, includeAi = false) => {
   }
   if (!formData.show_ira) params.set("ira", "0");
   if (!formData.show_700fpl) params.set("700fpl", "0");
+  if (formData.show_additional_bracket) params.set("additional", "1");
+  if (formData.show_simplified_bracket) params.set("simplified", "1");
   if (includeAi) params.set("ai", "1");
 
   const baseUrl = window.location.origin + window.location.pathname;
@@ -90,6 +92,8 @@ const getFormDataFromUrl = () => {
     zip_code: params.get("zip") || "",
     show_ira: params.get("ira") !== "0",
     show_700fpl: params.get("700fpl") !== "0",
+    show_additional_bracket: params.get("additional") === "1",
+    show_simplified_bracket: params.get("simplified") === "1",
   };
 };
 
@@ -121,6 +125,8 @@ const getInitialFormData = () => {
     zip_code: "",
     show_ira: true,
     show_700fpl: true,
+    show_additional_bracket: false,
+    show_simplified_bracket: false,
   };
 };
 
@@ -226,6 +232,8 @@ function CalculatorForm({ onCalculate, loading }) {
       zip_code: formData.zip_code || null,
       show_ira: formData.show_ira,
       show_700fpl: formData.show_700fpl,
+      show_additional_bracket: formData.show_additional_bracket,
+      show_simplified_bracket: formData.show_simplified_bracket,
     };
 
     // Update form with normalized values
@@ -435,13 +443,45 @@ function CalculatorForm({ onCalculate, loading }) {
             </span>
           </label>
         </div>
+
+        <div className="form-row">
+          <label className="form-label checkbox-label">
+            <input
+              type="checkbox"
+              name="show_additional_bracket"
+              checked={formData.show_additional_bracket}
+              onChange={handleChange}
+              disabled={loading}
+            />
+            <span>
+              <strong>Additional Bracket</strong>
+              <span className="checkbox-description">Linear extension beyond 400% FPL with gradual phase-out</span>
+            </span>
+          </label>
+        </div>
+
+        <div className="form-row">
+          <label className="form-label checkbox-label">
+            <input
+              type="checkbox"
+              name="show_simplified_bracket"
+              checked={formData.show_simplified_bracket}
+              onChange={handleChange}
+              disabled={loading}
+            />
+            <span>
+              <strong>Simplified Bracket</strong>
+              <span className="checkbox-description">Single linear phase-out starting at 100% FPL</span>
+            </span>
+          </label>
+        </div>
       </div>
 
       <div className="form-actions">
         <button
           type="submit"
           className="calculate-button"
-          disabled={loading || (!formData.show_ira && !formData.show_700fpl)}
+          disabled={loading || (!formData.show_ira && !formData.show_700fpl && !formData.show_additional_bracket && !formData.show_simplified_bracket)}
         >
           {loading ? "Calculating..." : "Calculate Premium Tax Credits"}
         </button>
@@ -461,7 +501,7 @@ function CalculatorForm({ onCalculate, loading }) {
         {shareMessage && <span className="share-message">{shareMessage}</span>}
       </div>
 
-      {!formData.show_ira && !formData.show_700fpl && (
+      {!formData.show_ira && !formData.show_700fpl && !formData.show_additional_bracket && !formData.show_simplified_bracket && (
         <p className="form-warning">Please select at least one policy scenario</p>
       )}
     </form>

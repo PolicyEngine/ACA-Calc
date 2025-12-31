@@ -65,3 +65,46 @@ def create_700fpl_reform():
     except ImportError:
         # Fallback if the reform isn't available in the installed version
         return None
+
+
+def create_additional_bracket_reform():
+    """Create linear bracket extension reform for ACA PTC.
+
+    This reform extends premium subsidies beyond the standard 400% FPL cliff
+    using a linear formula. Above the transition threshold (typically 300% FPL),
+    the contribution percentage increases linearly based on the increment rate
+    (typically 4 percentage points per 100% FPL).
+
+    The reform creates a more gradual phase-out of subsidies, reducing the
+    cliff effect where households just above 400% FPL lose all subsidies.
+
+    Returns:
+        Reform: PolicyEngine reform object
+    """
+    try:
+        from policyengine_us.reforms.aca.aca_ptc_additional_bracket import aca_ptc_additional_bracket
+        return aca_ptc_additional_bracket
+    except ImportError:
+        return None
+
+
+def create_simplified_bracket_reform():
+    """Create simplified linear phase-out reform for ACA PTC.
+
+    This reform creates a single linear phase-out starting at 100% FPL,
+    where the contribution percentage increases by 4 percentage points
+    per 100% FPL increment. This results in a simpler, more aggressive
+    phase-out compared to the additional bracket reform.
+
+    The reform eliminates the standard ACA bracket structure entirely,
+    replacing it with one continuous linear progression from 100% FPL
+    onwards.
+
+    Returns:
+        Reform: PolicyEngine reform object
+    """
+    try:
+        from policyengine_us.reforms.aca.aca_ptc_simplified_bracket import aca_ptc_simplified_bracket
+        return aca_ptc_simplified_bracket
+    except ImportError:
+        return None
