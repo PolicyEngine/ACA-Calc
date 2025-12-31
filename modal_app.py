@@ -18,6 +18,7 @@ image = (
     )
     .add_local_dir("aca_calc", "/root/aca_calc", copy=True)
     .add_local_dir("src/aca_api", "/root/src/aca_api", copy=True)
+    .env({"PYTHONPATH": "/root"})
 )
 
 
