@@ -24,7 +24,7 @@ const COLORS = {
   simplifiedBracket: "#d97706",  // amber-600
 };
 
-function HealthBenefitsChart({ data, chartState, householdInfo }) {
+function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: externalVisibleLines }) {
   // Process data for the chart based on current state
   const chartData = useMemo(() => {
     if (!data) return [];
@@ -53,8 +53,20 @@ function HealthBenefitsChart({ data, chartState, householdInfo }) {
       .filter((d) => d.income <= maxIncome && d.income >= 0);
   }, [data, chartState]);
 
-  // Determine which lines to show based on chart state
+  // Determine which lines to show based on chart state or external control
   const getVisibleLines = () => {
+    // If external control is provided, use it
+    if (externalVisibleLines) {
+      const lines = [];
+      if (externalVisibleLines.baseline) lines.push("ptcBaseline");
+      if (externalVisibleLines.ira) lines.push("ptcIRA");
+      if (externalVisibleLines.fpl700) lines.push("ptc700FPL");
+      if (externalVisibleLines.additionalBracket) lines.push("ptcAdditionalBracket");
+      if (externalVisibleLines.simplifiedBracket) lines.push("ptcSimplifiedBracket");
+      return lines;
+    }
+
+    // Fallback to chart state for AI explanation mode
     switch (chartState) {
       case "all_programs":
         return ["medicaid", "chip", "ptcBaseline"];

@@ -5,6 +5,17 @@ import "./Calculator.css";
 function CalculatorResults({ data }) {
   const [activeTab, setActiveTab] = useState("gain");
   const [userIncome, setUserIncome] = useState("");
+  const [visibleLines, setVisibleLines] = useState({
+    baseline: true,
+    ira: true,
+    fpl700: true,
+    additionalBracket: true,
+    simplifiedBracket: true,
+  });
+
+  const toggleLine = (line) => {
+    setVisibleLines(prev => ({ ...prev, [line]: !prev[line] }));
+  };
 
   // Format data for HealthBenefitsChart
   const chartData = useMemo(() => {
@@ -143,24 +154,65 @@ function CalculatorResults({ data }) {
       </div>
 
       <div className="results-content">
-        {activeTab === "gain" && chartData && (
-          <div className="results-chart">
-            <HealthBenefitsChart
-              data={chartData}
-              chartState="ira_impact"
-              householdInfo={{}}
-            />
-          </div>
-        )}
-
-        {activeTab === "comparison" && chartData && (
-          <div className="results-chart">
-            <HealthBenefitsChart
-              data={chartData}
-              chartState="both_reforms"
-              householdInfo={{}}
-            />
-          </div>
+        {(activeTab === "gain" || activeTab === "comparison") && chartData && (
+          <>
+            <div className="chart-toggles">
+              <span className="toggle-label">Show:</span>
+              <label className={`toggle-item ${visibleLines.baseline ? 'active' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={visibleLines.baseline}
+                  onChange={() => toggleLine('baseline')}
+                />
+                <span className="toggle-color baseline"></span>
+                Baseline
+              </label>
+              <label className={`toggle-item ${visibleLines.ira ? 'active' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={visibleLines.ira}
+                  onChange={() => toggleLine('ira')}
+                />
+                <span className="toggle-color ira"></span>
+                IRA Extension
+              </label>
+              <label className={`toggle-item ${visibleLines.fpl700 ? 'active' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={visibleLines.fpl700}
+                  onChange={() => toggleLine('fpl700')}
+                />
+                <span className="toggle-color fpl700"></span>
+                700% FPL
+              </label>
+              <label className={`toggle-item ${visibleLines.additionalBracket ? 'active' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={visibleLines.additionalBracket}
+                  onChange={() => toggleLine('additionalBracket')}
+                />
+                <span className="toggle-color additional"></span>
+                Additional Bracket
+              </label>
+              <label className={`toggle-item ${visibleLines.simplifiedBracket ? 'active' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={visibleLines.simplifiedBracket}
+                  onChange={() => toggleLine('simplifiedBracket')}
+                />
+                <span className="toggle-color simplified"></span>
+                Simplified Bracket
+              </label>
+            </div>
+            <div className="results-chart">
+              <HealthBenefitsChart
+                data={chartData}
+                chartState={activeTab === "gain" ? "ira_impact" : "both_reforms"}
+                householdInfo={{}}
+                visibleLines={visibleLines}
+              />
+            </div>
+          </>
         )}
 
         {activeTab === "impact" && (
