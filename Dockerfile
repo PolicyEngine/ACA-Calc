@@ -15,7 +15,7 @@ COPY aca_calc/ ./aca_calc/
 COPY src/aca_api/ ./src/aca_api/
 
 # Install dependencies
-RUN uv pip install --system -e . fastapi uvicorn[standard] pydantic
+RUN uv pip install --system -e . fastapi uvicorn[standard] pydantic cachetools anthropic
 
 # Cloud Run uses PORT env var
 ENV PORT=8080
