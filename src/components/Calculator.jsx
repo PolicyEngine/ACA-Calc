@@ -69,6 +69,10 @@ function getCacheKey(data) {
     state: data.state,
     county: data.county,
     zip_code: data.zip_code,
+    show_ira: data.show_ira,
+    show_700fpl: data.show_700fpl,
+    show_additional_bracket: data.show_additional_bracket,
+    show_simplified_bracket: data.show_simplified_bracket,
   };
   return `aca-calc-${JSON.stringify(keyData)}`;
 }
