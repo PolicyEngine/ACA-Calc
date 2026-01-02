@@ -248,10 +248,18 @@ function Calculator() {
       medicaid_adult_threshold_pct: getMedicaidAdultThreshold(formData.state),
       medicaid_child_threshold_pct: getMedicaidChildThreshold(formData.state),
       chip_threshold_pct: hasChildren ? getChipThreshold(formData.state) : 0,
+      // Which reforms are selected
+      show_ira: formData.show_ira,
+      show_700fpl: formData.show_700fpl,
+      show_additional_bracket: formData.show_additional_bracket,
+      show_simplified_bracket: formData.show_simplified_bracket,
+      // PTC values at sample income for all reforms
       sample_income: sampleIncome,
       ptc_baseline_at_sample: findValueAtIncome(sampleIncome, results.income, results.ptc_baseline),
-      ptc_ira_at_sample: findValueAtIncome(sampleIncome, results.income, results.ptc_ira),
-      ptc_700fpl_at_sample: findValueAtIncome(sampleIncome, results.income, results.ptc_700fpl),
+      ptc_ira_at_sample: formData.show_ira ? findValueAtIncome(sampleIncome, results.income, results.ptc_ira) : 0,
+      ptc_700fpl_at_sample: formData.show_700fpl ? findValueAtIncome(sampleIncome, results.income, results.ptc_700fpl) : 0,
+      ptc_additional_bracket_at_sample: formData.show_additional_bracket ? findValueAtIncome(sampleIncome, results.income, results.ptc_additional_bracket) : 0,
+      ptc_simplified_bracket_at_sample: formData.show_simplified_bracket ? findValueAtIncome(sampleIncome, results.income, results.ptc_simplified_bracket) : 0,
     };
 
     try {
@@ -383,6 +391,8 @@ function Calculator() {
             ptc_baseline: results.ptc_baseline,
             ptc_ira: results.ptc_ira,
             ptc_700fpl: results.ptc_700fpl,
+            ptc_additional_bracket: results.ptc_additional_bracket,
+            ptc_simplified_bracket: results.ptc_simplified_bracket,
             medicaid: results.medicaid,
             chip: results.chip,
             fpl: results.fpl,

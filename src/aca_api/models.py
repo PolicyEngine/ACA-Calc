@@ -106,11 +106,19 @@ class ExplainRequest(BaseModel):
     medicaid_child_threshold_pct: int = Field(description="Medicaid eligibility for children (% FPL)")
     chip_threshold_pct: int = Field(default=0, description="CHIP eligibility (% FPL), 0 if no children")
 
+    # Which reforms are selected
+    show_ira: bool = Field(default=True, description="Whether IRA extension is selected")
+    show_700fpl: bool = Field(default=True, description="Whether 700% FPL bill is selected")
+    show_additional_bracket: bool = Field(default=False, description="Whether additional bracket is selected")
+    show_simplified_bracket: bool = Field(default=False, description="Whether simplified bracket is selected")
+
     # Key data points for narrative
     sample_income: float = Field(description="Sample income to analyze")
     ptc_baseline_at_sample: float = Field(description="Baseline PTC at sample income")
-    ptc_ira_at_sample: float = Field(description="IRA PTC at sample income")
-    ptc_700fpl_at_sample: float = Field(description="700% FPL PTC at sample income")
+    ptc_ira_at_sample: float = Field(default=0, description="IRA PTC at sample income")
+    ptc_700fpl_at_sample: float = Field(default=0, description="700% FPL PTC at sample income")
+    ptc_additional_bracket_at_sample: float = Field(default=0, description="Additional bracket PTC at sample income")
+    ptc_simplified_bracket_at_sample: float = Field(default=0, description="Simplified bracket PTC at sample income")
 
 
 class ExplainResponse(BaseModel):

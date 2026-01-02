@@ -473,23 +473,133 @@ def build_explain_prompt(data: ExplainRequest) -> str:
 
     # Calculate dollar thresholds from percentages
     medicaid_adult_income = data.fpl * data.medicaid_adult_threshold_pct / 100
-    medicaid_child_income = data.fpl * data.medicaid_child_threshold_pct / 100
     chip_income = data.fpl * data.chip_threshold_pct / 100 if data.chip_threshold_pct > 0 else 0
-
-    # Determine section 3 based on whether household has children
-    if has_children:
-        section3_id = "chip"
-        section3_chart = "chip_focus"
-        section3_instruction = f"Explain CHIP coverage for children up to {data.chip_threshold_pct}% FPL (${chip_income:,.0f})."
-    else:
-        section3_id = "cliff"
-        section3_chart = "cliff_focus"
-        section3_instruction = f"Explain the 400% FPL cliff at ${data.fpl_400_income:,.0f} where baseline subsidies end. Above this income, there are no premium tax credits under current law."
 
     # Medicaid details
     medicaid_children_note = f" Children qualify up to {data.medicaid_child_threshold_pct}% FPL." if has_children else ""
     expansion_note = "This is a non-expansion state." if not data.is_expansion_state else "This is an expansion state."
     chip_line = f"- CHIP for children: {data.chip_threshold_pct}% FPL (${chip_income:,.0f})" if has_children and data.chip_threshold_pct > 0 else ""
+
+    # Build reform data section based on which reforms are selected
+    reform_data_lines = [f"- Baseline PTC (2026 if IRA expires): ${data.ptc_baseline_at_sample:,.0f}/year (${data.ptc_baseline_at_sample/12:,.0f}/month)"]
+
+    if data.show_ira:
+        reform_data_lines.append(f"- IRA Extension PTC: ${data.ptc_ira_at_sample:,.0f}/year (${data.ptc_ira_at_sample/12:,.0f}/month)")
+    if data.show_700fpl:
+        reform_data_lines.append(f"- 700% FPL Bill PTC: ${data.ptc_700fpl_at_sample:,.0f}/year (${data.ptc_700fpl_at_sample/12:,.0f}/month)")
+    if data.show_additional_bracket:
+        reform_data_lines.append(f"- Additional Bracket PTC: ${data.ptc_additional_bracket_at_sample:,.0f}/year (${data.ptc_additional_bracket_at_sample/12:,.0f}/month)")
+    if data.show_simplified_bracket:
+        reform_data_lines.append(f"- Simplified Bracket PTC: ${data.ptc_simplified_bracket_at_sample:,.0f}/year (${data.ptc_simplified_bracket_at_sample/12:,.0f}/month)")
+
+    reform_data_text = "\n".join(reform_data_lines)
+
+    # Build reform descriptions for the prompt
+    reform_descriptions = []
+    if data.show_ira:
+        reform_descriptions.append("""
+IRA EXTENSION (show_ira=True):
+- Extends the Inflation Reduction Act's enhanced premium tax credits
+- Sets an 8.5% income cap on health insurance contributions for those above 400% FPL
+- Removes the income eligibility cliff at 400% FPL
+- Anyone above 400% FPL pays at most 8.5% of income toward benchmark plan""")
+
+    if data.show_700fpl:
+        reform_descriptions.append("""
+700% FPL BILL (show_700fpl=True):
+- Bipartisan Health Insurance Affordability Act proposal
+- Extends subsidies up to 700% FPL (vs current 400% FPL cliff)
+- Contribution rates: 2-4% at 200-250% FPL, 4-6% at 250-300%, 6-8.5% at 300-400%, 8.5% at 400-600%, 8.5-9.25% at 600-700%
+- Eligibility ends at 700% FPL""")
+
+    if data.show_additional_bracket:
+        reform_descriptions.append("""
+ADDITIONAL BRACKET (show_additional_bracket=True):
+- CRFB proposal: "Extend Subsidies Below 300% of Poverty, Extend Phase Up Above"
+- Adds a new bracket above 400% FPL with a linear phase-out
+- Contribution percentage increases by ~4 percentage points per 100% FPL above transition threshold
+- Creates a more gradual cliff than current law while reducing costs vs full IRA extension
+- Estimated cost: ~$280 billion through 2035 (vs $350B for full IRA extension)""")
+
+    if data.show_simplified_bracket:
+        reform_descriptions.append("""
+SIMPLIFIED BRACKET (show_simplified_bracket=True):
+- CRFB proposal: sets subsidies "about halfway between base and enhanced rate"
+- Single linear phase-out starting at 100% FPL
+- Contribution percentage increases by 4 percentage points per 100% FPL from the start
+- Simplest structure but most aggressive phase-out
+- Estimated cost: ~$175 billion through 2035""")
+
+    reform_descriptions_text = "\n".join(reform_descriptions) if reform_descriptions else "No reforms selected."
+
+    # Build dynamic sections based on selected reforms
+    section_num = 1
+    sections_spec = []
+    sections_json = []
+
+    # Section 1: Always intro
+    sections_spec.append(f'{section_num}. id: "intro", chartState: "all_programs" - Introduce this household and their location. State the SLCSP cost of ${data.slcsp:,.0f}/year.')
+    sections_json.append('{{"id": "intro", "title": "...", "content": "...", "chartState": "all_programs"}}')
+    section_num += 1
+
+    # Section 2: Medicaid
+    sections_spec.append(f'{section_num}. id: "medicaid", chartState: "medicaid_focus" - Explain Medicaid eligibility in {state_name}. Adults qualify up to {data.medicaid_adult_threshold_pct}% FPL (${medicaid_adult_income:,.0f}).{medicaid_children_note} {expansion_note}')
+    sections_json.append('{{"id": "medicaid", "title": "...", "content": "...", "chartState": "medicaid_focus"}}')
+    section_num += 1
+
+    # Section 3: CHIP or Cliff
+    if has_children:
+        sections_spec.append(f'{section_num}. id: "chip", chartState: "chip_focus" - Explain CHIP coverage for children up to {data.chip_threshold_pct}% FPL (${chip_income:,.0f}).')
+        sections_json.append('{{"id": "chip", "title": "...", "content": "...", "chartState": "chip_focus"}}')
+    else:
+        sections_spec.append(f'{section_num}. id: "cliff", chartState: "cliff_focus" - Explain the 400% FPL cliff at ${data.fpl_400_income:,.0f} where baseline subsidies end. Above this income, there are no premium tax credits under current law (2026).')
+        sections_json.append('{{"id": "cliff", "title": "...", "content": "...", "chartState": "cliff_focus"}}')
+    section_num += 1
+
+    # Add a section for each selected reform
+    if data.show_ira:
+        diff = data.ptc_ira_at_sample - data.ptc_baseline_at_sample
+        sections_spec.append(f'{section_num}. id: "ira", chartState: "ira_impact" - Explain the IRA Extension reform. At ${data.sample_income:,.0f} income, IRA provides ${data.ptc_ira_at_sample:,.0f}/year vs baseline ${data.ptc_baseline_at_sample:,.0f}/year (difference: ${diff:,.0f}/year). Explain the 8.5% cap and removal of the 400% FPL cliff.')
+        sections_json.append('{{"id": "ira", "title": "...", "content": "...", "chartState": "ira_impact"}}')
+        section_num += 1
+
+    if data.show_700fpl:
+        diff = data.ptc_700fpl_at_sample - data.ptc_baseline_at_sample
+        sections_spec.append(f'{section_num}. id: "fpl700", chartState: "both_reforms" - Explain the 700% FPL Bill (Bipartisan Health Insurance Affordability Act). At ${data.sample_income:,.0f} income, it provides ${data.ptc_700fpl_at_sample:,.0f}/year vs baseline ${data.ptc_baseline_at_sample:,.0f}/year (difference: ${diff:,.0f}/year). Explain the graduated brackets up to 700% FPL.')
+        sections_json.append('{{"id": "fpl700", "title": "...", "content": "...", "chartState": "both_reforms"}}')
+        section_num += 1
+
+    if data.show_additional_bracket:
+        diff = data.ptc_additional_bracket_at_sample - data.ptc_baseline_at_sample
+        sections_spec.append(f'{section_num}. id: "additional", chartState: "both_reforms" - Explain the Additional Bracket reform (CRFB proposal). At ${data.sample_income:,.0f} income, it provides ${data.ptc_additional_bracket_at_sample:,.0f}/year vs baseline ${data.ptc_baseline_at_sample:,.0f}/year (difference: ${diff:,.0f}/year). This proposal extends subsidies below 300% FPL while adding a linear phase-up above, costing ~$280B vs $350B for full IRA extension.')
+        sections_json.append('{{"id": "additional", "title": "...", "content": "...", "chartState": "both_reforms"}}')
+        section_num += 1
+
+    if data.show_simplified_bracket:
+        diff = data.ptc_simplified_bracket_at_sample - data.ptc_baseline_at_sample
+        sections_spec.append(f'{section_num}. id: "simplified", chartState: "both_reforms" - Explain the Simplified Bracket reform (CRFB proposal). At ${data.sample_income:,.0f} income, it provides ${data.ptc_simplified_bracket_at_sample:,.0f}/year vs baseline ${data.ptc_baseline_at_sample:,.0f}/year (difference: ${diff:,.0f}/year). This proposal uses a single linear phase-out from 100% FPL, setting subsidies about halfway between baseline and enhanced rates, costing ~$175B.')
+        sections_json.append('{{"id": "simplified", "title": "...", "content": "...", "chartState": "both_reforms"}}')
+        section_num += 1
+
+    # Final comparison section (always included)
+    selected_reforms = []
+    if data.show_ira:
+        selected_reforms.append("IRA Extension")
+    if data.show_700fpl:
+        selected_reforms.append("700% FPL Bill")
+    if data.show_additional_bracket:
+        selected_reforms.append("Additional Bracket")
+    if data.show_simplified_bracket:
+        selected_reforms.append("Simplified Bracket")
+
+    if len(selected_reforms) > 1:
+        reforms_list = ", ".join(selected_reforms)
+        sections_spec.append(f'{section_num}. id: "comparison", chartState: "both_reforms" - Compare all selected reforms: baseline vs {reforms_list}. Use the exact PTC values provided for ${data.sample_income:,.0f} income. Summarize which provides the most/least subsidy for this household.')
+        sections_json.append('{{"id": "comparison", "title": "...", "content": "...", "chartState": "both_reforms"}}')
+
+    sections_spec_text = "\n\n".join(sections_spec)
+    sections_json_text = ",\n    ".join(sections_json)
+    total_sections = len(sections_json)
 
     prompt = f"""You are creating a factual, neutral scrollytelling narrative explaining ACA premium tax credits for a specific household.
 
@@ -514,39 +624,28 @@ PROGRAM ELIGIBILITY THRESHOLDS FOR {state_name.upper()}:
 KEY FINANCIAL DATA:
 - Federal Poverty Level (FPL) for this household: ${data.fpl:,.0f}
 - 400% FPL (baseline subsidy cliff): ${data.fpl_400_income:,.0f}
-- 700% FPL (proposed cliff under 700% FPL bill): ${data.fpl_700_income:,.0f}
+- 700% FPL: ${data.fpl_700_income:,.0f}
 - Annual benchmark plan (SLCSP): ${data.slcsp:,.0f} (${data.slcsp/12:,.0f}/month)
 
-AT SAMPLE INCOME OF ${data.sample_income:,.0f} ({data.sample_income/data.fpl*100:.0f}% FPL):
-- Baseline PTC (2026 if IRA expires): ${data.ptc_baseline_at_sample:,.0f}/year (${data.ptc_baseline_at_sample/12:,.0f}/month)
-- IRA Extension PTC: ${data.ptc_ira_at_sample:,.0f}/year (${data.ptc_ira_at_sample/12:,.0f}/month)
-- 700% FPL Bill PTC: ${data.ptc_700fpl_at_sample:,.0f}/year (${data.ptc_700fpl_at_sample/12:,.0f}/month)
+SELECTED REFORMS AND THEIR DETAILS:
+{reform_descriptions_text}
 
-Generate exactly 5 scrollytelling sections in JSON format. Each section should have:
+AT SAMPLE INCOME OF ${data.sample_income:,.0f} ({data.sample_income/data.fpl*100:.0f}% FPL):
+{reform_data_text}
+
+Generate exactly {total_sections} scrollytelling sections in JSON format. Each section should have:
 - id: unique identifier
 - title: descriptive section title (5-10 words)
 - content: 2-3 short paragraphs using **bold** for key numbers. Use exact values provided above.
 - chartState: MUST be one of these exact strings: "all_programs", "medicaid_focus", "chip_focus", "cliff_focus", "ira_impact", "both_reforms"
 
-REQUIRED SECTIONS (use these EXACT chartState values - do not change them):
-1. id: "intro", chartState: "all_programs" - Introduce this household and their location. State the SLCSP cost.
-
-2. id: "medicaid", chartState: "medicaid_focus" - Explain Medicaid eligibility in {state_name}. Adults qualify up to {data.medicaid_adult_threshold_pct}% FPL (${medicaid_adult_income:,.0f}).{medicaid_children_note} {expansion_note}
-
-3. id: "{section3_id}", chartState: "{section3_chart}" - {section3_instruction}
-
-4. id: "ira_impact", chartState: "ira_impact" - Describe the IRA extension. At ${data.sample_income:,.0f} income, IRA provides ${data.ptc_ira_at_sample:,.0f}/year vs baseline ${data.ptc_baseline_at_sample:,.0f}/year.
-
-5. id: "comparison", chartState: "both_reforms" - Compare baseline, IRA extension, and 700% FPL bill. Use the exact numbers provided.
+REQUIRED SECTIONS (use these EXACT chartState values and ids):
+{sections_spec_text}
 
 Return ONLY valid JSON:
 {{
   "sections": [
-    {{"id": "intro", "title": "...", "content": "...", "chartState": "all_programs"}},
-    {{"id": "medicaid", "title": "...", "content": "...", "chartState": "medicaid_focus"}},
-    {{"id": "{section3_id}", "title": "...", "content": "...", "chartState": "{section3_chart}"}},
-    {{"id": "ira_impact", "title": "...", "content": "...", "chartState": "ira_impact"}},
-    {{"id": "comparison", "title": "...", "content": "...", "chartState": "both_reforms"}}
+    {sections_json_text}
   ],
   "household_description": "{household_desc} in {location}"
 }}"""
@@ -565,6 +664,11 @@ def get_explain_cache_key(data: ExplainRequest) -> str:
         "is_expansion_state": data.is_expansion_state,
         "fpl": round(data.fpl, 0),
         "slcsp": round(data.slcsp, 0),
+        # Include reform flags so different selections get different explanations
+        "show_ira": data.show_ira,
+        "show_700fpl": data.show_700fpl,
+        "show_additional_bracket": data.show_additional_bracket,
+        "show_simplified_bracket": data.show_simplified_bracket,
     }
     key_str = json.dumps(key_data, sort_keys=True)
     return hashlib.md5(key_str.encode()).hexdigest()
