@@ -186,9 +186,16 @@ function getPageFromHash() {
   return PAGE_ROUTES[route] || "main";
 }
 
+// Check if running in embedded mode (iframe)
+function isEmbedded() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get("embedded") === "true";
+}
+
 function App() {
   const [activeSection, setActiveSection] = useState(0);
   const [currentPage, setCurrentPage] = useState(() => getPageFromHash());
+  const [embedded] = useState(() => isEmbedded());
   const chartRef = useRef(null);
 
   // Sync URL hash with page state
@@ -306,45 +313,49 @@ function App() {
   );
 
   return (
-    <div className="app">
-      <header className="header">
-        <div className="header-content">
-          <h1>ACA Premium Tax Credits: 2025 vs 2026</h1>
-          <p className="subtitle">
-            Modeling how the scheduled expiration of IRA enhancements affects health insurance costs
-          </p>
-          <div className="page-tabs">
-            <button
-              className={`page-tab ${currentPage === "main" ? "active" : ""}`}
-              onClick={() => navigateToPage("main")}
-            >
-              Overview
-            </button>
-            <button
-              className={`page-tab ${currentPage === "households" ? "active" : ""}`}
-              onClick={() => navigateToPage("households")}
-            >
-              Explore Households
-            </button>
-            <button
-              className={`page-tab ${currentPage === "calculator" ? "active" : ""}`}
-              onClick={() => navigateToPage("calculator")}
-            >
-              Calculator
-            </button>
+    <div className={`app ${embedded ? "embedded" : ""}`}>
+      {!embedded && (
+        <header className="header">
+          <div className="header-content">
+            <h1>ACA Premium Tax Credits: 2025 vs 2026</h1>
+            <p className="subtitle">
+              Modeling how the scheduled expiration of IRA enhancements affects health insurance costs
+            </p>
+            <div className="page-tabs">
+              <button
+                className={`page-tab ${currentPage === "main" ? "active" : ""}`}
+                onClick={() => navigateToPage("main")}
+              >
+                Overview
+              </button>
+              <button
+                className={`page-tab ${currentPage === "households" ? "active" : ""}`}
+                onClick={() => navigateToPage("households")}
+              >
+                Explore Households
+              </button>
+              <button
+                className={`page-tab ${currentPage === "calculator" ? "active" : ""}`}
+                onClick={() => navigateToPage("calculator")}
+              >
+                Calculator
+              </button>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       {currentPage === "main" && renderMainPage()}
       {currentPage === "households" && renderHouseholdsPage()}
       {currentPage === "calculator" && renderCalculatorPage()}
 
-      <footer className="footer">
-        <p>
-          Built by <a href="https://policyengine.org" target="_blank" rel="noopener noreferrer">PolicyEngine</a>
-        </p>
-      </footer>
+      {!embedded && (
+        <footer className="footer">
+          <p>
+            Built by <a href="https://policyengine.org" target="_blank" rel="noopener noreferrer">PolicyEngine</a>
+          </p>
+        </footer>
+      )}
     </div>
   );
 }
