@@ -565,20 +565,20 @@ SIMPLIFIED BRACKET (show_simplified_bracket=True):
 
     if data.show_700fpl:
         diff = data.ptc_700fpl_at_sample - data.ptc_baseline_at_sample
-        sections_spec.append(f'{section_num}. id: "fpl700", chartState: "both_reforms" - Explain the 700% FPL Bill (Bipartisan Health Insurance Affordability Act). At ${data.sample_income:,.0f} income, it provides ${data.ptc_700fpl_at_sample:,.0f}/year vs baseline ${data.ptc_baseline_at_sample:,.0f}/year (difference: ${diff:,.0f}/year). Explain the graduated brackets up to 700% FPL.')
-        sections_json.append('{{"id": "fpl700", "title": "...", "content": "...", "chartState": "both_reforms"}}')
+        sections_spec.append(f'{section_num}. id: "fpl700", chartState: "fpl700_focus" - Explain the 700% FPL Bill (Bipartisan Health Insurance Affordability Act). At ${data.sample_income:,.0f} income, it provides ${data.ptc_700fpl_at_sample:,.0f}/year vs baseline ${data.ptc_baseline_at_sample:,.0f}/year (difference: ${diff:,.0f}/year). Explain the graduated brackets up to 700% FPL.')
+        sections_json.append('{{"id": "fpl700", "title": "...", "content": "...", "chartState": "fpl700_focus"}}')
         section_num += 1
 
     if data.show_additional_bracket:
         diff = data.ptc_additional_bracket_at_sample - data.ptc_baseline_at_sample
-        sections_spec.append(f'{section_num}. id: "additional", chartState: "both_reforms" - Explain the Additional Bracket reform (CRFB proposal). At ${data.sample_income:,.0f} income, it provides ${data.ptc_additional_bracket_at_sample:,.0f}/year vs baseline ${data.ptc_baseline_at_sample:,.0f}/year (difference: ${diff:,.0f}/year). This proposal extends subsidies below 300% FPL while adding a linear phase-up above, costing ~$280B vs $350B for full IRA extension.')
-        sections_json.append('{{"id": "additional", "title": "...", "content": "...", "chartState": "both_reforms"}}')
+        sections_spec.append(f'{section_num}. id: "additional", chartState: "additional_focus" - Explain the Additional Bracket reform (CRFB proposal). At ${data.sample_income:,.0f} income, it provides ${data.ptc_additional_bracket_at_sample:,.0f}/year vs baseline ${data.ptc_baseline_at_sample:,.0f}/year (difference: ${diff:,.0f}/year). This proposal extends subsidies below 300% FPL while adding a linear phase-up above, costing ~$280B vs $350B for full IRA extension.')
+        sections_json.append('{{"id": "additional", "title": "...", "content": "...", "chartState": "additional_focus"}}')
         section_num += 1
 
     if data.show_simplified_bracket:
         diff = data.ptc_simplified_bracket_at_sample - data.ptc_baseline_at_sample
-        sections_spec.append(f'{section_num}. id: "simplified", chartState: "both_reforms" - Explain the Simplified Bracket reform (CRFB proposal). At ${data.sample_income:,.0f} income, it provides ${data.ptc_simplified_bracket_at_sample:,.0f}/year vs baseline ${data.ptc_baseline_at_sample:,.0f}/year (difference: ${diff:,.0f}/year). This proposal uses a single linear phase-out from 100% FPL, setting subsidies about halfway between baseline and enhanced rates, costing ~$175B.')
-        sections_json.append('{{"id": "simplified", "title": "...", "content": "...", "chartState": "both_reforms"}}')
+        sections_spec.append(f'{section_num}. id: "simplified", chartState: "simplified_focus" - Explain the Simplified Bracket reform (CRFB proposal). At ${data.sample_income:,.0f} income, it provides ${data.ptc_simplified_bracket_at_sample:,.0f}/year vs baseline ${data.ptc_baseline_at_sample:,.0f}/year (difference: ${diff:,.0f}/year). This proposal uses a single linear phase-out from 100% FPL, setting subsidies about halfway between baseline and enhanced rates, costing ~$175B.')
+        sections_json.append('{{"id": "simplified", "title": "...", "content": "...", "chartState": "simplified_focus"}}')
         section_num += 1
 
     # Final comparison section (always included)
@@ -637,7 +637,7 @@ Generate exactly {total_sections} scrollytelling sections in JSON format. Each s
 - id: unique identifier
 - title: descriptive section title (5-10 words)
 - content: 2-3 short paragraphs using **bold** for key numbers. Use exact values provided above.
-- chartState: MUST be one of these exact strings: "all_programs", "medicaid_focus", "chip_focus", "cliff_focus", "ira_impact", "both_reforms"
+- chartState: MUST be one of these exact strings: "all_programs", "medicaid_focus", "chip_focus", "cliff_focus", "ira_impact", "fpl700_focus", "additional_focus", "simplified_focus", "both_reforms"
 
 REQUIRED SECTIONS (use these EXACT chartState values and ids):
 {sections_spec_text}

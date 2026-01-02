@@ -78,6 +78,9 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
       "cliff_focus": ["ptcBaseline"],
       "ira_reform": ["ptcBaseline", "ptcIRA"],
       "ira_impact": ["ptcIRA", "ptcBaseline"],
+      "fpl700_focus": ["ptcBaseline", "ptc700FPL"],
+      "additional_focus": ["ptcBaseline", "ptcAdditionalBracket"],
+      "simplified_focus": ["ptcBaseline", "ptcSimplifiedBracket"],
       "both_reforms": ["ptcBaseline", "ptcIRA", "ptc700FPL", "ptcAdditionalBracket", "ptcSimplifiedBracket"],
       "impact": ["deltaIRA", "delta700FPL"],
     };
@@ -115,9 +118,10 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
     return fpl * 4; // fallback
   }, [data, fpl]);
 
-  // For impact view, ira_impact, and gain_view, calculate deltas (gains over baseline)
+  // For impact/focus views, calculate deltas (gains over baseline)
+  const deltaStates = ["impact", "ira_impact", "gain_view", "fpl700_focus", "additional_focus", "simplified_focus"];
   const impactData = useMemo(() => {
-    if (chartState !== "impact" && chartState !== "ira_impact" && chartState !== "gain_view") return chartData;
+    if (!deltaStates.includes(chartState)) return chartData;
     return chartData.map((d) => ({
       ...d,
       deltaIRA: Math.max(0, d.ptcIRA - d.ptcBaseline),
@@ -127,7 +131,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
     }));
   }, [chartData, chartState]);
 
-  const displayData = (chartState === "impact" || chartState === "ira_impact" || chartState === "gain_view") ? impactData : chartData;
+  const displayData = deltaStates.includes(chartState) ? impactData : chartData;
 
   // Format currency for tooltip
   const formatCurrency = (value) => {
@@ -179,6 +183,12 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
         return "Baseline vs IRA Extension";
       case "ira_impact":
         return "IRA Extension vs Current Law";
+      case "fpl700_focus":
+        return "700% FPL Bill vs Current Law";
+      case "additional_focus":
+        return "Additional Bracket vs Current Law";
+      case "simplified_focus":
+        return "Simplified Bracket vs Current Law";
       case "gain_view":
         return "Gain from Reform vs Baseline";
       case "both_reforms":
@@ -303,6 +313,84 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             </>
           )}
 
+          {/* 700% FPL FOCUS - baseline + 700% FPL bill only */}
+          {chartState === "fpl700_focus" && (
+            <>
+              <Area
+                type="monotone"
+                dataKey="ptcBaseline"
+                name="Baseline (Current Law)"
+                fill={COLORS.baseline}
+                fillOpacity={0.4}
+                stroke={COLORS.baseline}
+                strokeWidth={2}
+                stackId="fpl700_stack"
+              />
+              <Area
+                type="monotone"
+                dataKey="delta700FPL"
+                name="Additional from 700% FPL Bill"
+                fill={COLORS.bipartisan}
+                fillOpacity={0.5}
+                stroke={COLORS.bipartisan}
+                strokeWidth={2}
+                stackId="fpl700_stack"
+              />
+            </>
+          )}
+
+          {/* ADDITIONAL BRACKET FOCUS - baseline + additional bracket only */}
+          {chartState === "additional_focus" && (
+            <>
+              <Area
+                type="monotone"
+                dataKey="ptcBaseline"
+                name="Baseline (Current Law)"
+                fill={COLORS.baseline}
+                fillOpacity={0.4}
+                stroke={COLORS.baseline}
+                strokeWidth={2}
+                stackId="additional_stack"
+              />
+              <Area
+                type="monotone"
+                dataKey="deltaAdditionalBracket"
+                name="Additional from CRFB Bracket"
+                fill={COLORS.additionalBracket}
+                fillOpacity={0.5}
+                stroke={COLORS.additionalBracket}
+                strokeWidth={2}
+                stackId="additional_stack"
+              />
+            </>
+          )}
+
+          {/* SIMPLIFIED BRACKET FOCUS - baseline + simplified bracket only */}
+          {chartState === "simplified_focus" && (
+            <>
+              <Area
+                type="monotone"
+                dataKey="ptcBaseline"
+                name="Baseline (Current Law)"
+                fill={COLORS.baseline}
+                fillOpacity={0.4}
+                stroke={COLORS.baseline}
+                strokeWidth={2}
+                stackId="simplified_stack"
+              />
+              <Area
+                type="monotone"
+                dataKey="deltaSimplifiedBracket"
+                name="Additional from Simplified Bracket"
+                fill={COLORS.simplifiedBracket}
+                fillOpacity={0.5}
+                stroke={COLORS.simplifiedBracket}
+                strokeWidth={2}
+                stackId="simplified_stack"
+              />
+            </>
+          )}
+
           {/* GAIN VIEW - lines only showing gains over baseline */}
           {chartState === "gain_view" && (
             <>
@@ -415,7 +503,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
           )}
 
           {/* AI EXPLANATION MODE - for scrollytelling */}
-          {!externalVisibleLines && chartState !== "ira_impact" && chartState !== "both_reforms" && (
+          {!externalVisibleLines && chartState !== "ira_impact" && chartState !== "both_reforms" && chartState !== "fpl700_focus" && chartState !== "additional_focus" && chartState !== "simplified_focus" && (
             <>
               {shouldShow("ptcBaseline") && (
                 <Area
