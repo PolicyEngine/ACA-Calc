@@ -260,8 +260,8 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             />
           )}
 
-          {/* IRA Impact Area - stacked to show baseline + gain from IRA */}
-          {chartState === "ira_impact" && (
+          {/* IRA Impact Area - stacked to show baseline + gain from IRA (only when no external controls) */}
+          {chartState === "ira_impact" && !externalVisibleLines && (
             <>
               {/* Baseline area in gray */}
               <Area
@@ -314,8 +314,8 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             />
           )}
 
-          {/* PTC Baseline - skip if ira_impact since Area handles it */}
-          {visibleLines.includes("ptcBaseline") && chartState !== "ira_impact" && (
+          {/* PTC Baseline - skip if ira_impact without external controls since Area handles it */}
+          {visibleLines.includes("ptcBaseline") && (chartState !== "ira_impact" || externalVisibleLines) && (
             <Line
               type="monotone"
               dataKey="ptcBaseline"
@@ -326,8 +326,8 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             />
           )}
 
-          {/* PTC IRA Reform - skip if ira_impact since Area handles it */}
-          {visibleLines.includes("ptcIRA") && chartState !== "ira_impact" && (
+          {/* PTC IRA Reform - skip if ira_impact without external controls since Area handles it */}
+          {visibleLines.includes("ptcIRA") && (chartState !== "ira_impact" || externalVisibleLines) && (
             <Line
               type="monotone"
               dataKey="ptcIRA"
