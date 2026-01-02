@@ -115,13 +115,15 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
     return fpl * 4; // fallback
   }, [data, fpl]);
 
-  // For impact view and ira_impact, calculate deltas
+  // For impact view and ira_impact, calculate deltas (gains over baseline)
   const impactData = useMemo(() => {
     if (chartState !== "impact" && chartState !== "ira_impact") return chartData;
     return chartData.map((d) => ({
       ...d,
       deltaIRA: Math.max(0, d.ptcIRA - d.ptcBaseline),
-      delta700FPL: d.ptc700FPL - d.ptcBaseline,
+      delta700FPL: Math.max(0, d.ptc700FPL - d.ptcBaseline),
+      deltaAdditionalBracket: Math.max(0, d.ptcAdditionalBracket - d.ptcBaseline),
+      deltaSimplifiedBracket: Math.max(0, d.ptcSimplifiedBracket - d.ptcBaseline),
     }));
   }, [chartData, chartState]);
 
@@ -292,10 +294,49 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
                 <Area
                   type="monotone"
                   dataKey="deltaIRA"
-                  name="Additional from IRA Extension"
+                  name="+ IRA Extension"
                   fill={COLORS.ira}
                   fillOpacity={0.5}
                   stroke={COLORS.ira}
+                  strokeWidth={2}
+                  stackId="gain_stack"
+                />
+              )}
+              {/* 700% FPL gain stacked */}
+              {shouldShow("ptc700FPL") && (
+                <Area
+                  type="monotone"
+                  dataKey="delta700FPL"
+                  name="+ 700% FPL Bill"
+                  fill={COLORS.bipartisan}
+                  fillOpacity={0.5}
+                  stroke={COLORS.bipartisan}
+                  strokeWidth={2}
+                  stackId="gain_stack"
+                />
+              )}
+              {/* Additional Bracket gain stacked */}
+              {shouldShow("ptcAdditionalBracket") && (
+                <Area
+                  type="monotone"
+                  dataKey="deltaAdditionalBracket"
+                  name="+ Additional Bracket"
+                  fill={COLORS.additionalBracket}
+                  fillOpacity={0.5}
+                  stroke={COLORS.additionalBracket}
+                  strokeWidth={2}
+                  stackId="gain_stack"
+                />
+              )}
+              {/* Simplified Bracket gain stacked */}
+              {shouldShow("ptcSimplifiedBracket") && (
+                <Area
+                  type="monotone"
+                  dataKey="deltaSimplifiedBracket"
+                  name="+ Simplified Bracket"
+                  fill={COLORS.simplifiedBracket}
+                  fillOpacity={0.5}
+                  stroke={COLORS.simplifiedBracket}
                   strokeWidth={2}
                   stackId="gain_stack"
                 />
