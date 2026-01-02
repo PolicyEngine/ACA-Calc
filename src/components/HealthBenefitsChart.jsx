@@ -81,7 +81,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
       "fpl700_focus": ["ptcBaseline", "ptc700FPL"],
       "additional_focus": ["ptcBaseline", "ptcAdditionalBracket"],
       "simplified_focus": ["ptcBaseline", "ptcSimplifiedBracket"],
-      "both_reforms": ["ptcBaseline", "ptcIRA", "ptc700FPL", "ptcAdditionalBracket", "ptcSimplifiedBracket"],
+      "both_reforms": ["ptcBaseline", "ptcIRA", "ptc700FPL"],
       "impact": ["deltaIRA", "delta700FPL"],
     };
 
