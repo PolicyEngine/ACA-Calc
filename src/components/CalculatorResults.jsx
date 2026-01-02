@@ -154,20 +154,11 @@ function CalculatorResults({ data }) {
       </div>
 
       <div className="results-content">
-        {/* GAIN FROM EXTENSION TAB - stacked view showing baseline + gains from each reform */}
+        {/* GAIN FROM EXTENSION TAB - shows gains over baseline (not stacked, reforms are alternatives) */}
         {activeTab === "gain" && chartData && (
           <>
             <div className="chart-toggles">
-              <span className="toggle-label">Show:</span>
-              <label className={`toggle-item ${visibleLines.baseline ? 'active' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={visibleLines.baseline}
-                  onChange={() => toggleLine('baseline')}
-                />
-                <span className="toggle-color baseline"></span>
-                Baseline
-              </label>
+              <span className="toggle-label">Show gain from:</span>
               <label className={`toggle-item ${visibleLines.ira ? 'active' : ''}`}>
                 <input
                   type="checkbox"
@@ -175,7 +166,7 @@ function CalculatorResults({ data }) {
                   onChange={() => toggleLine('ira')}
                 />
                 <span className="toggle-color ira"></span>
-                + IRA Extension
+                IRA Extension
               </label>
               <label className={`toggle-item ${visibleLines.fpl700 ? 'active' : ''}`}>
                 <input
@@ -184,7 +175,7 @@ function CalculatorResults({ data }) {
                   onChange={() => toggleLine('fpl700')}
                 />
                 <span className="toggle-color fpl700"></span>
-                + 700% FPL
+                700% FPL Bill
               </label>
               <label className={`toggle-item ${visibleLines.additionalBracket ? 'active' : ''}`}>
                 <input
@@ -193,7 +184,7 @@ function CalculatorResults({ data }) {
                   onChange={() => toggleLine('additionalBracket')}
                 />
                 <span className="toggle-color additional"></span>
-                + Additional Bracket
+                Additional Bracket
               </label>
               <label className={`toggle-item ${visibleLines.simplifiedBracket ? 'active' : ''}`}>
                 <input
@@ -202,7 +193,7 @@ function CalculatorResults({ data }) {
                   onChange={() => toggleLine('simplifiedBracket')}
                 />
                 <span className="toggle-color simplified"></span>
-                + Simplified Bracket
+                Simplified Bracket
               </label>
             </div>
             <div className="results-chart">

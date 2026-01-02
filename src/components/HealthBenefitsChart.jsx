@@ -178,7 +178,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
       case "ira_reform":
         return "Baseline vs IRA Extension";
       case "ira_impact":
-        return "IRA Extension vs Current Law";
+        return "Additional Benefits from Each Reform";
       case "both_reforms":
         return "Comparing All Policy Options";
       case "all_programs":
@@ -230,7 +230,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             fontSize={12}
             domain={getYDomain()}
             label={{
-              value: chartState === "impact" ? "Benefit Gain" : "Annual Value",
+              value: (chartState === "impact" || chartState === "ira_impact") ? "Gain over Baseline" : "Annual Value",
               angle: -90,
               position: "insideLeft",
               offset: 10,
@@ -273,72 +273,56 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             />
           )}
 
-          {/* STACKED GAIN VIEW - for "Gain from Extension" tab (ira_impact) */}
+          {/* GAIN VIEW - for "Gain from Extension" tab (ira_impact) */}
+          {/* Shows only the GAINS over baseline, not stacked (reforms are alternatives) */}
           {chartState === "ira_impact" && (
             <>
-              {/* Baseline area in gray - always show as the base */}
-              {shouldShow("ptcBaseline") && (
-                <Area
-                  type="monotone"
-                  dataKey="ptcBaseline"
-                  name="Baseline (Current Law)"
-                  fill={COLORS.baseline}
-                  fillOpacity={0.4}
-                  stroke={COLORS.baseline}
-                  strokeWidth={2}
-                  stackId="gain_stack"
-                />
-              )}
-              {/* IRA gain stacked on top */}
+              {/* IRA gain */}
               {shouldShow("ptcIRA") && (
                 <Area
                   type="monotone"
                   dataKey="deltaIRA"
-                  name="+ IRA Extension"
+                  name="Gain from IRA Extension"
                   fill={COLORS.ira}
-                  fillOpacity={0.5}
+                  fillOpacity={0.3}
                   stroke={COLORS.ira}
-                  strokeWidth={2}
-                  stackId="gain_stack"
+                  strokeWidth={2.5}
                 />
               )}
-              {/* 700% FPL gain stacked */}
+              {/* 700% FPL gain */}
               {shouldShow("ptc700FPL") && (
                 <Area
                   type="monotone"
                   dataKey="delta700FPL"
-                  name="+ 700% FPL Bill"
+                  name="Gain from 700% FPL Bill"
                   fill={COLORS.bipartisan}
-                  fillOpacity={0.5}
+                  fillOpacity={0.3}
                   stroke={COLORS.bipartisan}
-                  strokeWidth={2}
-                  stackId="gain_stack"
+                  strokeWidth={2.5}
                 />
               )}
-              {/* Additional Bracket gain stacked */}
+              {/* Additional Bracket gain */}
               {shouldShow("ptcAdditionalBracket") && (
                 <Area
                   type="monotone"
                   dataKey="deltaAdditionalBracket"
-                  name="+ Additional Bracket"
+                  name="Gain from Additional Bracket"
                   fill={COLORS.additionalBracket}
-                  fillOpacity={0.5}
+                  fillOpacity={0.3}
                   stroke={COLORS.additionalBracket}
-                  strokeWidth={2}
-                  stackId="gain_stack"
+                  strokeWidth={2.5}
                 />
               )}
-              {/* Simplified Bracket gain stacked */}
+              {/* Simplified Bracket gain */}
               {shouldShow("ptcSimplifiedBracket") && (
                 <Area
                   type="monotone"
                   dataKey="deltaSimplifiedBracket"
-                  name="+ Simplified Bracket"
+                  name="Gain from Simplified Bracket"
                   fill={COLORS.simplifiedBracket}
-                  fillOpacity={0.5}
+                  fillOpacity={0.3}
                   stroke={COLORS.simplifiedBracket}
-                  strokeWidth={2}
-                  stackId="gain_stack"
+                  strokeWidth={2.5}
                 />
               )}
             </>
