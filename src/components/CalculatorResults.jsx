@@ -154,7 +154,43 @@ function CalculatorResults({ data }) {
       </div>
 
       <div className="results-content">
-        {(activeTab === "gain" || activeTab === "comparison") && chartData && (
+        {/* GAIN FROM EXTENSION TAB - stacked view showing baseline + IRA gain */}
+        {activeTab === "gain" && chartData && (
+          <>
+            <div className="chart-toggles">
+              <span className="toggle-label">Show:</span>
+              <label className={`toggle-item ${visibleLines.baseline ? 'active' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={visibleLines.baseline}
+                  onChange={() => toggleLine('baseline')}
+                />
+                <span className="toggle-color baseline"></span>
+                Baseline
+              </label>
+              <label className={`toggle-item ${visibleLines.ira ? 'active' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={visibleLines.ira}
+                  onChange={() => toggleLine('ira')}
+                />
+                <span className="toggle-color ira"></span>
+                IRA Gain
+              </label>
+            </div>
+            <div className="results-chart">
+              <HealthBenefitsChart
+                data={chartData}
+                chartState="ira_impact"
+                householdInfo={{}}
+                visibleLines={visibleLines}
+              />
+            </div>
+          </>
+        )}
+
+        {/* COMPARISON TAB - all reforms side by side */}
+        {activeTab === "comparison" && chartData && (
           <>
             <div className="chart-toggles">
               <span className="toggle-label">Show:</span>
@@ -207,7 +243,7 @@ function CalculatorResults({ data }) {
             <div className="results-chart">
               <HealthBenefitsChart
                 data={chartData}
-                chartState={activeTab === "gain" ? "ira_impact" : "both_reforms"}
+                chartState="both_reforms"
                 householdInfo={{}}
                 visibleLines={visibleLines}
               />

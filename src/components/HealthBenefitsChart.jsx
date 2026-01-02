@@ -271,91 +271,156 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             />
           )}
 
-          {/* Area fills for shading - render before lines */}
-          {shouldShow("ptcBaseline") && (
-            <Area
-              type="monotone"
-              dataKey="ptcBaseline"
-              name="PTC (Baseline)"
-              fill={COLORS.baseline}
-              fillOpacity={0.15}
-              stroke={COLORS.baseline}
-              strokeWidth={2.5}
-            />
+          {/* STACKED GAIN VIEW - for "Gain from Extension" tab (ira_impact) */}
+          {chartState === "ira_impact" && (
+            <>
+              {/* Baseline area in gray - always show as the base */}
+              {shouldShow("ptcBaseline") && (
+                <Area
+                  type="monotone"
+                  dataKey="ptcBaseline"
+                  name="Baseline (Current Law)"
+                  fill={COLORS.baseline}
+                  fillOpacity={0.4}
+                  stroke={COLORS.baseline}
+                  strokeWidth={2}
+                  stackId="gain_stack"
+                />
+              )}
+              {/* IRA gain stacked on top */}
+              {shouldShow("ptcIRA") && (
+                <Area
+                  type="monotone"
+                  dataKey="deltaIRA"
+                  name="Additional from IRA Extension"
+                  fill={COLORS.ira}
+                  fillOpacity={0.5}
+                  stroke={COLORS.ira}
+                  strokeWidth={2}
+                  stackId="gain_stack"
+                />
+              )}
+            </>
           )}
 
-          {shouldShow("ptcIRA") && (
-            <Area
-              type="monotone"
-              dataKey="ptcIRA"
-              name="PTC (IRA Extension)"
-              fill={COLORS.ira}
-              fillOpacity={0.15}
-              stroke={COLORS.ira}
-              strokeWidth={2.5}
-            />
+          {/* COMPARISON VIEW - for "Baseline vs Extension" tab (both_reforms) */}
+          {chartState === "both_reforms" && (
+            <>
+              {shouldShow("ptcBaseline") && (
+                <Area
+                  type="monotone"
+                  dataKey="ptcBaseline"
+                  name="PTC (Baseline)"
+                  fill={COLORS.baseline}
+                  fillOpacity={0.15}
+                  stroke={COLORS.baseline}
+                  strokeWidth={2.5}
+                />
+              )}
+
+              {shouldShow("ptcIRA") && (
+                <Area
+                  type="monotone"
+                  dataKey="ptcIRA"
+                  name="PTC (IRA Extension)"
+                  fill={COLORS.ira}
+                  fillOpacity={0.15}
+                  stroke={COLORS.ira}
+                  strokeWidth={2.5}
+                />
+              )}
+
+              {shouldShow("ptc700FPL") && (
+                <Area
+                  type="monotone"
+                  dataKey="ptc700FPL"
+                  name="PTC (700% FPL Bill)"
+                  fill={COLORS.bipartisan}
+                  fillOpacity={0.15}
+                  stroke={COLORS.bipartisan}
+                  strokeWidth={2.5}
+                />
+              )}
+
+              {shouldShow("ptcAdditionalBracket") && (
+                <Area
+                  type="monotone"
+                  dataKey="ptcAdditionalBracket"
+                  name="PTC (Additional Bracket)"
+                  fill={COLORS.additionalBracket}
+                  fillOpacity={0.15}
+                  stroke={COLORS.additionalBracket}
+                  strokeWidth={2.5}
+                />
+              )}
+
+              {shouldShow("ptcSimplifiedBracket") && (
+                <Area
+                  type="monotone"
+                  dataKey="ptcSimplifiedBracket"
+                  name="PTC (Simplified Bracket)"
+                  fill={COLORS.simplifiedBracket}
+                  fillOpacity={0.15}
+                  stroke={COLORS.simplifiedBracket}
+                  strokeWidth={2.5}
+                />
+              )}
+            </>
           )}
 
-          {shouldShow("ptc700FPL") && (
-            <Area
-              type="monotone"
-              dataKey="ptc700FPL"
-              name="PTC (700% FPL Bill)"
-              fill={COLORS.bipartisan}
-              fillOpacity={0.15}
-              stroke={COLORS.bipartisan}
-              strokeWidth={2.5}
-            />
-          )}
+          {/* AI EXPLANATION MODE - for scrollytelling */}
+          {!externalVisibleLines && chartState !== "ira_impact" && chartState !== "both_reforms" && (
+            <>
+              {shouldShow("ptcBaseline") && (
+                <Area
+                  type="monotone"
+                  dataKey="ptcBaseline"
+                  name="PTC (Baseline)"
+                  fill={COLORS.baseline}
+                  fillOpacity={0.15}
+                  stroke={COLORS.baseline}
+                  strokeWidth={2.5}
+                />
+              )}
 
-          {shouldShow("ptcAdditionalBracket") && (
-            <Area
-              type="monotone"
-              dataKey="ptcAdditionalBracket"
-              name="PTC (Additional Bracket)"
-              fill={COLORS.additionalBracket}
-              fillOpacity={0.15}
-              stroke={COLORS.additionalBracket}
-              strokeWidth={2.5}
-            />
-          )}
+              {shouldShow("ptcIRA") && (
+                <Area
+                  type="monotone"
+                  dataKey="ptcIRA"
+                  name="PTC (IRA Extension)"
+                  fill={COLORS.ira}
+                  fillOpacity={0.15}
+                  stroke={COLORS.ira}
+                  strokeWidth={2.5}
+                />
+              )}
 
-          {shouldShow("ptcSimplifiedBracket") && (
-            <Area
-              type="monotone"
-              dataKey="ptcSimplifiedBracket"
-              name="PTC (Simplified Bracket)"
-              fill={COLORS.simplifiedBracket}
-              fillOpacity={0.15}
-              stroke={COLORS.simplifiedBracket}
-              strokeWidth={2.5}
-            />
-          )}
+              {/* Medicaid */}
+              {shouldShow("medicaid") && (
+                <Line
+                  type="monotone"
+                  dataKey="medicaid"
+                  name="Medicaid"
+                  stroke={COLORS.medicaid}
+                  strokeWidth={2.5}
+                  dot={false}
+                  opacity={getLineOpacity("medicaid")}
+                />
+              )}
 
-          {/* Medicaid - only in AI explanation mode */}
-          {shouldShow("medicaid") && (
-            <Line
-              type="monotone"
-              dataKey="medicaid"
-              name="Medicaid"
-              stroke={COLORS.medicaid}
-              strokeWidth={2.5}
-              dot={false}
-              opacity={getLineOpacity("medicaid")}
-            />
-          )}
-
-          {/* CHIP - only in AI explanation mode */}
-          {shouldShow("chip") && data?.chip?.some((v) => v > 0) && (
-            <Line
-              type="monotone"
-              dataKey="chip"
-              name="CHIP"
-              stroke={COLORS.chip}
-              strokeWidth={2.5}
-              dot={false}
-              opacity={getLineOpacity("chip")}
-            />
+              {/* CHIP */}
+              {shouldShow("chip") && data?.chip?.some((v) => v > 0) && (
+                <Line
+                  type="monotone"
+                  dataKey="chip"
+                  name="CHIP"
+                  stroke={COLORS.chip}
+                  strokeWidth={2.5}
+                  dot={false}
+                  opacity={getLineOpacity("chip")}
+                />
+              )}
+            </>
           )}
         </ComposedChart>
       </ResponsiveContainer>
