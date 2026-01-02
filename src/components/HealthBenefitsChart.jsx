@@ -53,44 +53,55 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
       .filter((d) => d.income <= maxIncome && d.income >= 0);
   }, [data, chartState]);
 
-  // Determine which lines to show based on chart state or external control
-  const getVisibleLines = () => {
-    // If external control is provided, use it
+  // Helper to check if a line should be shown
+  const shouldShow = (lineKey) => {
+    // When external toggle controls are provided, use them directly
     if (externalVisibleLines) {
-      const lines = [];
-      if (externalVisibleLines.baseline) lines.push("ptcBaseline");
-      if (externalVisibleLines.ira) lines.push("ptcIRA");
-      if (externalVisibleLines.fpl700) lines.push("ptc700FPL");
-      if (externalVisibleLines.additionalBracket) lines.push("ptcAdditionalBracket");
-      if (externalVisibleLines.simplifiedBracket) lines.push("ptcSimplifiedBracket");
-      return lines;
+      switch (lineKey) {
+        case "ptcBaseline": return externalVisibleLines.baseline === true;
+        case "ptcIRA": return externalVisibleLines.ira === true;
+        case "ptc700FPL": return externalVisibleLines.fpl700 === true;
+        case "ptcAdditionalBracket": return externalVisibleLines.additionalBracket === true;
+        case "ptcSimplifiedBracket": return externalVisibleLines.simplifiedBracket === true;
+        case "medicaid": return false; // Not togglable
+        case "chip": return false; // Not togglable
+        default: return false;
+      }
     }
 
     // Fallback to chart state for AI explanation mode
-    switch (chartState) {
-      case "all_programs":
-        return ["medicaid", "chip", "ptcBaseline"];
-      case "medicaid_focus":
-        return ["medicaid", "ptcBaseline"];
-      case "chip_focus":
-        return ["chip", "medicaid", "ptcBaseline"];
-      case "ptc_baseline":
-      case "cliff_focus":
-        return ["ptcBaseline"];
-      case "ira_reform":
-        return ["ptcBaseline", "ptcIRA"];
-      case "ira_impact":
-        return ["ptcIRA", "ptcBaseline", "iraGain"];
-      case "both_reforms":
-        return ["ptcBaseline", "ptcIRA", "ptc700FPL", "ptcAdditionalBracket", "ptcSimplifiedBracket"];
-      case "impact":
-        return ["deltaIRA", "delta700FPL"];
-      default:
-        return ["ptcBaseline"];
-    }
+    const stateLines = {
+      "all_programs": ["medicaid", "chip", "ptcBaseline"],
+      "medicaid_focus": ["medicaid", "ptcBaseline"],
+      "chip_focus": ["chip", "medicaid", "ptcBaseline"],
+      "ptc_baseline": ["ptcBaseline"],
+      "cliff_focus": ["ptcBaseline"],
+      "ira_reform": ["ptcBaseline", "ptcIRA"],
+      "ira_impact": ["ptcIRA", "ptcBaseline"],
+      "both_reforms": ["ptcBaseline", "ptcIRA", "ptc700FPL", "ptcAdditionalBracket", "ptcSimplifiedBracket"],
+      "impact": ["deltaIRA", "delta700FPL"],
+    };
+
+    const lines = stateLines[chartState] || ["ptcBaseline"];
+    return lines.includes(lineKey);
   };
 
-  const visibleLines = getVisibleLines();
+  // For backward compatibility with existing code
+  const visibleLines = externalVisibleLines
+    ? Object.entries(externalVisibleLines)
+        .filter(([_, v]) => v)
+        .map(([k]) => {
+          const mapping = {
+            baseline: "ptcBaseline",
+            ira: "ptcIRA",
+            fpl700: "ptc700FPL",
+            additionalBracket: "ptcAdditionalBracket",
+            simplifiedBracket: "ptcSimplifiedBracket"
+          };
+          return mapping[k];
+        })
+        .filter(Boolean)
+    : ["ptcBaseline"];
   const fpl = data?.fpl || 31200;
 
   // Find where baseline PTC actually drops to zero (the cliff)
@@ -260,36 +271,69 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             />
           )}
 
-          {/* IRA Impact Area - stacked to show baseline + gain from IRA (only when no external controls) */}
-          {chartState === "ira_impact" && !externalVisibleLines && (
-            <>
-              {/* Baseline area in gray */}
-              <Area
-                type="monotone"
-                dataKey="ptcBaseline"
-                name="Baseline (Current Law)"
-                fill={COLORS.baseline}
-                fillOpacity={0.3}
-                stroke={COLORS.baseline}
-                strokeWidth={2}
-                stackId="ira_stack"
-              />
-              {/* IRA gain stacked on top in blue */}
-              <Area
-                type="monotone"
-                dataKey="deltaIRA"
-                name="Additional from IRA"
-                fill={COLORS.ira}
-                fillOpacity={0.4}
-                stroke={COLORS.ira}
-                strokeWidth={2}
-                stackId="ira_stack"
-              />
-            </>
+          {/* Area fills for shading - render before lines */}
+          {shouldShow("ptcBaseline") && (
+            <Area
+              type="monotone"
+              dataKey="ptcBaseline"
+              name="PTC (Baseline)"
+              fill={COLORS.baseline}
+              fillOpacity={0.15}
+              stroke={COLORS.baseline}
+              strokeWidth={2.5}
+            />
           )}
 
-          {/* Medicaid */}
-          {visibleLines.includes("medicaid") && (
+          {shouldShow("ptcIRA") && (
+            <Area
+              type="monotone"
+              dataKey="ptcIRA"
+              name="PTC (IRA Extension)"
+              fill={COLORS.ira}
+              fillOpacity={0.15}
+              stroke={COLORS.ira}
+              strokeWidth={2.5}
+            />
+          )}
+
+          {shouldShow("ptc700FPL") && (
+            <Area
+              type="monotone"
+              dataKey="ptc700FPL"
+              name="PTC (700% FPL Bill)"
+              fill={COLORS.bipartisan}
+              fillOpacity={0.15}
+              stroke={COLORS.bipartisan}
+              strokeWidth={2.5}
+            />
+          )}
+
+          {shouldShow("ptcAdditionalBracket") && (
+            <Area
+              type="monotone"
+              dataKey="ptcAdditionalBracket"
+              name="PTC (Additional Bracket)"
+              fill={COLORS.additionalBracket}
+              fillOpacity={0.15}
+              stroke={COLORS.additionalBracket}
+              strokeWidth={2.5}
+            />
+          )}
+
+          {shouldShow("ptcSimplifiedBracket") && (
+            <Area
+              type="monotone"
+              dataKey="ptcSimplifiedBracket"
+              name="PTC (Simplified Bracket)"
+              fill={COLORS.simplifiedBracket}
+              fillOpacity={0.15}
+              stroke={COLORS.simplifiedBracket}
+              strokeWidth={2.5}
+            />
+          )}
+
+          {/* Medicaid - only in AI explanation mode */}
+          {shouldShow("medicaid") && (
             <Line
               type="monotone"
               dataKey="medicaid"
@@ -301,8 +345,8 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             />
           )}
 
-          {/* CHIP */}
-          {visibleLines.includes("chip") && data?.chip?.some((v) => v > 0) && (
+          {/* CHIP - only in AI explanation mode */}
+          {shouldShow("chip") && data?.chip?.some((v) => v > 0) && (
             <Line
               type="monotone"
               dataKey="chip"
@@ -311,91 +355,6 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
               strokeWidth={2.5}
               dot={false}
               opacity={getLineOpacity("chip")}
-            />
-          )}
-
-          {/* PTC Baseline - skip if ira_impact without external controls since Area handles it */}
-          {visibleLines.includes("ptcBaseline") && (chartState !== "ira_impact" || externalVisibleLines) && (
-            <Line
-              type="monotone"
-              dataKey="ptcBaseline"
-              name="PTC (Baseline)"
-              stroke={COLORS.baseline}
-              strokeWidth={2.5}
-              dot={false}
-            />
-          )}
-
-          {/* PTC IRA Reform - skip if ira_impact without external controls since Area handles it */}
-          {visibleLines.includes("ptcIRA") && (chartState !== "ira_impact" || externalVisibleLines) && (
-            <Line
-              type="monotone"
-              dataKey="ptcIRA"
-              name="PTC (IRA Extension)"
-              stroke={COLORS.ira}
-              strokeWidth={2.5}
-              dot={false}
-            />
-          )}
-
-          {/* PTC 700% FPL Reform */}
-          {visibleLines.includes("ptc700FPL") && (
-            <Line
-              type="monotone"
-              dataKey="ptc700FPL"
-              name="PTC (700% FPL Bill)"
-              stroke={COLORS.bipartisan}
-              strokeWidth={2.5}
-              dot={false}
-            />
-          )}
-
-          {/* PTC Additional Bracket Reform */}
-          {visibleLines.includes("ptcAdditionalBracket") && (
-            <Line
-              type="monotone"
-              dataKey="ptcAdditionalBracket"
-              name="PTC (Additional Bracket)"
-              stroke={COLORS.additionalBracket}
-              strokeWidth={2.5}
-              dot={false}
-            />
-          )}
-
-          {/* PTC Simplified Bracket Reform */}
-          {visibleLines.includes("ptcSimplifiedBracket") && (
-            <Line
-              type="monotone"
-              dataKey="ptcSimplifiedBracket"
-              name="PTC (Simplified Bracket)"
-              stroke={COLORS.simplifiedBracket}
-              strokeWidth={2.5}
-              dot={false}
-            />
-          )}
-
-          {/* Delta IRA (for impact view) */}
-          {visibleLines.includes("deltaIRA") && (
-            <Line
-              type="monotone"
-              dataKey="deltaIRA"
-              name="Gain from IRA Extension"
-              stroke={COLORS.ira}
-              strokeWidth={2.5}
-              dot={false}
-              fillOpacity={0.2}
-            />
-          )}
-
-          {/* Delta 700% FPL (for impact view) */}
-          {visibleLines.includes("delta700FPL") && (
-            <Line
-              type="monotone"
-              dataKey="delta700FPL"
-              name="Gain from 700% FPL Bill"
-              stroke={COLORS.bipartisan}
-              strokeWidth={2.5}
-              dot={false}
             />
           )}
         </ComposedChart>
