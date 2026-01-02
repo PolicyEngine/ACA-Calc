@@ -4,6 +4,12 @@ import modal
 
 app = modal.App("aca-calc-api")
 
+# Persistent cache for calculation results (7-day TTL handled in application)
+calculation_cache = modal.Dict.from_name("aca-calc-cache", create_if_missing=True)
+
+# Persistent cache for AI explanations
+explanation_cache = modal.Dict.from_name("aca-explain-cache", create_if_missing=True)
+
 image = (
     modal.Image.debian_slim(python_version="3.11")
     .apt_install("git")
@@ -32,5 +38,7 @@ image = (
 def fastapi_app():
     import sys
     sys.path.insert(0, "/root")
-    from src.aca_api.api import app
-    return app
+    from src.aca_api import api
+    # Inject the persistent caches into the API module
+    api.set_persistent_cache(calculation_cache, explanation_cache)
+    return api.app

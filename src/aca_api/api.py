@@ -8,6 +8,7 @@ import asyncio
 import hashlib
 import json
 import os
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 import anthropic
@@ -29,11 +30,86 @@ from aca_calc.calculations.reforms import (
     create_simplified_bracket_reform,
 )
 
-# Cache for calculation results - stores up to 1000 results for 24 hours
-calculation_cache = TTLCache(maxsize=1000, ttl=86400)
+# Local cache fallback for development (in-memory, lost on restart)
+_local_calculation_cache = TTLCache(maxsize=1000, ttl=86400)
+_local_explanation_cache = TTLCache(maxsize=500, ttl=604800)
 
-# Cache for AI explanations - stores up to 500 results for 7 days
-explanation_cache = TTLCache(maxsize=500, ttl=604800)
+# Persistent cache (injected by Modal at runtime)
+_persistent_calc_cache = None
+_persistent_explain_cache = None
+
+# Cache TTLs in seconds
+CALC_CACHE_TTL = 7 * 24 * 60 * 60  # 7 days for calculations
+EXPLAIN_CACHE_TTL = 7 * 24 * 60 * 60  # 7 days for AI explanations
+
+
+def set_persistent_cache(calc_cache, explain_cache):
+    """Inject persistent Modal Dict caches at runtime."""
+    global _persistent_calc_cache, _persistent_explain_cache
+    _persistent_calc_cache = calc_cache
+    _persistent_explain_cache = explain_cache
+
+
+def get_from_cache(key: str, cache_type: str = "calc"):
+    """Get value from cache, checking TTL. Returns None if not found or expired."""
+    # Import models lazily to avoid circular imports
+    from .models import CalculateResponse, ExplainResponse
+
+    # Try persistent cache first (Modal Dict)
+    persistent_cache = _persistent_calc_cache if cache_type == "calc" else _persistent_explain_cache
+    ttl = CALC_CACHE_TTL if cache_type == "calc" else EXPLAIN_CACHE_TTL
+
+    if persistent_cache is not None:
+        try:
+            entry = persistent_cache.get(key)
+            if entry is not None:
+                # Check TTL
+                if time.time() - entry.get("timestamp", 0) < ttl:
+                    data = entry.get("data")
+                    # Reconstruct Pydantic model from dict
+                    if isinstance(data, dict):
+                        if cache_type == "calc":
+                            return CalculateResponse(**data)
+                        else:
+                            return ExplainResponse(**data)
+                    return data
+                # Expired - remove it
+                try:
+                    del persistent_cache[key]
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    # Fall back to local cache
+    local_cache = _local_calculation_cache if cache_type == "calc" else _local_explanation_cache
+    return local_cache.get(key)
+
+
+def set_in_cache(key: str, data, cache_type: str = "calc"):
+    """Store value in cache with timestamp for TTL."""
+    # Store in persistent cache if available
+    persistent_cache = _persistent_calc_cache if cache_type == "calc" else _persistent_explain_cache
+
+    if persistent_cache is not None:
+        try:
+            # Serialize Pydantic models to dict for JSON storage
+            serialized = data.model_dump() if hasattr(data, 'model_dump') else data
+            persistent_cache[key] = {
+                "data": serialized,
+                "timestamp": time.time()
+            }
+        except Exception:
+            pass
+
+    # Also store in local cache as fallback (can store Pydantic models directly)
+    local_cache = _local_calculation_cache if cache_type == "calc" else _local_explanation_cache
+    local_cache[key] = data
+
+
+# Legacy references for backward compatibility
+calculation_cache = _local_calculation_cache
+explanation_cache = _local_explanation_cache
 
 from .models import (
     CalculateRequest,
@@ -98,10 +174,11 @@ async def calculate_ptc(data: CalculateRequest):
     Returns arrays of PTC values under baseline, IRA extension, and 700% FPL
     scenarios for the specified household.
     """
-    # Check cache first
+    # Check cache first (persistent or local)
     cache_key = get_cache_key(data)
-    if cache_key in calculation_cache:
-        return calculation_cache[cache_key]
+    cached = get_from_cache(cache_key, "calc")
+    if cached is not None:
+        return cached
 
     try:
         # Build household situation with income axis
@@ -199,8 +276,8 @@ async def calculate_ptc(data: CalculateRequest):
             chip=convert_to_native(chip),
         )
 
-        # Cache the result
-        calculation_cache[cache_key] = response
+        # Cache the result (persistent + local)
+        set_in_cache(cache_key, response, "calc")
         return response
 
     except ValueError as e:
@@ -215,13 +292,14 @@ async def calculate_ptc_stream(data: CalculateRequest):
 
     Returns Server-Sent Events with progress updates as each simulation completes.
     """
-    # Check cache first - if cached, return immediately
+    # Check cache first (persistent or local) - if cached, return immediately
     cache_key = get_cache_key(data)
-    if cache_key in calculation_cache:
+    cached = get_from_cache(cache_key, "calc")
+    if cached is not None:
         async def cached_response():
             yield f"data: {json.dumps({'step': 'cached', 'progress': 100, 'message': 'Using cached results'})}\n\n"
-            result = calculation_cache[cache_key]
-            yield f"data: {json.dumps({'step': 'complete', 'result': result.model_dump()})}\n\n"
+            result = cached.model_dump() if hasattr(cached, 'model_dump') else cached
+            yield f"data: {json.dumps({'step': 'complete', 'result': result})}\n\n"
         return StreamingResponse(cached_response(), media_type="text/event-stream")
 
     async def generate():
@@ -332,8 +410,8 @@ async def calculate_ptc_stream(data: CalculateRequest):
                 chip=convert_to_native(chip),
             )
 
-            # Cache the result
-            calculation_cache[cache_key] = response
+            # Cache the result (persistent + local)
+            set_in_cache(cache_key, response, "calc")
 
             yield f"data: {json.dumps({'step': 'complete', 'progress': 100, 'result': response.model_dump()})}\n\n"
 
@@ -496,10 +574,11 @@ def get_explain_cache_key(data: ExplainRequest) -> str:
 async def explain_with_ai(data: ExplainRequest):
     """Generate AI-powered scrollytelling narrative for a household."""
 
-    # Check cache first
+    # Check cache first (persistent or local)
     cache_key = get_explain_cache_key(data)
-    if cache_key in explanation_cache:
-        return explanation_cache[cache_key]
+    cached = get_from_cache(cache_key, "explain")
+    if cached is not None:
+        return cached
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
@@ -541,8 +620,8 @@ async def explain_with_ai(data: ExplainRequest):
             household_description=result["household_description"]
         )
 
-        # Cache the result
-        explanation_cache[cache_key] = response
+        # Cache the result (persistent + local)
+        set_in_cache(cache_key, response, "explain")
         return response
 
     except json.JSONDecodeError as e:
