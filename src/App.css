@@ -124,8 +124,8 @@
 
 .chart-sticky {
   position: sticky;
-  top: 180px;
-  height: calc(100vh - 240px);
+  top: 200px;
+  height: calc(100vh - 280px);
   background: var(--pe-surface);
   border-radius: var(--pe-radius-lg);
   box-shadow: var(--pe-shadow-lg);
