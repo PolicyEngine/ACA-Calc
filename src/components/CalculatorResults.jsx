@@ -1,17 +1,37 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import HealthBenefitsChart from "./HealthBenefitsChart";
 import "./Calculator.css";
 
-function CalculatorResults({ data }) {
+function CalculatorResults({ data, formData }) {
   const [activeTab, setActiveTab] = useState("gain");
   const [userIncome, setUserIncome] = useState("");
+
+  // Determine which reforms were actually calculated
+  const selectedReforms = useMemo(() => ({
+    ira: formData?.show_ira ?? true,
+    fpl700: formData?.show_700fpl ?? false,
+    additionalBracket: formData?.show_additional_bracket ?? false,
+    simplifiedBracket: formData?.show_simplified_bracket ?? false,
+  }), [formData]);
+
   const [visibleLines, setVisibleLines] = useState({
     baseline: true,
     ira: true,
-    fpl700: true,
-    additionalBracket: true,
-    simplifiedBracket: true,
+    fpl700: false,
+    additionalBracket: false,
+    simplifiedBracket: false,
   });
+
+  // Sync visibleLines with selectedReforms when formData changes
+  useEffect(() => {
+    setVisibleLines({
+      baseline: true,
+      ira: selectedReforms.ira,
+      fpl700: selectedReforms.fpl700,
+      additionalBracket: selectedReforms.additionalBracket,
+      simplifiedBracket: selectedReforms.simplifiedBracket,
+    });
+  }, [selectedReforms]);
 
   const toggleLine = (line) => {
     setVisibleLines(prev => ({ ...prev, [line]: !prev[line] }));
@@ -159,42 +179,50 @@ function CalculatorResults({ data }) {
           <>
             <div className="chart-toggles">
               <span className="toggle-label">Show gain from:</span>
-              <label className={`toggle-item ${visibleLines.ira ? 'active' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={visibleLines.ira}
-                  onChange={() => toggleLine('ira')}
-                />
-                <span className="toggle-color ira"></span>
-                IRA Extension
-              </label>
-              <label className={`toggle-item ${visibleLines.fpl700 ? 'active' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={visibleLines.fpl700}
-                  onChange={() => toggleLine('fpl700')}
-                />
-                <span className="toggle-color fpl700"></span>
-                700% FPL Bill
-              </label>
-              <label className={`toggle-item ${visibleLines.additionalBracket ? 'active' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={visibleLines.additionalBracket}
-                  onChange={() => toggleLine('additionalBracket')}
-                />
-                <span className="toggle-color additional"></span>
-                Additional Bracket
-              </label>
-              <label className={`toggle-item ${visibleLines.simplifiedBracket ? 'active' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={visibleLines.simplifiedBracket}
-                  onChange={() => toggleLine('simplifiedBracket')}
-                />
-                <span className="toggle-color simplified"></span>
-                Simplified Bracket
-              </label>
+              {selectedReforms.ira && (
+                <label className={`toggle-item ${visibleLines.ira ? 'active' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={visibleLines.ira}
+                    onChange={() => toggleLine('ira')}
+                  />
+                  <span className="toggle-color ira"></span>
+                  IRA Extension
+                </label>
+              )}
+              {selectedReforms.fpl700 && (
+                <label className={`toggle-item ${visibleLines.fpl700 ? 'active' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={visibleLines.fpl700}
+                    onChange={() => toggleLine('fpl700')}
+                  />
+                  <span className="toggle-color fpl700"></span>
+                  700% FPL Bill
+                </label>
+              )}
+              {selectedReforms.additionalBracket && (
+                <label className={`toggle-item ${visibleLines.additionalBracket ? 'active' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={visibleLines.additionalBracket}
+                    onChange={() => toggleLine('additionalBracket')}
+                  />
+                  <span className="toggle-color additional"></span>
+                  Additional Bracket
+                </label>
+              )}
+              {selectedReforms.simplifiedBracket && (
+                <label className={`toggle-item ${visibleLines.simplifiedBracket ? 'active' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={visibleLines.simplifiedBracket}
+                    onChange={() => toggleLine('simplifiedBracket')}
+                  />
+                  <span className="toggle-color simplified"></span>
+                  Simplified Bracket
+                </label>
+              )}
             </div>
             <div className="results-chart">
               <HealthBenefitsChart
@@ -221,42 +249,50 @@ function CalculatorResults({ data }) {
                 <span className="toggle-color baseline"></span>
                 Baseline
               </label>
-              <label className={`toggle-item ${visibleLines.ira ? 'active' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={visibleLines.ira}
-                  onChange={() => toggleLine('ira')}
-                />
-                <span className="toggle-color ira"></span>
-                IRA Extension
-              </label>
-              <label className={`toggle-item ${visibleLines.fpl700 ? 'active' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={visibleLines.fpl700}
-                  onChange={() => toggleLine('fpl700')}
-                />
-                <span className="toggle-color fpl700"></span>
-                700% FPL Bill
-              </label>
-              <label className={`toggle-item ${visibleLines.additionalBracket ? 'active' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={visibleLines.additionalBracket}
-                  onChange={() => toggleLine('additionalBracket')}
-                />
-                <span className="toggle-color additional"></span>
-                Additional Bracket
-              </label>
-              <label className={`toggle-item ${visibleLines.simplifiedBracket ? 'active' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={visibleLines.simplifiedBracket}
-                  onChange={() => toggleLine('simplifiedBracket')}
-                />
-                <span className="toggle-color simplified"></span>
-                Simplified Bracket
-              </label>
+              {selectedReforms.ira && (
+                <label className={`toggle-item ${visibleLines.ira ? 'active' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={visibleLines.ira}
+                    onChange={() => toggleLine('ira')}
+                  />
+                  <span className="toggle-color ira"></span>
+                  IRA Extension
+                </label>
+              )}
+              {selectedReforms.fpl700 && (
+                <label className={`toggle-item ${visibleLines.fpl700 ? 'active' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={visibleLines.fpl700}
+                    onChange={() => toggleLine('fpl700')}
+                  />
+                  <span className="toggle-color fpl700"></span>
+                  700% FPL Bill
+                </label>
+              )}
+              {selectedReforms.additionalBracket && (
+                <label className={`toggle-item ${visibleLines.additionalBracket ? 'active' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={visibleLines.additionalBracket}
+                    onChange={() => toggleLine('additionalBracket')}
+                  />
+                  <span className="toggle-color additional"></span>
+                  Additional Bracket
+                </label>
+              )}
+              {selectedReforms.simplifiedBracket && (
+                <label className={`toggle-item ${visibleLines.simplifiedBracket ? 'active' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={visibleLines.simplifiedBracket}
+                    onChange={() => toggleLine('simplifiedBracket')}
+                  />
+                  <span className="toggle-color simplified"></span>
+                  Simplified Bracket
+                </label>
+              )}
             </div>
             <div className="results-chart">
               <HealthBenefitsChart
@@ -303,27 +339,31 @@ function CalculatorResults({ data }) {
                     <p className="impact-monthly">{formatCurrency(userResults.baseline / 12)}/month</p>
                   </div>
 
-                  <div className="impact-card ira">
-                    <h4>IRA Extension</h4>
-                    <p className="impact-value">{formatCurrency(userResults.ira)}</p>
-                    <p className="impact-label">Annual PTC</p>
-                    <p className="impact-monthly">{formatCurrency(userResults.ira / 12)}/month</p>
-                    {userResults.iraGain > 0 && (
-                      <p className="impact-gain">+{formatCurrency(userResults.iraGain)}/year</p>
-                    )}
-                  </div>
+                  {selectedReforms.ira && (
+                    <div className="impact-card ira">
+                      <h4>IRA Extension</h4>
+                      <p className="impact-value">{formatCurrency(userResults.ira)}</p>
+                      <p className="impact-label">Annual PTC</p>
+                      <p className="impact-monthly">{formatCurrency(userResults.ira / 12)}/month</p>
+                      {userResults.iraGain > 0 && (
+                        <p className="impact-gain">+{formatCurrency(userResults.iraGain)}/year</p>
+                      )}
+                    </div>
+                  )}
 
-                  <div className="impact-card fpl700">
-                    <h4>700% FPL Bill</h4>
-                    <p className="impact-value">{formatCurrency(userResults.fpl700)}</p>
-                    <p className="impact-label">Annual PTC</p>
-                    <p className="impact-monthly">{formatCurrency(userResults.fpl700 / 12)}/month</p>
-                    {userResults.fpl700Gain > 0 && (
-                      <p className="impact-gain">+{formatCurrency(userResults.fpl700Gain)}/year</p>
-                    )}
-                  </div>
+                  {selectedReforms.fpl700 && (
+                    <div className="impact-card fpl700">
+                      <h4>700% FPL Bill</h4>
+                      <p className="impact-value">{formatCurrency(userResults.fpl700)}</p>
+                      <p className="impact-label">Annual PTC</p>
+                      <p className="impact-monthly">{formatCurrency(userResults.fpl700 / 12)}/month</p>
+                      {userResults.fpl700Gain > 0 && (
+                        <p className="impact-gain">+{formatCurrency(userResults.fpl700Gain)}/year</p>
+                      )}
+                    </div>
+                  )}
 
-                  {userResults.additionalBracket > 0 && (
+                  {selectedReforms.additionalBracket && (
                     <div className="impact-card additional-bracket">
                       <h4>Additional Bracket</h4>
                       <p className="impact-value">{formatCurrency(userResults.additionalBracket)}</p>
@@ -335,7 +375,7 @@ function CalculatorResults({ data }) {
                     </div>
                   )}
 
-                  {userResults.simplifiedBracket > 0 && (
+                  {selectedReforms.simplifiedBracket && (
                     <div className="impact-card simplified-bracket">
                       <h4>Simplified Bracket</h4>
                       <p className="impact-value">{formatCurrency(userResults.simplifiedBracket)}</p>

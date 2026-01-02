@@ -364,7 +364,7 @@ function Calculator() {
                   Get a personalized walkthrough of how these policies affect your household
                 </p>
               </div>
-              <CalculatorResults data={results} />
+              <CalculatorResults data={results} formData={formData} />
             </>
           )}
 
