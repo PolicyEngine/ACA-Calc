@@ -134,7 +134,7 @@ function CalculatorResults({ data }) {
   };
 
   const tabs = [
-    { id: "gain", label: "Gain from Extension" },
+    { id: "gain", label: "Gain from Reform" },
     { id: "comparison", label: "Baseline vs Extension" },
     { id: "impact", label: "Your Impact" },
   ];
@@ -154,18 +154,60 @@ function CalculatorResults({ data }) {
       </div>
 
       <div className="results-content">
-        {/* GAIN FROM EXTENSION TAB - stacked area: baseline + IRA gain */}
+        {/* GAIN FROM REFORM TAB - shows gains over baseline, lines only, no shading */}
         {activeTab === "gain" && chartData && (
-          <div className="results-chart">
-            <HealthBenefitsChart
-              data={chartData}
-              chartState="ira_impact"
-              householdInfo={{}}
-            />
-          </div>
+          <>
+            <div className="chart-toggles">
+              <span className="toggle-label">Show gain from:</span>
+              <label className={`toggle-item ${visibleLines.ira ? 'active' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={visibleLines.ira}
+                  onChange={() => toggleLine('ira')}
+                />
+                <span className="toggle-color ira"></span>
+                IRA Extension
+              </label>
+              <label className={`toggle-item ${visibleLines.fpl700 ? 'active' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={visibleLines.fpl700}
+                  onChange={() => toggleLine('fpl700')}
+                />
+                <span className="toggle-color fpl700"></span>
+                700% FPL Bill
+              </label>
+              <label className={`toggle-item ${visibleLines.additionalBracket ? 'active' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={visibleLines.additionalBracket}
+                  onChange={() => toggleLine('additionalBracket')}
+                />
+                <span className="toggle-color additional"></span>
+                Additional Bracket
+              </label>
+              <label className={`toggle-item ${visibleLines.simplifiedBracket ? 'active' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={visibleLines.simplifiedBracket}
+                  onChange={() => toggleLine('simplifiedBracket')}
+                />
+                <span className="toggle-color simplified"></span>
+                Simplified Bracket
+              </label>
+            </div>
+            <div className="results-chart">
+              <HealthBenefitsChart
+                data={chartData}
+                chartState="gain_view"
+                householdInfo={{}}
+                visibleLines={visibleLines}
+              />
+            </div>
+          </>
         )}
 
-        {/* COMPARISON TAB - all reforms side by side */}
+        {/* COMPARISON TAB - all reforms with shading */}
         {activeTab === "comparison" && chartData && (
           <>
             <div className="chart-toggles">
@@ -196,6 +238,24 @@ function CalculatorResults({ data }) {
                 />
                 <span className="toggle-color fpl700"></span>
                 700% FPL Bill
+              </label>
+              <label className={`toggle-item ${visibleLines.additionalBracket ? 'active' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={visibleLines.additionalBracket}
+                  onChange={() => toggleLine('additionalBracket')}
+                />
+                <span className="toggle-color additional"></span>
+                Additional Bracket
+              </label>
+              <label className={`toggle-item ${visibleLines.simplifiedBracket ? 'active' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={visibleLines.simplifiedBracket}
+                  onChange={() => toggleLine('simplifiedBracket')}
+                />
+                <span className="toggle-color simplified"></span>
+                Simplified Bracket
               </label>
             </div>
             <div className="results-chart">

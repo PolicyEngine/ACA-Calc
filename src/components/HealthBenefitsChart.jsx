@@ -115,9 +115,9 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
     return fpl * 4; // fallback
   }, [data, fpl]);
 
-  // For impact view and ira_impact, calculate deltas (gains over baseline)
+  // For impact view, ira_impact, and gain_view, calculate deltas (gains over baseline)
   const impactData = useMemo(() => {
-    if (chartState !== "impact" && chartState !== "ira_impact") return chartData;
+    if (chartState !== "impact" && chartState !== "ira_impact" && chartState !== "gain_view") return chartData;
     return chartData.map((d) => ({
       ...d,
       deltaIRA: Math.max(0, d.ptcIRA - d.ptcBaseline),
@@ -127,7 +127,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
     }));
   }, [chartData, chartState]);
 
-  const displayData = (chartState === "impact" || chartState === "ira_impact") ? impactData : chartData;
+  const displayData = (chartState === "impact" || chartState === "ira_impact" || chartState === "gain_view") ? impactData : chartData;
 
   // Format currency for tooltip
   const formatCurrency = (value) => {
@@ -179,6 +179,8 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
         return "Baseline vs IRA Extension";
       case "ira_impact":
         return "IRA Extension vs Current Law";
+      case "gain_view":
+        return "Gain from Reform vs Baseline";
       case "both_reforms":
         return "Comparing All Policy Options";
       case "all_programs":
@@ -230,7 +232,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             fontSize={12}
             domain={getYDomain()}
             label={{
-              value: chartState === "impact" ? "Benefit Gain" : "Annual Value",
+              value: (chartState === "impact" || chartState === "gain_view") ? "Gain over Baseline" : "Annual Value",
               angle: -90,
               position: "insideLeft",
               offset: 10,
@@ -298,6 +300,52 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
                 strokeWidth={2}
                 stackId="ira_stack"
               />
+            </>
+          )}
+
+          {/* GAIN VIEW - lines only showing gains over baseline */}
+          {chartState === "gain_view" && (
+            <>
+              {shouldShow("ptcIRA") && (
+                <Line
+                  type="monotone"
+                  dataKey="deltaIRA"
+                  name="Gain from IRA Extension"
+                  stroke={COLORS.ira}
+                  strokeWidth={2.5}
+                  dot={false}
+                />
+              )}
+              {shouldShow("ptc700FPL") && (
+                <Line
+                  type="monotone"
+                  dataKey="delta700FPL"
+                  name="Gain from 700% FPL Bill"
+                  stroke={COLORS.bipartisan}
+                  strokeWidth={2.5}
+                  dot={false}
+                />
+              )}
+              {shouldShow("ptcAdditionalBracket") && (
+                <Line
+                  type="monotone"
+                  dataKey="deltaAdditionalBracket"
+                  name="Gain from Additional Bracket"
+                  stroke={COLORS.additionalBracket}
+                  strokeWidth={2.5}
+                  dot={false}
+                />
+              )}
+              {shouldShow("ptcSimplifiedBracket") && (
+                <Line
+                  type="monotone"
+                  dataKey="deltaSimplifiedBracket"
+                  name="Gain from Simplified Bracket"
+                  stroke={COLORS.simplifiedBracket}
+                  strokeWidth={2.5}
+                  dot={false}
+                />
+              )}
             </>
           )}
 
