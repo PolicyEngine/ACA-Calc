@@ -47,7 +47,6 @@ The chart shows how the IRA (blue) differs from the original ACA (gray).`,
 The subsidy structure reverted to the **original ACA rules**:
 • The 400% FPL ceiling returned
 • Required contributions increased
-• Millions of households saw higher premiums or lost subsidies entirely
 
 The baseline contribution schedule now requires **higher payments** and ends at 400% FPL—the "subsidy cliff."`,
     showContributionChart: true,
