@@ -364,7 +364,7 @@ function CalculatorResults({ data, formData }) {
                   )}
 
                   {selectedReforms.additionalBracket && (
-                    <div className="impact-card additional-bracket" title="CRFB 'Progressive Alternative': extends enhanced subsidies below 300% FPL with linear phase-up above (~$280B over 10 years)">
+                    <div className="impact-card additional-bracket" title="CRFB 'Progressive Alternative': extends enhanced subsidies below 300% FPL with linear phase-up above">
                       <h4>
                         <a href="https://www.crfb.org/blogs/understanding-aca-subsidy-discussion" target="_blank" rel="noopener noreferrer" className="reform-link">
                           Additional Bracket
@@ -380,7 +380,7 @@ function CalculatorResults({ data, formData }) {
                   )}
 
                   {selectedReforms.simplifiedBracket && (
-                    <div className="impact-card simplified-bracket" title="CRFB 'Smaller Alternative': subsidies set halfway between baseline and enhanced rates (~$175B over 10 years)">
+                    <div className="impact-card simplified-bracket" title="CRFB 'Smaller Alternative': subsidies set halfway between baseline and enhanced rates">
                       <h4>
                         <a href="https://www.crfb.org/blogs/understanding-aca-subsidy-discussion" target="_blank" rel="noopener noreferrer" className="reform-link">
                           Simplified Bracket

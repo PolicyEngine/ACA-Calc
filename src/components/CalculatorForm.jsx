@@ -456,7 +456,7 @@ function CalculatorForm({ onCalculate, loading }) {
             <span>
               <strong>Additional Bracket</strong>
               <span className="checkbox-description">
-                <a href="https://www.crfb.org/blogs/understanding-aca-subsidy-discussion" target="_blank" rel="noopener noreferrer">CRFB</a> "Progressive Alternative": extends enhanced subsidies below 300% FPL, linear phase-up above (~$280B)
+                <a href="https://www.crfb.org/blogs/understanding-aca-subsidy-discussion" target="_blank" rel="noopener noreferrer">CRFB</a> "Progressive Alternative": extends enhanced subsidies below 300% FPL, linear phase-up above
               </span>
             </span>
           </label>
@@ -474,7 +474,7 @@ function CalculatorForm({ onCalculate, loading }) {
             <span>
               <strong>Simplified Bracket</strong>
               <span className="checkbox-description">
-                <a href="https://www.crfb.org/blogs/understanding-aca-subsidy-discussion" target="_blank" rel="noopener noreferrer">CRFB</a> "Smaller Alternative": subsidies halfway between baseline and enhanced (~$175B)
+                <a href="https://www.crfb.org/blogs/understanding-aca-subsidy-discussion" target="_blank" rel="noopener noreferrer">CRFB</a> "Smaller Alternative": subsidies halfway between baseline and enhanced
               </span>
             </span>
           </label>
