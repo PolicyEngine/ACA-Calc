@@ -177,6 +177,7 @@
   display: grid;
   grid-template-columns: 55% 45%;
   gap: var(--pe-space-xl);
+  padding: var(--pe-space-xl);
   overflow: hidden;
 }
 
