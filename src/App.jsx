@@ -16,7 +16,7 @@ const SECTIONS = [
   // PART 1: Background on how ACA subsidies work
   {
     id: "intro",
-    title: "How ACA Premium Tax Credits Work",
+    title: "How ACA premium tax credits work",
     content: `The Affordable Care Act (ACA) created **premium tax credits** to help Americans afford health insurance purchased through the marketplace.
 
 These credits work by capping how much of your income you're required to pay for a benchmark health plan—the **second-lowest cost silver plan (SLCSP)** in your area.
@@ -27,13 +27,13 @@ If the benchmark plan costs more than your required contribution, the government
   },
   {
     id: "arpa_ira",
-    title: "ARPA and IRA Enhancements (2021-2025)",
+    title: "ARPA and IRA enhancements (2021–2025)",
     content: `The **American Rescue Plan Act (ARPA)** of 2021 temporarily enhanced these subsidies. The **Inflation Reduction Act (IRA)** of 2022 extended them through 2025.
 
 Key changes:
-- **Removed the 400% FPL ceiling**—credits now available at any income
-- **Capped contributions at 8.5%** of income for everyone
-- **Lowered contributions** at every income level
+• Removed the 400% FPL ceiling—credits available at any income
+• Capped contributions at 8.5% of income for everyone
+• Lowered contributions at every income level
 
 The chart shows how the IRA (blue) differs from the original ACA (gray).`,
     showContributionChart: true,
@@ -41,15 +41,15 @@ The chart shows how the IRA (blue) differs from the original ACA (gray).`,
   },
   {
     id: "expiration",
-    title: "What Happens in 2026?",
-    content: `The ARPA/IRA enhancements are **scheduled to expire** at the end of 2025.
+    title: "What happened in 2026",
+    content: `The ARPA/IRA enhancements **expired** at the end of 2025.
 
-Without congressional action, the subsidy structure will revert to the **original ACA rules**:
-- The 400% FPL ceiling returns
-- Required contributions increase
-- Millions of households will see higher premiums or lose subsidies entirely
+The subsidy structure reverted to the **original ACA rules**:
+• The 400% FPL ceiling returned
+• Required contributions increased
+• Millions of households saw higher premiums or lost subsidies entirely
 
-Notice how the baseline contribution schedule now requires **higher payments** and ends at 400% FPL—the "subsidy cliff."`,
+The baseline contribution schedule now requires **higher payments** and ends at 400% FPL—the "subsidy cliff."`,
     showContributionChart: true,
     chartPolicies: ["baseline"],
   },
@@ -57,13 +57,13 @@ Notice how the baseline contribution schedule now requires **higher payments** a
   // PART 2: Household example
   {
     id: "example_intro",
-    title: "Example: A Middle-Income Household",
+    title: "Example: a middle-income household",
     content: `To illustrate the impact, consider a 45-year-old single adult in Lebanon County, Pennsylvania, earning **$104,200** a year—about **650% of the federal poverty level**.
 
-In 2025, under the IRA enhancements:
-- Benchmark plan (SLCSP): **$963/month**
-- Tax credit: **$242/month**
-- Net premium: **$720/month**`,
+In 2025, under the IRA enhancements, this household:
+• Paid **$963/month** for the benchmark plan (SLCSP)
+• Received a **$242/month** tax credit
+• Paid a net premium of **$720/month**`,
     useCliffData: true,
     showCliffTable: true,
     showSlcsp: true,
@@ -72,14 +72,14 @@ In 2025, under the IRA enhancements:
   },
   {
     id: "example_2026",
-    title: "2026: After Expiration",
-    content: `In 2026, two things change:
+    title: "2026: after expiration",
+    content: `In 2026, this household:
 
-**1. Premium increase:** The benchmark plan rises from $963/month to $1,003/month (+4.2%).
+**a) Faces a higher premium** for their benchmark plan: $1,003/month (up from $963/month, +4.2%)
 
-**2. Subsidy loss:** Their tax credit drops from $242/month to **$0** (−100%) because they exceed the 400% FPL ceiling.
+**b) Lost their subsidy** entirely: tax credit dropped from $242/month to **$0** because they exceed the 400% FPL ceiling
 
-Net premium rises from $720/month to **$1,003/month**—an increase of **$283/month (+39%)**.`,
+Net premium rose from $720/month to **$1,003/month**—an increase of **$283/month (+39%)**.`,
     useCliffData: true,
     showCliffTable: true,
     showSlcsp: true,
@@ -90,14 +90,14 @@ Net premium rises from $720/month to **$1,003/month**—an increase of **$283/mo
   // PART 3: Policy options for this household
   {
     id: "reform_options",
-    title: "Policy Options",
-    content: `Two proposals under consideration:
+    title: "Policy options",
+    content: `Two proposals were introduced in Congress:
 
-**IRA Extension:** Maintains the current 8.5% cap structure
-- Tax credit: **$265/month** → Net premium: **$738/month**
+**IRA Extension:** Maintains the 8.5% cap structure
+• Tax credit: **$265/month** → Net premium: **$738/month**
 
-**Bipartisan Health Insurance Affordability Act:** Introduced in the House on December 9, 2025, this bill would extend eligibility to 700% FPL with a 9.25% cap
-- Tax credit: **$223/month** → Net premium: **$780/month**`,
+**Bipartisan Health Insurance Affordability Act:** Introduced by Rep. Dunn (R-FL) and Rep. Schneider (D-IL) on December 9, 2025, this bill extends eligibility to 700% FPL with a 9.25% cap
+• Tax credit: **$223/month** → Net premium: **$780/month**`,
     useCliffData: true,
     showCliffTable: true,
     showSlcsp: false,
@@ -107,11 +107,11 @@ Net premium rises from $720/month to **$1,003/month**—an increase of **$283/mo
   // PART 4: Health programs overview (using PA single adult)
   {
     id: "health_programs",
-    title: "The Full Picture: Health Coverage Programs",
-    content: `Premium tax credits are just one part of the health coverage landscape. Americans may also qualify for:
+    title: "The full picture: health coverage programs",
+    content: `Premium tax credits are one part of the health coverage landscape. Americans may also qualify for:
 
-- **Medicaid:** Free coverage for low-income households (eligibility varies by state)
-- **Marketplace subsidies:** PTCs for those not eligible for other programs
+• **Medicaid:** Free coverage for low-income households (eligibility varies by state)
+• **Marketplace subsidies:** PTCs for those not eligible for other programs
 
 The chart shows how these programs interact across income levels for our Pennsylvania example.`,
     useCliffData: true,
@@ -119,21 +119,21 @@ The chart shows how these programs interact across income levels for our Pennsyl
   },
   {
     id: "medicaid",
-    title: "Medicaid Coverage",
+    title: "Medicaid coverage",
     content: `**Medicaid** provides coverage for low-income Americans. Pennsylvania expanded Medicaid, so adults qualify up to **138% FPL**.
 
-For our 45-year-old, this means Medicaid covers incomes up to about $22,000. Above that threshold, marketplace subsidies (PTCs) help cover premiums.`,
+For our 45-year-old, this means Medicaid covers incomes up to about $22,000. If they earn more, they may be eligible for premium tax credits (PTCs).`,
     useCliffData: true,
     chartState: "medicaid_focus",
   },
   {
     id: "reforms_chart",
-    title: "Premium Tax Credits Under Different Policies",
+    title: "Premium tax credits under different policies",
     content: `The chart shows premium tax credits across income levels under three scenarios:
 
-- **Gray line:** Baseline (post-IRA expiration)
-- **Blue line:** IRA extension
-- **Purple line:** Bipartisan Health Insurance Affordability Act
+• **Gray line:** Baseline (post-IRA expiration)
+• **Blue line:** IRA extension
+• **Purple line:** Bipartisan Health Insurance Affordability Act
 
 The baseline drops to zero at 400% FPL. Both reform options continue providing credits at higher incomes.`,
     useCliffData: true,
@@ -141,12 +141,12 @@ The baseline drops to zero at 400% FPL. Both reform options continue providing c
   },
   {
     id: "ira_impact_chart",
-    title: "IRA Extension: The Difference",
+    title: "IRA extension: the difference",
     content: `The **blue shaded area** represents the additional premium tax credits available under the IRA extension compared to baseline.
 
 For this Pennsylvania household:
-- Below 400% FPL: The IRA provides **lower required contributions**
-- Above 400% FPL: The IRA provides **full subsidy access** where baseline provides none
+• Below 400% FPL: The IRA provides **lower required contributions**
+• Above 400% FPL: The IRA provides **full subsidy access** where baseline provides none
 
 The size of the shaded area shows the dollar value of the difference at each income level.`,
     useCliffData: true,
@@ -156,8 +156,8 @@ The size of the shaded area shows the dollar value of the difference at each inc
   // PART 5: Household case studies - links to explorer
   {
     id: "explore_households",
-    title: "Explore Different Households",
-    content: `The impact of ACA policy changes varies significantly by household type, location, and income level.
+    title: "Explore different households",
+    content: `The impact of ACA policy changes varies by household type, location, and income level.
 
 Click below to explore how four different households are affected—with details on Medicaid expansion, CHIP eligibility, and the subsidy cliff for each.`,
     useCliffData: true,

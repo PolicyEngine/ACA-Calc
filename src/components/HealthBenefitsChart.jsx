@@ -32,8 +32,21 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
     const income = data.income || [];
     const fpl = data.fpl || 31200;
 
+    // Find where all policies reach $0 - extend to that point
+    // IRA extends furthest, so find where IRA hits 0
+    let maxIncomeForPolicies = fpl * 8;
+    if (data.ptc_ira) {
+      for (let i = data.ptc_ira.length - 1; i >= 0; i--) {
+        if (data.ptc_ira[i] > 0) {
+          // Round up to nearest $20k
+          maxIncomeForPolicies = Math.ceil(income[i] / 20000) * 20000 + 20000;
+          break;
+        }
+      }
+    }
+
     // Filter to reasonable income range
-    const maxIncome = chartState === "cliff_focus" ? fpl * 5 : fpl * 8;
+    const maxIncome = chartState === "cliff_focus" ? fpl * 5 : maxIncomeForPolicies;
 
     return income
       .map((inc, i) => ({
@@ -175,31 +188,31 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
   const getChartTitle = () => {
     switch (chartState) {
       case "impact":
-        return "Change in Annual Benefits from Reform";
+        return "Change in annual benefits from reform";
       case "cliff_focus":
-        return "The 400% FPL Subsidy Cliff";
+        return "The 400% FPL subsidy cliff";
       case "medicaid_focus":
-        return "Medicaid Coverage by Income";
+        return "Medicaid coverage by income";
       case "chip_focus":
-        return "CHIP Coverage by Income";
+        return "CHIP coverage by income";
       case "ira_reform":
-        return "Baseline vs IRA Extension";
+        return "Baseline vs IRA extension";
       case "ira_impact":
-        return "IRA Extension vs Current Law";
+        return "IRA extension vs current law";
       case "fpl700_focus":
-        return "700% FPL Bill vs Current Law";
+        return "700% FPL bill vs current law";
       case "additional_focus":
-        return "Additional Bracket vs Current Law";
+        return "Additional bracket vs current law";
       case "simplified_focus":
-        return "Simplified Bracket vs Current Law";
+        return "Simplified bracket vs current law";
       case "gain_view":
-        return "Gain from Reform vs Baseline";
+        return "Gain from reform vs baseline";
       case "both_reforms":
-        return "Comparing All Policy Options";
+        return "Comparing all policy options";
       case "all_programs":
-        return "Health Coverage Programs by Income";
+        return "Health coverage programs by income";
       default:
-        return "Annual Health Benefits by Income (2026)";
+        return "Annual health benefits by income (2026)";
     }
   };
 
@@ -232,8 +245,16 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
             stroke="#6b7280"
             fontSize={12}
+            ticks={(() => {
+              const maxIncome = chartData.length > 0 ? chartData[chartData.length - 1].income : 200000;
+              const ticks = [];
+              for (let i = 0; i <= maxIncome; i += 20000) {
+                ticks.push(i);
+              }
+              return ticks;
+            })()}
             label={{
-              value: "Household Income",
+              value: "Household income",
               position: "bottom",
               offset: 40,
               fill: "#6b7280",
@@ -244,8 +265,16 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             stroke="#6b7280"
             fontSize={12}
             domain={getYDomain()}
+            ticks={(() => {
+              const maxY = Math.max(...chartData.map(d => Math.max(d.ptcBaseline || 0, d.ptcIRA || 0, d.ptc700FPL || 0)));
+              const ticks = [];
+              for (let i = 0; i <= maxY + 4000; i += 4000) {
+                ticks.push(i);
+              }
+              return ticks;
+            })()}
             label={{
-              value: (chartState === "impact" || chartState === "gain_view") ? "Gain over Baseline" : "Annual Value",
+              value: (chartState === "impact" || chartState === "gain_view") ? "Gain over baseline" : "Annual value",
               angle: -90,
               position: "insideLeft",
               offset: 10,

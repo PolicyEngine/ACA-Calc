@@ -124,4 +124,5 @@
 
 .scroll-section:last-child {
   min-height: 50vh;
+  margin-bottom: 50vh;
 }

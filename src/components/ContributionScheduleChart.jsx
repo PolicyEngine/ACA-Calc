@@ -135,7 +135,7 @@ function ContributionScheduleChart({ showPolicies = ["baseline", "ira"] }) {
             dataKey="fpl"
             tickFormatter={formatFPL}
             tick={{ fontSize: 11 }}
-            interval={4}
+            ticks={[0, 100, 200, 300, 400, 500, 600, 700, 800]}
           />
           <YAxis
             tickFormatter={formatPercent}
