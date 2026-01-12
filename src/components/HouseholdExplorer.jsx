@@ -18,7 +18,7 @@ const HOUSEHOLDS = {
     sections: [
       {
         id: "fl_intro",
-        title: "Meet the Florida family",
+        title: "Florida family",
         content: `A family of four in **Hillsborough County, Florida**: two 40-year-old parents with children ages 10 and 8.
 
 The chart shows all the health programs this family might access across different income levels.`,
@@ -86,7 +86,7 @@ For this family of four, 400% FPL is about **$132,000** and 700% FPL is about **
     sections: [
       {
         id: "ca_intro",
-        title: "Meet the California couple",
+        title: "California couple",
         content: `An older couple in **San Benito County, California**: ages 64 and 62, approaching Medicare eligibility.
 
 The chart shows their coverage options across income levels. As a childless couple, they have fewer program options—but premium subsidies are important given their age.`,
@@ -147,7 +147,7 @@ For this couple, 400% FPL is about **$87,000** and 700% FPL is about **$152,000*
     sections: [
       {
         id: "tx_intro",
-        title: "Meet the Texas couple",
+        title: "Texas couple",
         content: `A married couple in their late 20s in **Harris County, Texas** (Houston area): ages 28 and 27.
 
 As a childless couple in a non-expansion state, they face challenges in accessing affordable coverage.`,
@@ -203,7 +203,7 @@ For this couple, 400% FPL is about **$87,000** and 700% FPL is about **$152,000*
     sections: [
       {
         id: "ny_intro",
-        title: "Meet the NYC family",
+        title: "NYC family",
         content: `A young family in **Manhattan**: parents ages 30 and 28 with a 2-year-old toddler.
 
 New York has **high premiums for young adults** because insurers cannot charge different rates based on age, which raises costs for younger enrollees.`,
