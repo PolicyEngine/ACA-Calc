@@ -294,9 +294,9 @@
 
 .progress-fill {
   display: block;
-  height: 100%;
-  width: 0;
-  background: linear-gradient(90deg, var(--pe-accent), var(--pe-primary));
+  height: 8px;
+  min-height: 8px;
+  background: #319795;
   border-radius: 4px;
   transition: width 0.3s ease-out;
 }
