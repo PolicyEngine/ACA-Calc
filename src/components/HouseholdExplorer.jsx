@@ -204,7 +204,9 @@ For this couple, 400% FPL is about **$87,000** and 700% FPL is about **$152,000*
       {
         id: "ny_intro",
         title: "Meet the NYC Family",
-        content: `A young family in **Manhattan**: parents ages 30 and 28 with a 2-year-old toddler.`,
+        content: `A young family in **Manhattan**: parents ages 30 and 28 with a 2-year-old toddler.
+
+New York has **high premiums for young adults** because insurers cannot charge different rates based on age, which raises costs for younger enrollees.`,
         chartState: "all_programs",
       },
       {
