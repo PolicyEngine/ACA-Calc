@@ -502,7 +502,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
               {shouldShow("ptcIRA") && (
                 <Area
                   type="monotone"
-                  dataKey="deltaIRAOver700FPL"
+                  dataKey={shouldShow("ptc700FPL") ? "deltaIRAOver700FPL" : "deltaIRA"}
                   name="PTC (IRA Extension)"
                   fill={COLORS.ira}
                   fillOpacity={0.5}
