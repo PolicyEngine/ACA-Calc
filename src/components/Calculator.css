@@ -505,11 +505,32 @@
   border: 2px solid rgba(124, 58, 237, 0.3);
 }
 
+.impact-card.additional-bracket {
+  background: rgba(5, 150, 105, 0.1);
+  border: 2px solid rgba(5, 150, 105, 0.3);
+}
+
+.impact-card.simplified-bracket {
+  background: rgba(217, 119, 6, 0.1);
+  border: 2px solid rgba(217, 119, 6, 0.3);
+}
+
 .impact-card h4 {
   font-size: 0.875rem;
   font-weight: 600;
   margin: 0 0 var(--pe-space-md) 0;
   color: var(--pe-gray-700);
+}
+
+.impact-card h4 .reform-link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+
+.impact-card h4 .reform-link:hover {
+  color: var(--pe-accent);
 }
 
 .impact-value {

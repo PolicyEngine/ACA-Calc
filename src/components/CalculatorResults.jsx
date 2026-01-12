@@ -364,8 +364,12 @@ function CalculatorResults({ data, formData }) {
                   )}
 
                   {selectedReforms.additionalBracket && (
-                    <div className="impact-card additional-bracket">
-                      <h4>Additional Bracket</h4>
+                    <div className="impact-card additional-bracket" title="CRFB 'Progressive Alternative': extends enhanced subsidies below 300% FPL with linear phase-up above (~$280B over 10 years)">
+                      <h4>
+                        <a href="https://www.crfb.org/blogs/understanding-aca-subsidy-discussion" target="_blank" rel="noopener noreferrer" className="reform-link">
+                          Additional Bracket
+                        </a>
+                      </h4>
                       <p className="impact-value">{formatCurrency(userResults.additionalBracket)}</p>
                       <p className="impact-label">Annual PTC</p>
                       <p className="impact-monthly">{formatCurrency(userResults.additionalBracket / 12)}/month</p>
@@ -376,8 +380,12 @@ function CalculatorResults({ data, formData }) {
                   )}
 
                   {selectedReforms.simplifiedBracket && (
-                    <div className="impact-card simplified-bracket">
-                      <h4>Simplified Bracket</h4>
+                    <div className="impact-card simplified-bracket" title="CRFB 'Smaller Alternative': subsidies set halfway between baseline and enhanced rates (~$175B over 10 years)">
+                      <h4>
+                        <a href="https://www.crfb.org/blogs/understanding-aca-subsidy-discussion" target="_blank" rel="noopener noreferrer" className="reform-link">
+                          Simplified Bracket
+                        </a>
+                      </h4>
                       <p className="impact-value">{formatCurrency(userResults.simplifiedBracket)}</p>
                       <p className="impact-label">Annual PTC</p>
                       <p className="impact-monthly">{formatCurrency(userResults.simplifiedBracket / 12)}/month</p>
