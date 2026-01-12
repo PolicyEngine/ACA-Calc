@@ -204,9 +204,7 @@ For this couple, 400% FPL is about **$87,000** and 700% FPL is about **$152,000*
       {
         id: "ny_intro",
         title: "Meet the NYC Family",
-        content: `A young family in **Manhattan**: parents ages 30 and 28 with a 2-year-old toddler.
-
-Living in New York City means access to generous state programs—but also **high healthcare costs** that make subsidies especially valuable.`,
+        content: `A young family in **Manhattan**: parents ages 30 and 28 with a 2-year-old toddler.`,
         chartState: "all_programs",
       },
       {
