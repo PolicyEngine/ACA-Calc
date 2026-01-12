@@ -119,13 +119,14 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
   }, [data, fpl]);
 
   // For impact/focus views, calculate deltas (gains over baseline)
-  const deltaStates = ["impact", "ira_impact", "gain_view", "fpl700_focus", "additional_focus", "simplified_focus"];
+  const deltaStates = ["impact", "ira_impact", "gain_view", "fpl700_focus", "additional_focus", "simplified_focus", "both_reforms"];
   const impactData = useMemo(() => {
     if (!deltaStates.includes(chartState)) return chartData;
     return chartData.map((d) => ({
       ...d,
       deltaIRA: Math.max(0, d.ptcIRA - d.ptcBaseline),
       delta700FPL: Math.max(0, d.ptc700FPL - d.ptcBaseline),
+      delta700FPLFromIRA: Math.max(0, d.ptc700FPL - d.ptcIRA),
       deltaAdditionalBracket: Math.max(0, d.ptcAdditionalBracket - d.ptcBaseline),
       deltaSimplifiedBracket: Math.max(0, d.ptcSimplifiedBracket - d.ptcBaseline),
     }));
@@ -440,46 +441,50 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
           {/* COMPARISON VIEW - for "Baseline vs Extension" tab (both_reforms) */}
           {chartState === "both_reforms" && (
             <>
+              {/* Stacked areas: baseline (grey) + IRA gain (blue) + 700% FPL gain over IRA (purple) */}
               {shouldShow("ptcBaseline") && (
                 <Area
                   type="monotone"
                   dataKey="ptcBaseline"
                   name="PTC (Baseline)"
                   fill={COLORS.baseline}
-                  fillOpacity={0.15}
+                  fillOpacity={0.4}
                   stroke={COLORS.baseline}
-                  strokeWidth={2.5}
+                  strokeWidth={2}
+                  stackId="comparison_stack"
                 />
               )}
 
               {shouldShow("ptcIRA") && (
                 <Area
                   type="monotone"
-                  dataKey="ptcIRA"
+                  dataKey="deltaIRA"
                   name="PTC (IRA Extension)"
                   fill={COLORS.ira}
-                  fillOpacity={0.15}
+                  fillOpacity={0.5}
                   stroke={COLORS.ira}
-                  strokeWidth={2.5}
+                  strokeWidth={2}
+                  stackId="comparison_stack"
                 />
               )}
 
               {shouldShow("ptc700FPL") && (
                 <Area
                   type="monotone"
-                  dataKey="ptc700FPL"
+                  dataKey="delta700FPLFromIRA"
                   name="PTC (700% FPL Bill)"
                   fill={COLORS.bipartisan}
-                  fillOpacity={0.15}
+                  fillOpacity={0.5}
                   stroke={COLORS.bipartisan}
-                  strokeWidth={2.5}
+                  strokeWidth={2}
+                  stackId="comparison_stack"
                 />
               )}
 
               {shouldShow("ptcAdditionalBracket") && (
                 <Area
                   type="monotone"
-                  dataKey="ptcAdditionalBracket"
+                  dataKey="deltaAdditionalBracket"
                   name="PTC (Additional Bracket)"
                   fill={COLORS.additionalBracket}
                   fillOpacity={0.15}
@@ -491,7 +496,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
               {shouldShow("ptcSimplifiedBracket") && (
                 <Area
                   type="monotone"
-                  dataKey="ptcSimplifiedBracket"
+                  dataKey="deltaSimplifiedBracket"
                   name="PTC (Simplified Bracket)"
                   fill={COLORS.simplifiedBracket}
                   fillOpacity={0.15}
