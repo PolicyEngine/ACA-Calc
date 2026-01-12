@@ -127,6 +127,8 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
       deltaIRA: Math.max(0, d.ptcIRA - d.ptcBaseline),
       delta700FPL: Math.max(0, d.ptc700FPL - d.ptcBaseline),
       delta700FPLFromIRA: Math.max(0, d.ptc700FPL - d.ptcIRA),
+      // For both_reforms: IRA gain over 700% FPL (shows where IRA extends beyond 700% bill)
+      deltaIRAOver700FPL: Math.max(0, d.ptcIRA - Math.max(d.ptcBaseline, d.ptc700FPL)),
       deltaAdditionalBracket: Math.max(0, d.ptcAdditionalBracket - d.ptcBaseline),
       deltaSimplifiedBracket: Math.max(0, d.ptcSimplifiedBracket - d.ptcBaseline),
     }));
@@ -441,7 +443,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
           {/* COMPARISON VIEW - for "Baseline vs Extension" tab (both_reforms) */}
           {chartState === "both_reforms" && (
             <>
-              {/* Stacked areas: baseline (grey) + IRA gain (blue) + 700% FPL gain over IRA (purple) */}
+              {/* Stacked areas: baseline (grey) + 700% FPL gain (purple) + IRA gain beyond 700% (blue) */}
               {shouldShow("ptcBaseline") && (
                 <Area
                   type="monotone"
@@ -455,27 +457,27 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
                 />
               )}
 
-              {shouldShow("ptcIRA") && (
+              {shouldShow("ptc700FPL") && (
                 <Area
                   type="monotone"
-                  dataKey="deltaIRA"
-                  name="PTC (IRA Extension)"
-                  fill={COLORS.ira}
+                  dataKey="delta700FPL"
+                  name="PTC (700% FPL Bill)"
+                  fill={COLORS.bipartisan}
                   fillOpacity={0.5}
-                  stroke={COLORS.ira}
+                  stroke={COLORS.bipartisan}
                   strokeWidth={2}
                   stackId="comparison_stack"
                 />
               )}
 
-              {shouldShow("ptc700FPL") && (
+              {shouldShow("ptcIRA") && (
                 <Area
                   type="monotone"
-                  dataKey="delta700FPLFromIRA"
-                  name="PTC (700% FPL Bill)"
-                  fill={COLORS.bipartisan}
+                  dataKey="deltaIRAOver700FPL"
+                  name="PTC (IRA Extension)"
+                  fill={COLORS.ira}
                   fillOpacity={0.5}
-                  stroke={COLORS.bipartisan}
+                  stroke={COLORS.ira}
                   strokeWidth={2}
                   stackId="comparison_stack"
                 />
