@@ -65,8 +65,8 @@ COLORS = {
 }
 
 FONTS = {
-    "primary": "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    "body": "Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    "primary": "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    "body": "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
 }
 
 # ============================================================================
@@ -587,11 +587,11 @@ def inject_custom_css():
     st.markdown("""
     <style>
     /* Import Google Fonts */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
     /* Base styles */
     .stApp {
-        font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
 
     /* Header styling */
