@@ -5,7 +5,7 @@ import AIExplanation from "./AIExplanation";
 import "./Calculator.css";
 
 // API URL - uses environment variable or defaults to localhost for development
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
 
 // Medicaid expansion states
 const EXPANSION_STATES = [

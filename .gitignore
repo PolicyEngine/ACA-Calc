@@ -6,6 +6,7 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
 ENV/
 build/
 develop-eggs/
@@ -50,5 +51,6 @@ data/
 
 # Node.js / React
 node_modules/
+.next/
 dist/
 .vite/

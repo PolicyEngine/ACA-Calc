@@ -180,6 +180,9 @@ const ROUTE_PAGES = {
 };
 
 function getPageFromHash() {
+  if (typeof window === "undefined") {
+    return "main";
+  }
   const hash = window.location.hash.slice(1); // Remove the #
   const [route] = hash.split("?"); // Ignore query params for page routing
   return PAGE_ROUTES[route] || "main";
@@ -187,6 +190,9 @@ function getPageFromHash() {
 
 // Check if running in embedded mode (iframe)
 function isEmbedded() {
+  if (typeof window === "undefined") {
+    return false;
+  }
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get("embedded") === "true";
 }
