@@ -105,9 +105,9 @@ def main():
     st.markdown(
         f"""
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         .stApp {{
-            font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+            font-family: 'Inter', 'Helvetica', 'Arial', sans-serif;
         }}
         h1 {{
             color: {COLORS["primary"]};
@@ -527,7 +527,7 @@ def create_chart(
             yaxis=dict(tickformat="$,.0f", rangemode="tozero"),
             plot_bgcolor="white",
             paper_bgcolor="white",
-            font=dict(family="Roboto, sans-serif"),
+            font=dict(family="Inter, sans-serif"),
             legend=dict(orientation="h", yanchor="bottom", y=0.98, xanchor="right", x=1),
             margin=dict(l=80, r=40, t=60, b=80),
             **add_logo_to_layout(),
@@ -576,7 +576,7 @@ def create_chart(
             yaxis=dict(tickformat="$,.0f", rangemode="tozero"),
             plot_bgcolor="white",
             paper_bgcolor="white",
-            font=dict(family="Roboto, sans-serif"),
+            font=dict(family="Inter, sans-serif"),
             showlegend=True,
             margin=dict(l=80, r=40, t=60, b=80),
             **add_logo_to_layout(),
