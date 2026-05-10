@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import "./ScrollSection.css";
 
 // Calculator URL - uses environment variable or defaults to localhost for development
-const CALCULATOR_URL = import.meta.env.VITE_CALCULATOR_URL || "http://localhost:8501";
+const CALCULATOR_URL = process.env.NEXT_PUBLIC_CALCULATOR_URL || "http://localhost:8501";
 
 function ScrollSection({ section, index, isActive, onInView, onExploreHouseholds }) {
   const { ref, inView } = useInView({
