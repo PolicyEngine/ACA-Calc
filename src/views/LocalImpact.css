@@ -98,11 +98,6 @@
   color: var(--pe-teal-800);
 }
 
-.status-policyengine_modeled_county_backfill {
-  background: #ecfdf3;
-  color: #166534;
-}
-
 .status-state_based_marketplace_fallback {
   background: #fef3c7;
   color: #92400e;
@@ -235,27 +230,6 @@
   color: var(--pe-gray-900);
 }
 
-.local-backfill-note {
-  background: #f7fbf8;
-  border: 1px solid #bbf7d0;
-  border-radius: var(--pe-radius-md);
-  margin-bottom: var(--pe-space-md);
-  padding: var(--pe-space-md);
-}
-
-.local-backfill-note strong {
-  color: #166534;
-  display: block;
-  font-size: 0.9rem;
-  margin-bottom: 3px;
-}
-
-.local-backfill-note p {
-  color: var(--pe-text-secondary);
-  font-size: 0.86rem;
-  margin: 0;
-}
-
 .cd-map-shell {
   background: linear-gradient(180deg, #ffffff 0%, var(--pe-gray-50) 100%);
   border: 1px solid var(--pe-border-light);
@@ -350,15 +324,6 @@
   filter: brightness(0.86);
   stroke: var(--pe-gray-900);
   stroke-width: 2.6;
-}
-
-.cd-district.modeled {
-  stroke: rgba(17, 24, 39, 0.58);
-  stroke-dasharray: 3 2;
-}
-
-.cd-district.modeled.selected {
-  stroke: var(--pe-gray-900);
 }
 
 .cd-bucket-1 {

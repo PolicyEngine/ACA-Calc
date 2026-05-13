@@ -55,5 +55,5 @@
     "VT",
     "WA"
   ],
-  "fine_grained_puf_note": "CMS 2026 county- and ZIP-level Marketplace Open Enrollment PUFs cover states that use the HealthCare.gov platform. State-based marketplace states remain selectable, but this first slice shows a state-level fallback because CMS county/ZIP PUF rows are not available for those states."
+  "fine_grained_puf_note": "CMS 2026 county- and ZIP-level Marketplace Open Enrollment PUFs cover states that use the HealthCare.gov platform. State-based marketplace states remain selectable, but local enrollment context is unavailable in this v1 until observed state-specific sources are ingested."
 }

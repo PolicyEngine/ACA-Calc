@@ -18,8 +18,7 @@ const getCountyOptions = (state) => [...(countiesByState[state] || [])].sort();
 
 const statusText = {
   county_context_available: "County context available",
-  policyengine_modeled_county_backfill: "PE modeled backfill",
-  state_based_marketplace_fallback: "State-level fallback",
+  state_based_marketplace_fallback: "Unavailable in v1",
   not_in_compact_dataset: "Available in full PUF",
   unknown_state: "Unknown state",
 };
@@ -44,24 +43,10 @@ const getPlatformDetail = (state) => {
     return "County and ZIP enrollment PUF detail available";
   }
   if (platform === "State-based marketplace") {
-    return "CMS state totals + PolicyEngine local backfill";
+    return "County/ZIP CMS PUF unavailable in v1";
   }
   return "Platform unknown";
 };
-
-const getPlanSelectionsLabel = (context) =>
-  context.policyengineModeled
-    ? "Modeled marketplace plan selections"
-    : context.stateContextAvailable && !context.countyContextAvailable
-      ? "State marketplace plan selections"
-      : "Marketplace plan selections";
-
-const getAptcLabel = (context) =>
-  context.policyengineModeled
-    ? "Modeled APTC consumers"
-    : context.stateContextAvailable && !context.countyContextAvailable
-      ? "State APTC consumers"
-      : "APTC consumers";
 
 function Metric({ label, value, detail }) {
   return (
@@ -189,36 +174,21 @@ function LocalImpact() {
 
           <p className="local-message">{context.message}</p>
 
-          {context.countyContextAvailable || context.stateContextAvailable ? (
+          {context.countyContextAvailable ? (
             <>
-              {context.policyengineModeled && (
-                <div className="local-backfill-note">
-                  <strong>PolicyEngine-modeled local backfill</strong>
-                  <p>
-                    These county counts allocate observed CMS state totals using
-                    PolicyEngine geography weights. They are not observed CMS
-                    county enrollment rows.
-                  </p>
-                </div>
-              )}
-
               <div className="local-metric-grid">
                 <Metric
-                  label={getPlanSelectionsLabel(context)}
+                  label="Marketplace plan selections"
                   value={formatNumber(context.marketplace_plan_selections)}
-                  detail={
-                    context.countyContextAvailable
-                      ? `County FIPS ${context.county_fips}`
-                      : "Observed CMS state total"
-                  }
+                  detail={`County FIPS ${context.county_fips}`}
                 />
                 <Metric
-                  label={getAptcLabel(context)}
+                  label="APTC consumers"
                   value={formatNumber(context.aptc_consumers)}
                   detail={
                     context.consumers_with_aptc_or_csr
                       ? `${formatNumber(context.consumers_with_aptc_or_csr)} with APTC or CSR`
-                      : "Observed CMS state total"
+                      : "Observed CMS county row"
                   }
                 />
                 <Metric
@@ -231,13 +201,6 @@ function LocalImpact() {
                   value={`${formatCurrency(context.average_premium_after_aptc)}/mo`}
                   detail={`${formatNumber(context.consumers_premium_after_aptc_lte_10)} pay $10 or less`}
                 />
-                {context.policyengineModeled && (
-                  <Metric
-                    label="Observed state plan selections"
-                    value={formatNumber(context.stateMarketplacePlanSelections)}
-                    detail={`${formatNumber(context.stateAptcConsumers)} state APTC consumers`}
-                  />
-                )}
               </div>
             </>
           ) : (
@@ -245,12 +208,12 @@ function LocalImpact() {
               <strong>
                 {context.fineGrainedCmsAvailable
                   ? "Full-PUF ingestion needed"
-                  : "State-level/fallback only"}
+                  : "Unavailable in v1"}
               </strong>
               <p>
                 {context.fineGrainedCmsAvailable
                   ? "This HealthCare.gov state has CMS county/ZIP PUF detail, but this county is not matched in the compact dataset yet."
-                  : "State-based marketplace enrollment detail is reported outside the CMS county/ZIP PUF structure used in this first slice."}
+                  : "This state uses a state-based marketplace. We are not showing modeled local estimates in v1; observed state-specific sources can be added in a later data pass."}
               </p>
             </div>
           )}

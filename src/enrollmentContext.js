@@ -1,7 +1,5 @@
 import enrollmentFixture from "../aca_calc/data/enrollment_context_2026_counties.json";
 import districtFixture from "../aca_calc/data/enrollment_context_2026_districts.json";
-import modeledCountyFixture from "../aca_calc/data/enrollment_context_2026_modeled_counties.json";
-import stateFixture from "../aca_calc/data/enrollment_context_2026_states.json";
 import platformConfig from "../aca_calc/data/marketplace_platforms_2026.json";
 
 export const STATE_NAMES = {
@@ -90,13 +88,6 @@ const countyKeys = (county) => {
   return [normalized, normalized.replace(/\s+/g, "")];
 };
 
-const findStateRecord = (state) => {
-  const stateCode = normalizeState(state);
-  return stateFixture.records.find(
-    (record) => normalizeState(record.state) === stateCode,
-  );
-};
-
 const findCountyRecord = (records, state, county) => {
   const stateCode = normalizeState(state);
   const selectedCountyKeys = new Set(countyKeys(county));
@@ -127,7 +118,6 @@ export const getStateName = (state) => {
 export const getEnrollmentContext = (state, county) => {
   const stateCode = normalizeState(state);
   const platform = getMarketplacePlatform(stateCode);
-  const stateRecord = findStateRecord(stateCode);
   const baseContext = {
     year: enrollmentFixture.year,
     state: stateCode,
@@ -135,8 +125,6 @@ export const getEnrollmentContext = (state, county) => {
     marketplacePlatform: platform,
     source: enrollmentFixture.source,
     sourceUrl: enrollmentFixture.source_url,
-    stateContextAvailable: Boolean(stateRecord),
-    policyengineModeled: false,
   };
 
   if (platform === "Unknown") {
@@ -150,45 +138,13 @@ export const getEnrollmentContext = (state, county) => {
   }
 
   if (platform === "State-based marketplace") {
-    const modeledCountyRecord = findCountyRecord(
-      modeledCountyFixture.records,
-      stateCode,
-      county,
-    );
-
-    if (modeledCountyRecord) {
-      return {
-        ...baseContext,
-        ...modeledCountyRecord,
-        county: modeledCountyRecord.county,
-        status: "policyengine_modeled_county_backfill",
-        fineGrainedCmsAvailable: false,
-        countyContextAvailable: true,
-        stateContextAvailable: Boolean(stateRecord),
-        policyengineModeled: true,
-        source: modeledCountyFixture.source,
-        sourceUrl: modeledCountyFixture.source_url,
-        stateMarketplacePlanSelections:
-          stateRecord?.marketplace_plan_selections || null,
-        stateAptcConsumers: stateRecord?.aptc_consumers || null,
-        message: `${stateCode} runs a state-based marketplace. CMS reports observed state-level enrollment, and this county value is a PolicyEngine-modeled local backfill.`,
-      };
-    }
-
     return {
       ...baseContext,
-      ...stateRecord,
       county,
       status: "state_based_marketplace_fallback",
       fineGrainedCmsAvailable: false,
       countyContextAvailable: false,
-      stateContextAvailable: Boolean(stateRecord),
-      source: stateFixture.source,
-      sourceUrl: stateFixture.source_url,
-      stateMarketplacePlanSelections:
-        stateRecord?.marketplace_plan_selections || null,
-      stateAptcConsumers: stateRecord?.aptc_consumers || null,
-      message: `${stateCode} runs a state-based marketplace. CMS county/ZIP Marketplace PUF detail is not available here, so this view falls back to observed state-level context only.`,
+      message: `${stateCode} runs a state-based marketplace. CMS county/ZIP Marketplace PUF detail is not available in this v1, so local enrollment context is disabled until observed state-specific sources are ingested.`,
     };
   }
 
@@ -212,8 +168,6 @@ export const getEnrollmentContext = (state, county) => {
     status: "county_context_available",
     fineGrainedCmsAvailable: true,
     countyContextAvailable: true,
-    stateContextAvailable: Boolean(stateRecord),
-    policyengineModeled: false,
     message: `Fine-grained CMS county enrollment context is available for ${record.county}, ${stateCode}.`,
   };
 };
@@ -247,11 +201,6 @@ export const getCongressionalDistrictPremiumContexts = () =>
         : null,
       sourceLevel: record.source_level || null,
       allocationBasis: record.allocation_basis || null,
-      modeledShare: Number.isFinite(Number(record.modeled_share))
-        ? Number(record.modeled_share)
-        : null,
-      isPolicyEngineModeled:
-        record.source_level?.startsWith("policyengine_modeled") || false,
       source_county_count: Number.isFinite(Number(record.source_county_count))
         ? Number(record.source_county_count)
         : null,
@@ -278,5 +227,3 @@ export const formatCurrency = (value) =>
 export const platformConfig2026 = platformConfig;
 export const enrollmentSample = enrollmentFixture;
 export const congressionalDistrictContext2026 = districtFixture;
-export const stateEnrollmentContext2026 = stateFixture;
-export const modeledCountyContext2026 = modeledCountyFixture;
