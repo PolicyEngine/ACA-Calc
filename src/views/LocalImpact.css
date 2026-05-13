@@ -298,9 +298,9 @@
 
 .cd-district {
   cursor: pointer;
-  stroke: rgba(255, 255, 255, 0.9);
+  stroke: rgba(255, 255, 255, 0.86);
   stroke-linejoin: round;
-  stroke-width: 0.75;
+  stroke-width: 0.8;
   transition:
     filter var(--pe-transition-fast),
     opacity var(--pe-transition-fast),
@@ -327,33 +327,33 @@
 }
 
 .cd-bucket-1 {
-  background: var(--pe-blue-50);
-  fill: var(--pe-blue-50);
+  background: #d9eff8;
+  fill: #d9eff8;
 }
 
 .cd-bucket-2 {
-  background: var(--pe-blue-200);
-  fill: var(--pe-blue-200);
+  background: #8ed0ef;
+  fill: #8ed0ef;
 }
 
 .cd-bucket-3 {
-  background: var(--pe-teal-200);
-  fill: var(--pe-teal-200);
+  background: #41bfb4;
+  fill: #41bfb4;
 }
 
 .cd-bucket-4 {
-  background: var(--pe-teal-500);
-  fill: var(--pe-teal-500);
+  background: #1f8f8b;
+  fill: #1f8f8b;
 }
 
 .cd-bucket-5 {
-  background: var(--pe-blue-800);
-  fill: var(--pe-blue-800);
+  background: #075f84;
+  fill: #075f84;
 }
 
 .cd-unavailable {
-  background: var(--pe-gray-100);
-  fill: var(--pe-gray-100);
+  background: #eceff3;
+  fill: #eceff3;
   border-style: dashed;
   color: var(--pe-gray-500);
 }
