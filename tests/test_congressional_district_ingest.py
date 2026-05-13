@@ -5,6 +5,7 @@ import json
 from aca_calc.congressional_district_ingest import (
     build_district_enrollment_data,
     build_district_enrollment_records,
+    build_district_enrollment_records_from_population_distribution,
 )
 
 
@@ -83,3 +84,48 @@ def test_build_district_enrollment_data_wraps_metadata(tmp_path):
     assert district_data["year"] == 2026
     assert district_data["congress"] == 119
     assert district_data["records"][0]["district_label"] == "TX-01"
+
+
+def test_build_district_records_uses_policyengine_population_distribution(
+    tmp_path,
+):
+    distribution = tmp_path / "county_cd_distributions.csv"
+    distribution.write_text(
+        "cd_geoid,county_fips,probability\n"
+        "4801,48001,0.20\n"
+        "4802,48001,0.30\n"
+        "4801,48003,0.80\n"
+        "4802,48003,0.70\n"
+    )
+    enrollment_data = {
+        "records": [
+            {
+                "state": "TX",
+                "county": "Example County",
+                "county_fips": "48001",
+                "marketplace_plan_selections": 1000,
+                "aptc_consumers": 800,
+                "average_premium_after_aptc": 100,
+            },
+            {
+                "state": "TX",
+                "county": "Second County",
+                "county_fips": "48003",
+                "marketplace_plan_selections": 500,
+                "aptc_consumers": 300,
+                "average_premium_after_aptc": 200,
+            },
+        ]
+    }
+
+    records = build_district_enrollment_records_from_population_distribution(
+        enrollment_data,
+        distribution,
+    )
+
+    assert [record["district_geoid"] for record in records] == ["4801", "4802"]
+    assert records[0]["marketplace_plan_selections"] == 667
+    assert records[1]["marketplace_plan_selections"] == 833
+    assert records[0]["aptc_consumers"] == 480
+    assert records[1]["aptc_consumers"] == 620
+    assert records[0]["source_county_count"] == 2

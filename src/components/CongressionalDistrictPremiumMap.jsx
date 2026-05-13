@@ -33,14 +33,16 @@ const MAP_METRICS = {
     label: "Receiving APTC",
     field: "aptc_consumers",
     type: "count",
-    description: "Area-weighted estimate of consumers receiving advance premium tax credits",
+    description:
+      "Population-weighted estimate of consumers receiving advance premium tax credits",
     unavailable: "No APTC recipient data",
   },
   nonAptcConsumers: {
     label: "Not receiving APTC",
     field: "non_aptc_consumers",
     type: "count",
-    description: "Area-weighted estimate of consumers not receiving advance premium tax credits",
+    description:
+      "Population-weighted estimate of consumers not receiving advance premium tax credits",
     unavailable: "No non-APTC estimate",
   },
 };
@@ -130,7 +132,10 @@ const unavailableMessage = (state) => {
   const platform = getMarketplacePlatform(state);
   const stateName = getStateName(state);
   if (platform === "State-based marketplace") {
-    return `${stateName} runs a state-based marketplace, so CMS county/ZIP premium context is unavailable for its congressional districts in this slice.`;
+    return (
+      `${stateName} runs a state-based marketplace, so CMS county/ZIP premium ` +
+      "context is unavailable for its congressional districts in this slice."
+    );
   }
   return `${stateName} has no matched district premium context in the compact dataset.`;
 };
@@ -146,6 +151,19 @@ const formatDistrictName = (feature, context) => {
 
   return `${stateName} District ${Number(district)}`;
 };
+
+const formatDistrictSummary = (context) =>
+  [
+    `Population-weighted county allocation: ${formatNumber(
+      context.marketplace_plan_selections,
+    )} plan selections;`,
+    `${formatNumber(context.aptc_consumers)} receive APTC and ${formatNumber(
+      context.non_aptc_consumers,
+    )} do not.`,
+    `Average paid premium is ${formatCurrency(
+      context.average_premium_after_aptc,
+    )}/mo.`,
+  ].join(" ");
 
 function CongressionalDistrictPremiumMap({ selectedState, onSelectState }) {
   const [selectedGeoid, setSelectedGeoid] = useState(null);
@@ -220,7 +238,10 @@ function CongressionalDistrictPremiumMap({ selectedState, onSelectState }) {
       <div className="local-panel-header">
         <div>
           <h3>Marketplace premium and APTC map</h3>
-          <p>Area-weighted congressional district estimates from CMS county PUFs.</p>
+          <p>
+            Population-weighted congressional district estimates from CMS county
+            PUFs.
+          </p>
         </div>
         <span className="local-year">2026 OEP</span>
       </div>
@@ -265,7 +286,10 @@ function CongressionalDistrictPremiumMap({ selectedState, onSelectState }) {
               selectedState === feature.properties.state && !isSelected;
             const districtLabel = formatDistrictName(feature, districtContext);
             const ariaLabel = districtContext
-              ? `${districtLabel}, ${activeMetric.label.toLowerCase()} ${formatMetricValue(metricValue, activeMetric)}`
+              ? `${districtLabel}, ${activeMetric.label.toLowerCase()} ${formatMetricValue(
+                  metricValue,
+                  activeMetric,
+                )}`
               : `${districtLabel}, ${platform} district premium context unavailable`;
 
             return (
@@ -316,7 +340,7 @@ function CongressionalDistrictPremiumMap({ selectedState, onSelectState }) {
           </strong>
           <p>
             {activeContext && activeMetricAvailable
-              ? `Area-weighted county allocation: ${formatNumber(activeContext.marketplace_plan_selections)} plan selections; ${formatNumber(activeContext.aptc_consumers)} receive APTC and ${formatNumber(activeContext.non_aptc_consumers)} do not. Average paid premium is ${formatCurrency(activeContext.average_premium_after_aptc)}/mo.`
+              ? formatDistrictSummary(activeContext)
               : unavailableMessage(activeState)}
           </p>
           {activeContext && activeMetricAvailable && (
@@ -341,9 +365,9 @@ function CongressionalDistrictPremiumMap({ selectedState, onSelectState }) {
       <p className="cd-map-note">
         Rough estimates for {formatNumber(availableDistrictCount)}{" "}
         HealthCare.gov-platform districts.{" "}
-        {congressionalDistrictContext2026.allocation_method} Split urban
-        counties can be materially misallocated until we ingest ZIP-level or
-        finer PUF crosswalks.
+        {congressionalDistrictContext2026.allocation_method} ZIP-level CMS PUFs
+        would further improve split-county districts where Marketplace
+        enrollment differs from the general population.
       </p>
     </section>
   );

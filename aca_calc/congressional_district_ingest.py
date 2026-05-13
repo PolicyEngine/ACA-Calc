@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
+import unicodedata
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
@@ -103,6 +105,24 @@ def _district_label(state: str, district: str, namelsad: str) -> str:
     return f"{state}-{int(district):02d}" if district.isdigit() else namelsad
 
 
+def _district_name(district: str) -> str:
+    if district == "00":
+        return "Congressional District (at Large)"
+    return f"Congressional District {int(district)}"
+
+
+def _county_enum_name(county: str, state: str) -> str:
+    normalized = (
+        unicodedata.normalize("NFKD", county)
+        .encode("ascii", "ignore")
+        .decode("ascii")
+        .upper()
+    )
+    normalized = re.sub(r"[.'\"]", "", normalized)
+    normalized = re.sub(r"[^A-Z0-9]+", "_", normalized).strip("_")
+    return f"{normalized}_{state}"
+
+
 def build_district_geography(kml_path: str | Path) -> dict[str, Any]:
     """Parse Census cartographic boundary KML into compact GeoJSON."""
     namespace = {"kml": "http://www.opengis.net/kml/2.2"}
@@ -174,8 +194,11 @@ def build_district_geography(kml_path: str | Path) -> dict[str, Any]:
     }
 
 
-def _empty_accumulator(row: dict[str, str], state: str) -> dict[str, Any]:
-    geoid = row["GEOID_CD119_20"]
+def _empty_accumulator_for_district(
+    geoid: str,
+    state: str,
+    district_name: str | None = None,
+) -> dict[str, Any]:
     district = geoid[2:]
     return {
         "state": state,
@@ -184,9 +207,9 @@ def _empty_accumulator(row: dict[str, str], state: str) -> dict[str, Any]:
         "district_label": _district_label(
             state,
             district,
-            row["NAMELSAD_CD119_20"],
+            district_name or _district_name(district),
         ),
-        "district_name": row["NAMELSAD_CD119_20"],
+        "district_name": district_name or _district_name(district),
         "source_counties": set(),
         "county_part_count": 0,
         "weighted": {field: 0.0 for field in COUNT_FIELDS},
@@ -199,73 +222,52 @@ def _empty_accumulator(row: dict[str, str], state: str) -> dict[str, Any]:
     }
 
 
-def build_district_enrollment_records(
-    enrollment_data: dict[str, Any],
-    relationship_path: str | Path,
+def _empty_accumulator(row: dict[str, str], state: str) -> dict[str, Any]:
+    return _empty_accumulator_for_district(
+        row["GEOID_CD119_20"],
+        state,
+        row["NAMELSAD_CD119_20"],
+    )
+
+
+def _accumulate_county(
+    accumulator: dict[str, Any],
+    county_record: dict[str, Any],
+    weight: float,
+    source_county: str,
+) -> None:
+    accumulator["source_counties"].add(source_county)
+    accumulator["county_part_count"] += 1
+
+    for field in COUNT_FIELDS:
+        accumulator["weighted"][field] += _int_value(county_record.get(field)) * weight
+
+    plan_selections = (
+        _int_value(county_record.get("marketplace_plan_selections")) * weight
+    )
+    aptc_consumers = _int_value(county_record.get("aptc_consumers")) * weight
+    average_premium = _float_value(county_record.get("average_premium"))
+    average_premium_after_aptc = _float_value(
+        county_record.get("average_premium_after_aptc")
+    )
+    average_aptc = _float_value(county_record.get("average_aptc"))
+
+    if average_premium is not None and plan_selections:
+        accumulator["premium_weight"] += average_premium * plan_selections
+        accumulator["premium_denominator"] += plan_selections
+    if average_premium_after_aptc is not None and plan_selections:
+        accumulator["premium_after_aptc_weight"] += (
+            average_premium_after_aptc * plan_selections
+        )
+        accumulator["premium_after_aptc_denominator"] += plan_selections
+    if average_aptc is not None and aptc_consumers:
+        accumulator["aptc_weight"] += average_aptc * aptc_consumers
+        accumulator["aptc_denominator"] += aptc_consumers
+
+
+def _records_from_accumulators(
+    district_accumulators: dict[str, dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Aggregate county CMS rows to 119th congressional districts.
-
-    Split counties are apportioned by Census county-to-district land-area
-    overlap. This keeps the first slice deterministic while leaving room for a
-    future ZIP/block allocation.
-    """
-    county_records = {
-        record["county_fips"]: record
-        for record in enrollment_data.get("records", [])
-        if record.get("county_fips")
-    }
-    district_accumulators: dict[str, dict[str, Any]] = {}
-
-    with Path(relationship_path).open(encoding="utf-8-sig", newline="") as f:
-        reader = csv.DictReader(f, delimiter="|")
-        for row in reader:
-            county_record = county_records.get(row["GEOID_COUNTY_20"])
-            if county_record is None:
-                continue
-
-            county_land_area = _float_value(row["AREALAND_COUNTY_20"]) or 0
-            part_land_area = _float_value(row["AREALAND_PART"]) or 0
-            if county_land_area <= 0 or part_land_area <= 0:
-                continue
-
-            weight = part_land_area / county_land_area
-            district_geoid = row["GEOID_CD119_20"]
-            state = county_record["state"]
-            accumulator = district_accumulators.setdefault(
-                district_geoid,
-                _empty_accumulator(row, state),
-            )
-            accumulator["source_counties"].add(row["GEOID_COUNTY_20"])
-            accumulator["county_part_count"] += 1
-
-            for field in COUNT_FIELDS:
-                accumulator["weighted"][field] += (
-                    _int_value(county_record.get(field)) * weight
-                )
-
-            plan_selections = (
-                _int_value(county_record.get("marketplace_plan_selections"))
-                * weight
-            )
-            aptc_consumers = _int_value(county_record.get("aptc_consumers")) * weight
-            average_premium = _float_value(county_record.get("average_premium"))
-            average_premium_after_aptc = _float_value(
-                county_record.get("average_premium_after_aptc")
-            )
-            average_aptc = _float_value(county_record.get("average_aptc"))
-
-            if average_premium is not None and plan_selections:
-                accumulator["premium_weight"] += average_premium * plan_selections
-                accumulator["premium_denominator"] += plan_selections
-            if average_premium_after_aptc is not None and plan_selections:
-                accumulator["premium_after_aptc_weight"] += (
-                    average_premium_after_aptc * plan_selections
-                )
-                accumulator["premium_after_aptc_denominator"] += plan_selections
-            if average_aptc is not None and aptc_consumers:
-                accumulator["aptc_weight"] += average_aptc * aptc_consumers
-                accumulator["aptc_denominator"] += aptc_consumers
-
     records = []
     for accumulator in district_accumulators.values():
         premium_denominator = accumulator["premium_denominator"]
@@ -323,12 +325,168 @@ def build_district_enrollment_records(
     )
 
 
+def build_district_enrollment_records(
+    enrollment_data: dict[str, Any],
+    relationship_path: str | Path,
+) -> list[dict[str, Any]]:
+    """Aggregate county CMS rows to 119th congressional districts.
+
+    Split counties are apportioned by Census county-to-district land-area
+    overlap. This keeps the first slice deterministic while leaving room for a
+    future ZIP/block allocation.
+    """
+    county_records = {
+        record["county_fips"]: record
+        for record in enrollment_data.get("records", [])
+        if record.get("county_fips")
+    }
+    district_accumulators: dict[str, dict[str, Any]] = {}
+
+    with Path(relationship_path).open(encoding="utf-8-sig", newline="") as f:
+        reader = csv.DictReader(f, delimiter="|")
+        for row in reader:
+            county_record = county_records.get(row["GEOID_COUNTY_20"])
+            if county_record is None:
+                continue
+
+            county_land_area = _float_value(row["AREALAND_COUNTY_20"]) or 0
+            part_land_area = _float_value(row["AREALAND_PART"]) or 0
+            if county_land_area <= 0 or part_land_area <= 0:
+                continue
+
+            weight = part_land_area / county_land_area
+            district_geoid = row["GEOID_CD119_20"]
+            state = county_record["state"]
+            accumulator = district_accumulators.setdefault(
+                district_geoid,
+                _empty_accumulator(row, state),
+            )
+            _accumulate_county(
+                accumulator,
+                county_record,
+                weight,
+                row["GEOID_COUNTY_20"],
+            )
+
+    return _records_from_accumulators(district_accumulators)
+
+
+def build_district_enrollment_records_from_population_distribution(
+    enrollment_data: dict[str, Any],
+    distribution_path: str | Path,
+) -> list[dict[str, Any]]:
+    """Aggregate county CMS rows with PolicyEngine population CD distributions.
+
+    The PolicyEngine US Data input starts as P(block | congressional district),
+    built from Census 2020 block population and 119th Congressional District
+    block equivalency files. This repo stores a compact county aggregation of
+    that file as P(county | congressional district). Because districts are
+    population balanced within states, normalizing those rows within each county
+    gives an estimate of P(congressional district | county) for allocating
+    county-level CMS rows.
+    """
+    county_records_by_fips = {
+        record["county_fips"]: record
+        for record in enrollment_data.get("records", [])
+        if record.get("county_fips")
+    }
+    county_records_by_name = {
+        _county_enum_name(record["county"], record["state"]): record
+        for record in enrollment_data.get("records", [])
+        if record.get("county") and record.get("state")
+    }
+    distribution_rows = []
+    county_probability_totals: dict[str, float] = {}
+
+    with Path(distribution_path).open(encoding="utf-8-sig", newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            county_key = row.get("county_fips") or row.get("county_name")
+            if county_key is None:
+                continue
+
+            county_record = county_records_by_fips.get(
+                county_key,
+            ) or county_records_by_name.get(county_key)
+            if county_record is None:
+                continue
+
+            probability = _float_value(row["probability"]) or 0
+            if probability <= 0:
+                continue
+
+            district_geoid = f"{int(row['cd_geoid']):04d}"
+            distribution_rows.append(
+                (district_geoid, county_key, county_record, probability)
+            )
+            county_probability_totals[county_key] = (
+                county_probability_totals.get(county_key, 0) + probability
+            )
+
+    district_accumulators: dict[str, dict[str, Any]] = {}
+    for district_geoid, county_key, county_record, probability in distribution_rows:
+        probability_total = county_probability_totals[county_key]
+        if probability_total <= 0:
+            continue
+
+        state = county_record["state"]
+        accumulator = district_accumulators.setdefault(
+            district_geoid,
+            _empty_accumulator_for_district(district_geoid, state),
+        )
+        _accumulate_county(
+            accumulator,
+            county_record,
+            probability / probability_total,
+            county_record["county_fips"],
+        )
+
+    return _records_from_accumulators(district_accumulators)
+
+
+def _uses_population_distribution(path: str | Path) -> bool:
+    with Path(path).open(encoding="utf-8-sig", newline="") as f:
+        reader = csv.DictReader(f)
+        fields = set(reader.fieldnames or [])
+        return (
+            {"cd_geoid", "probability"}.issubset(fields)
+            and bool({"county_fips", "county_name"} & fields)
+        )
+
+
 def build_district_enrollment_data(
     enrollment_path: str | Path,
     relationship_path: str | Path,
 ) -> dict[str, Any]:
     with Path(enrollment_path).open() as f:
         enrollment_data = json.load(f)
+
+    if _uses_population_distribution(relationship_path):
+        return {
+            "year": enrollment_data.get("year", 2026),
+            "congress": 119,
+            "geography": "119th Congressional District",
+            "source": (
+                "CMS 2026 Marketplace Open Enrollment County-Level PUF and "
+                "PolicyEngine US Data block-to-congressional-district "
+                "population distributions"
+            ),
+            "source_url": (
+                "https://github.com/PolicyEngine/policyengine-us-data/blob/"
+                "master/policyengine_us_data/storage/calibration_targets/"
+                "make_block_cd_distributions.py"
+            ),
+            "allocation_method": (
+                "County-level CMS PUF rows are apportioned to 119th "
+                "congressional districts with county shares aggregated from "
+                "PolicyEngine US Data's population-weighted 2020 Census block "
+                "distributions."
+            ),
+            "records": build_district_enrollment_records_from_population_distribution(
+                enrollment_data,
+                relationship_path,
+            ),
+        }
 
     return {
         "year": enrollment_data.get("year", 2026),
