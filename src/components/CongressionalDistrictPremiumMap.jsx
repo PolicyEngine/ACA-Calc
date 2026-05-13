@@ -33,14 +33,14 @@ const MAP_METRICS = {
     label: "Receiving APTC",
     field: "aptc_consumers",
     type: "count",
-    description: "Marketplace consumers receiving advance premium tax credits",
+    description: "Area-weighted estimate of consumers receiving advance premium tax credits",
     unavailable: "No APTC recipient data",
   },
   nonAptcConsumers: {
     label: "Not receiving APTC",
     field: "non_aptc_consumers",
     type: "count",
-    description: "Marketplace consumers not receiving advance premium tax credits",
+    description: "Area-weighted estimate of consumers not receiving advance premium tax credits",
     unavailable: "No non-APTC estimate",
   },
 };
@@ -54,7 +54,7 @@ const formatMetricValue = (value, metric) => {
     return `${formatCurrency(value)}/mo`;
   }
 
-  return `${formatNumber(value)} people`;
+  return `${formatNumber(value)} allocated`;
 };
 
 const formatLegendValue = (value, metric) =>
@@ -220,7 +220,7 @@ function CongressionalDistrictPremiumMap({ selectedState, onSelectState }) {
       <div className="local-panel-header">
         <div>
           <h3>Marketplace premium and APTC map</h3>
-          <p>119th congressional districts with CMS county context.</p>
+          <p>Area-weighted congressional district estimates from CMS county PUFs.</p>
         </div>
         <span className="local-year">2026 OEP</span>
       </div>
@@ -316,7 +316,7 @@ function CongressionalDistrictPremiumMap({ selectedState, onSelectState }) {
           </strong>
           <p>
             {activeContext && activeMetricAvailable
-              ? `${formatNumber(activeContext.marketplace_plan_selections)} plan selections; ${formatNumber(activeContext.aptc_consumers)} receive APTC and ${formatNumber(activeContext.non_aptc_consumers)} do not. Average paid premium is ${formatCurrency(activeContext.average_premium_after_aptc)}/mo.`
+              ? `Area-weighted county allocation: ${formatNumber(activeContext.marketplace_plan_selections)} plan selections; ${formatNumber(activeContext.aptc_consumers)} receive APTC and ${formatNumber(activeContext.non_aptc_consumers)} do not. Average paid premium is ${formatCurrency(activeContext.average_premium_after_aptc)}/mo.`
               : unavailableMessage(activeState)}
           </p>
           {activeContext && activeMetricAvailable && (
@@ -339,9 +339,11 @@ function CongressionalDistrictPremiumMap({ selectedState, onSelectState }) {
       </div>
 
       <p className="cd-map-note">
-        District estimates use {formatNumber(availableDistrictCount)}{" "}
-        HealthCare.gov-platform districts with paid-premium data.{" "}
-        {congressionalDistrictContext2026.allocation_method}
+        Rough estimates for {formatNumber(availableDistrictCount)}{" "}
+        HealthCare.gov-platform districts.{" "}
+        {congressionalDistrictContext2026.allocation_method} Split urban
+        counties can be materially misallocated until we ingest ZIP-level or
+        finer PUF crosswalks.
       </p>
     </section>
   );
