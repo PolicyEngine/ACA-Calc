@@ -47,7 +47,7 @@
 
 .cd-map-panel {
   grid-column: 1 / -1;
-  padding: var(--pe-space-lg);
+  padding: var(--pe-space-md);
 }
 
 .cd-map-panel .local-panel-header {
@@ -235,12 +235,12 @@
   border: 1px solid var(--pe-border-light);
   border-radius: var(--pe-radius-md);
   overflow: hidden;
-  padding: var(--pe-space-sm);
+  padding: 6px;
 }
 
 .cd-map-svg {
   display: block;
-  height: clamp(300px, 34vh, 420px);
+  height: clamp(460px, 58vh, 680px);
   width: 100%;
 }
 
@@ -258,8 +258,8 @@
   color: var(--pe-gray-700);
   cursor: pointer;
   font: inherit;
-  min-height: 44px;
-  padding: 8px 10px;
+  min-height: 34px;
+  padding: 6px 8px;
   text-align: center;
   transition:
     background var(--pe-transition-fast),
@@ -286,16 +286,14 @@
 }
 
 .cd-map-tab span {
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   font-weight: 700;
   line-height: 1.2;
 }
 
 .cd-map-tab small {
   color: var(--pe-text-secondary);
-  font-size: 0.7rem;
-  line-height: 1.25;
-  margin-top: 3px;
+  display: none;
 }
 
 .cd-district {
