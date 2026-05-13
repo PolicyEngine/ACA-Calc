@@ -26,13 +26,13 @@ household = {
 # The notebook has ptc_income_eligibility[2] = True which KEEPS eligibility above 400%
 # We had it as False which REMOVES eligibility above 400%
 reform = Reform.from_dict({
-    'gov.aca.ptc_phase_out_rate[0].amount': {'2026-01-01.2100-12-31': 0},
-    'gov.aca.ptc_phase_out_rate[1].amount': {'2026-01-01.2100-12-31': 0},
-    'gov.aca.ptc_phase_out_rate[2].amount': {'2026-01-01.2100-12-31': 0},
-    'gov.aca.ptc_phase_out_rate[3].amount': {'2026-01-01.2100-12-31': 0.02},
-    'gov.aca.ptc_phase_out_rate[4].amount': {'2026-01-01.2100-12-31': 0.04},
-    'gov.aca.ptc_phase_out_rate[5].amount': {'2026-01-01.2100-12-31': 0.06},
-    'gov.aca.ptc_phase_out_rate[6].amount': {'2026-01-01.2100-12-31': 0.085},
+    'gov.aca.required_contribution_percentage[0].amount': {'2026-01-01.2100-12-31': 0},
+    'gov.aca.required_contribution_percentage[1].amount': {'2026-01-01.2100-12-31': 0},
+    'gov.aca.required_contribution_percentage[2].amount': {'2026-01-01.2100-12-31': 0},
+    'gov.aca.required_contribution_percentage[3].amount': {'2026-01-01.2100-12-31': 0.02},
+    'gov.aca.required_contribution_percentage[4].amount': {'2026-01-01.2100-12-31': 0.04},
+    'gov.aca.required_contribution_percentage[5].amount': {'2026-01-01.2100-12-31': 0.06},
+    'gov.aca.required_contribution_percentage[6].amount': {'2026-01-01.2100-12-31': 0.085},
     'gov.aca.ptc_income_eligibility[2].amount': {'2026-01-01.2100-12-31': True}  # THIS IS THE KEY!
 }, country_id='us')
 

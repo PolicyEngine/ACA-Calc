@@ -6,6 +6,7 @@ import ContributionScheduleTable from "./components/ContributionScheduleTable";
 import ContributionScheduleChart from "./components/ContributionScheduleChart";
 import HouseholdExplorer from "./components/HouseholdExplorer";
 import Calculator from "./components/Calculator";
+import LocalImpact from "./views/LocalImpact";
 import "./App.css";
 
 // Import precomputed household data
@@ -171,12 +172,15 @@ const PAGE_ROUTES = {
   "overview": "main",
   "households": "households",
   "calculator": "calculator",
+  "local-impact": "local",
+  "local": "local",
 };
 
 const ROUTE_PAGES = {
   "main": "",
   "households": "households",
   "calculator": "calculator",
+  "local": "local-impact",
 };
 
 function getPageFromHash() {
@@ -296,6 +300,7 @@ function App() {
               isActive={activeSection === index}
               onInView={handleSectionInView}
               onExploreHouseholds={() => navigateToPage("households")}
+              onOpenCalculator={() => navigateToPage("calculator")}
             />
           ))}
         </div>
@@ -316,6 +321,8 @@ function App() {
       <Calculator />
     </main>
   );
+
+  const renderLocalImpactPage = () => <LocalImpact />;
 
   return (
     <div className={`app ${embedded ? "embedded" : ""}`}>
@@ -345,6 +352,12 @@ function App() {
               >
                 Calculator
               </button>
+              <button
+                className={`page-tab ${currentPage === "local" ? "active" : ""}`}
+                onClick={() => navigateToPage("local")}
+              >
+                Local Impact
+              </button>
             </div>
           </div>
         </header>
@@ -353,6 +366,7 @@ function App() {
       {currentPage === "main" && renderMainPage()}
       {currentPage === "households" && renderHouseholdsPage()}
       {currentPage === "calculator" && renderCalculatorPage()}
+      {currentPage === "local" && renderLocalImpactPage()}
 
       {!embedded && (
         <footer className="footer">

@@ -1,10 +1,6 @@
-"""Test calculate_ptc function."""
+"""Test the reusable Premium Tax Credit calculation helper."""
 
-import sys
-
-sys.path.insert(0, ".")
-
-from app import calculate_ptc
+from aca_calc.calculations.ptc import calculate_ptc
 
 
 def test_simple_calculation():
@@ -12,7 +8,7 @@ def test_simple_calculation():
     print("Testing simple single person calculation...")
 
     # Single person, age 35, $50,000 income in TX
-    ptc_reform, slcsp, fpl, fpl_pct = calculate_ptc(
+    ptc_reform, slcsp, _fpl, _fpl_pct = calculate_ptc(
         age_head=35,
         age_spouse=None,
         income=50000,
@@ -37,7 +33,7 @@ def test_baseline_vs_reform():
     print("\nTesting baseline vs reform...")
 
     # Couple at 300% FPL
-    ptc_reform, slcsp, fpl, fpl_pct = calculate_ptc(
+    ptc_reform, slcsp, _fpl, _fpl_pct = calculate_ptc(
         age_head=25,
         age_spouse=28,
         income=63450,
@@ -68,16 +64,3 @@ def test_baseline_vs_reform():
     ), f"Reform ({ptc_reform}) should be >= baseline ({ptc_baseline})"
 
     print("✓ Baseline vs reform works")
-
-
-if __name__ == "__main__":
-    try:
-        test_simple_calculation()
-        test_baseline_vs_reform()
-        print("\n✅ All tests passed!")
-    except Exception as e:
-        print(f"\n❌ Test failed: {e}")
-        import traceback
-
-        traceback.print_exc()
-        sys.exit(1)

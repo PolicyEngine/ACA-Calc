@@ -12,7 +12,7 @@ format:
 	@echo "Formatting complete"
 
 debug:
-	uv run streamlit run app.py
+	npm run dev
 
 clean:
 	rm -rf __pycache__ .pytest_cache .coverage htmlcov

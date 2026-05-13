@@ -51,7 +51,7 @@ def test_get_fpl_from_policyengine():
 
 def test_compare_hardcoded_vs_policyengine_fpl():
     """Compare our hardcoded FPL values to PolicyEngine"""
-    # Hardcoded values from app.py
+    # 2026 FPL values previously used as calculator reference values.
     fpl_hardcoded = {
         1: 15570,
         2: 21130,

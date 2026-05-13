@@ -1,42 +1,54 @@
 # ACA Premium Tax Credit Calculator
 
-Compare 2026 Premium Tax Credits with and without Inflation Reduction Act (IRA) enhancements.
+Compare 2026 Premium Tax Credits with and without Inflation Reduction Act
+(IRA) enhancements, and pair household impacts with local Marketplace
+enrollment context.
 
-**🔗 [Try the Calculator](https://aca-calc.vercel.app/)**
+**Try the calculator:** https://www.policyengine.org/us/aca-calc#calculator
 
 ## Overview
 
-The Inflation Reduction Act enhanced ACA subsidies through 2025. This calculator shows what your credits would be in 2026 with and without extending these enhancements.
+The Inflation Reduction Act enhanced ACA subsidies through 2025. This
+calculator shows what household credits would be in 2026 with and without
+extending those enhancements.
 
-**Key Differences:**
-- **With IRA Extension**: No income cap, lower premium contributions (0-8.5% of income)
-- **After IRA Expires**: 400% FPL cap ("subsidy cliff"), higher contributions (2-9.5% of income)
+Key differences:
+
+- **With IRA extension:** no income cap, lower premium contributions
+  (0-8.5% of income)
+- **After IRA expires:** 400% FPL cap ("subsidy cliff"), higher contributions
+  (2-9.5% of income)
+- **Local impact:** Marketplace enrollment context for HealthCare.gov-platform
+  geographies where fine-grained CMS PUF data are available
 
 ## Quick Start
-
-### Use the Live App
-
-Visit **[https://aca-calc.vercel.app/](https://aca-calc.vercel.app/)** to use the calculator immediately.
 
 ### Run Locally
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Run the app
-streamlit run app.py
+npm install
+npm run dev
 ```
 
-The app will open at http://localhost:8501
+The React app runs at http://localhost:3000/us/aca-calc by default. The
+calculator is available at http://localhost:3000/us/aca-calc#calculator.
+
+Python tests and data utilities use the Python package in `aca_calc/`:
+
+```bash
+uv run pytest
+```
 
 ## Features
 
-- ✅ **All 50 States + DC**: Accurate calculations for every jurisdiction
-- ✅ **3,143 Counties**: County-specific marketplace pricing
-- ✅ **Real-time Comparison**: Side-by-side baseline vs. IRA extension
-- ✅ **Interactive Charts**: See how credits change across income levels
-- ✅ **Household Flexibility**: Single, married, with/without dependents
+- All 50 states plus DC
+- County-specific ACA pricing inputs
+- Interactive household calculator for baseline, IRA extension, and additional
+  reform scenarios
+- Local impact page with county and congressional district Marketplace
+  enrollment context
+- Compact checked-in CMS-style enrollment extracts, structured for later
+  ingestion of processed full PUF files
 
 ## Example Results
 
@@ -50,32 +62,43 @@ The app will open at http://localhost:8501
 ## Technical Details
 
 Built with:
-- **[PolicyEngine US](https://policyengine.org)**: Open-source tax-benefit microsimulation
-- **[Streamlit](https://streamlit.io)**: Interactive web interface
-- **[Plotly](https://plotly.com)**: Data visualization
 
-County data sourced from PolicyEngine's ACA rating areas database.
+- **Next.js + React:** interactive web application
+- **PolicyEngine US:** open-source tax-benefit microsimulation
+- **Recharts + D3:** data visualization
+- **Python utilities:** enrollment fixture loaders and ingest helpers
+
+County data are sourced from PolicyEngine's ACA rating area data. Enrollment
+context starts with compact checked-in extracts under `aca_calc/data/` and can
+be repointed to processed CMS Marketplace PUF files later.
 
 ## Project Structure
 
-```
+```text
 .
-├── app.py                  # Main Streamlit application
-├── counties.json           # County data for all states
-├── process_counties.py     # County data processor
-├── requirements.txt        # Python dependencies
-├── tests/                  # Test files
-├── notebooks/              # Analysis notebooks
-└── archive/                # Historical files
+├── app/                         # Next.js app shell
+├── src/                         # React UI, pages, and client-side helpers
+│   ├── components/              # Calculator, charts, and shared components
+│   └── views/LocalImpact.jsx    # Local impact view
+├── aca_calc/                    # Python calculation and data-access helpers
+│   ├── calculations/            # PolicyEngine household/PTC utilities
+│   └── data/                    # Compact checked-in enrollment extracts
+├── tests/                       # Python unit tests
+├── package.json                 # React/Next scripts
+├── pyproject.toml               # Python package/dependencies
+└── requirements.txt             # Python runtime dependencies
 ```
 
 ## Development
 
 ```bash
-# Run tests
-python tests/test_reform_verification.py
+npm run build
+uv run pytest
+```
 
-# Update county data
+To update county data:
+
+```bash
 python process_counties.py
 ```
 
@@ -85,4 +108,4 @@ Open source - see PolicyEngine US license for underlying calculations.
 
 ## Credits
 
-Calculations powered by [PolicyEngine US](https://github.com/PolicyEngine/policyengine-us)
+Calculations powered by [PolicyEngine US](https://github.com/PolicyEngine/policyengine-us).
