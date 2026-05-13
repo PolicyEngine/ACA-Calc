@@ -44,6 +44,9 @@
 }
 
 .page-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 12px 28px;
   border: 2px solid var(--pe-border);
   border-radius: 28px;
@@ -53,6 +56,7 @@
   font-weight: 600;
   color: var(--pe-text-secondary);
   cursor: pointer;
+  text-decoration: none;
   transition: all var(--pe-transition-fast);
 }
 

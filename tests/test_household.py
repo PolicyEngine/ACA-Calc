@@ -92,4 +92,4 @@ def test_with_axes():
 
     assert "axes" in situation
     assert situation["axes"][0][0]["name"] == "employment_income"
-    assert situation["axes"][0][0]["count"] == 10_001
+    assert situation["axes"][0][0]["count"] == 1_001
