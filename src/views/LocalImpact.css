@@ -1,12 +1,12 @@
 .local-impact-page {
   max-width: 1480px;
   margin: 0 auto;
-  padding: var(--pe-space-lg) var(--pe-space-xl) var(--pe-space-2xl);
+  padding: var(--pe-space-xl) var(--pe-space-xl) var(--pe-space-2xl);
 }
 
 .local-impact-heading {
   max-width: 920px;
-  margin-bottom: var(--pe-space-lg);
+  margin-bottom: var(--pe-space-xl);
 }
 
 .local-impact-heading .eyebrow {
@@ -20,7 +20,7 @@
 
 .local-impact-heading h2 {
   color: var(--pe-gray-900);
-  font-size: 2rem;
+  font-size: 2.25rem;
   line-height: 1.15;
   margin-bottom: var(--pe-space-sm);
 }
@@ -33,7 +33,7 @@
 .local-impact-grid {
   align-items: start;
   display: grid;
-  gap: var(--pe-space-md);
+  gap: var(--pe-space-lg);
   grid-template-columns: minmax(300px, 0.72fr) minmax(520px, 1.28fr);
 }
 
@@ -48,6 +48,10 @@
 .cd-map-panel {
   grid-column: 1 / -1;
   padding: var(--pe-space-lg);
+}
+
+.cd-map-panel .local-panel-header {
+  margin-bottom: var(--pe-space-sm);
 }
 
 .local-panel-header {
@@ -231,20 +235,20 @@
   border: 1px solid var(--pe-border-light);
   border-radius: var(--pe-radius-md);
   overflow: hidden;
-  padding: var(--pe-space-md);
+  padding: var(--pe-space-sm);
 }
 
 .cd-map-svg {
   display: block;
-  height: clamp(360px, 44vh, 520px);
+  height: clamp(300px, 34vh, 420px);
   width: 100%;
 }
 
 .cd-map-tabs {
   display: grid;
-  gap: var(--pe-space-sm);
+  gap: 8px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin-bottom: var(--pe-space-md);
+  margin-bottom: var(--pe-space-sm);
 }
 
 .cd-map-tab {
@@ -254,9 +258,9 @@
   color: var(--pe-gray-700);
   cursor: pointer;
   font: inherit;
-  min-height: 64px;
-  padding: 10px 12px;
-  text-align: left;
+  min-height: 44px;
+  padding: 8px 10px;
+  text-align: center;
   transition:
     background var(--pe-transition-fast),
     border-color var(--pe-transition-fast),
@@ -282,16 +286,16 @@
 }
 
 .cd-map-tab span {
-  font-size: 0.98rem;
+  font-size: 0.9rem;
   font-weight: 700;
   line-height: 1.2;
 }
 
 .cd-map-tab small {
   color: var(--pe-text-secondary);
-  font-size: 0.76rem;
+  font-size: 0.7rem;
   line-height: 1.25;
-  margin-top: 5px;
+  margin-top: 3px;
 }
 
 .cd-district {
