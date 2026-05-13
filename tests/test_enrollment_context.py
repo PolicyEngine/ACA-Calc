@@ -15,15 +15,19 @@ def test_healthcare_gov_county_with_compact_data_returns_context():
     assert context.average_aptc == 562
 
 
-def test_state_based_marketplace_state_returns_fallback_status():
+def test_state_based_marketplace_state_returns_policyengine_backfill():
     context = get_enrollment_context("CA", "San Benito County")
 
-    assert context.status == "state_based_marketplace_fallback"
+    assert context.status == "policyengine_modeled_county_backfill"
     assert context.marketplace_platform == "State-based marketplace"
     assert not context.fine_grained_cms_available
-    assert not context.county_context_available
-    assert context.marketplace_plan_selections is None
-    assert "falls back to state-level context" in context.message
+    assert context.county_context_available
+    assert context.state_context_available
+    assert context.policyengine_modeled
+    assert context.marketplace_plan_selections == 3_117
+    assert context.aptc_consumers == 2_552
+    assert context.state_marketplace_plan_selections == 1_927_371
+    assert "PolicyEngine-modeled local backfill" in context.message
 
 
 def test_unknown_county_in_healthcare_gov_state_is_graceful():
@@ -34,6 +38,16 @@ def test_unknown_county_in_healthcare_gov_state_is_graceful():
     assert context.fine_grained_cms_available
     assert not context.county_context_available
     assert context.marketplace_plan_selections is None
+
+
+def test_unknown_county_in_state_based_marketplace_returns_state_context():
+    context = get_enrollment_context("CA", "Not A County")
+
+    assert context.status == "state_based_marketplace_fallback"
+    assert context.state_context_available
+    assert not context.county_context_available
+    assert context.marketplace_plan_selections == 1_927_371
+    assert context.aptc_consumers == 1_577_627
 
 
 def test_second_healthcare_gov_county_from_compact_data_returns_context():

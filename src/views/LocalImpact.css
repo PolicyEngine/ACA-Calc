@@ -98,6 +98,11 @@
   color: var(--pe-teal-800);
 }
 
+.status-policyengine_modeled_county_backfill {
+  background: #ecfdf3;
+  color: #166534;
+}
+
 .status-state_based_marketplace_fallback {
   background: #fef3c7;
   color: #92400e;
@@ -230,6 +235,27 @@
   color: var(--pe-gray-900);
 }
 
+.local-backfill-note {
+  background: #f7fbf8;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--pe-radius-md);
+  margin-bottom: var(--pe-space-md);
+  padding: var(--pe-space-md);
+}
+
+.local-backfill-note strong {
+  color: #166534;
+  display: block;
+  font-size: 0.9rem;
+  margin-bottom: 3px;
+}
+
+.local-backfill-note p {
+  color: var(--pe-text-secondary);
+  font-size: 0.86rem;
+  margin: 0;
+}
+
 .cd-map-shell {
   background: linear-gradient(180deg, #ffffff 0%, var(--pe-gray-50) 100%);
   border: 1px solid var(--pe-border-light);
@@ -326,29 +352,38 @@
   stroke-width: 2.6;
 }
 
+.cd-district.modeled {
+  stroke: rgba(17, 24, 39, 0.58);
+  stroke-dasharray: 3 2;
+}
+
+.cd-district.modeled.selected {
+  stroke: var(--pe-gray-900);
+}
+
 .cd-bucket-1 {
-  background: #d9eff8;
-  fill: #d9eff8;
+  background: #d2edf8;
+  fill: #d2edf8;
 }
 
 .cd-bucket-2 {
-  background: #8ed0ef;
-  fill: #8ed0ef;
+  background: #8ccfea;
+  fill: #8ccfea;
 }
 
 .cd-bucket-3 {
-  background: #41bfb4;
-  fill: #41bfb4;
+  background: #43beb9;
+  fill: #43beb9;
 }
 
 .cd-bucket-4 {
-  background: #1f8f8b;
-  fill: #1f8f8b;
+  background: #16827f;
+  fill: #16827f;
 }
 
 .cd-bucket-5 {
-  background: #075f84;
-  fill: #075f84;
+  background: #064d6f;
+  fill: #064d6f;
 }
 
 .cd-unavailable {

@@ -47,6 +47,14 @@ const MAP_METRICS = {
   },
 };
 
+const formatPercent = (value) =>
+  Number.isFinite(value)
+    ? new Intl.NumberFormat("en-US", {
+        style: "percent",
+        maximumFractionDigits: 1,
+      }).format(value)
+    : "n/a";
+
 const formatMetricValue = (value, metric) => {
   if (!Number.isFinite(value)) {
     return metric.unavailable;
@@ -92,11 +100,52 @@ const buildMetricScale = (districts, metric) => {
     return [];
   }
 
-  const rawRange = Math.max(...values) - Math.min(...values);
+  const sortedValues = [...values].sort((a, b) => a - b);
+  const rawRange = sortedValues[sortedValues.length - 1] - sortedValues[0];
   const niceStep =
-    metric.type === "currency" ? 50 : getNiceCountStep(rawRange);
-  const min = Math.floor(Math.min(...values) / niceStep) * niceStep;
-  const max = Math.ceil(Math.max(...values) / niceStep) * niceStep;
+    metric.type === "currency"
+      ? 50
+      : getNiceCountStep(rawRange / MAP_COLORS.length);
+  const min = Math.floor(sortedValues[0] / niceStep) * niceStep;
+  const max =
+    Math.ceil(sortedValues[sortedValues.length - 1] / niceStep) * niceStep;
+
+  if (metric.type === "count") {
+    const quantile = (position) =>
+      sortedValues[
+        Math.min(
+          sortedValues.length - 1,
+          Math.floor((sortedValues.length - 1) * position),
+        )
+      ];
+    const boundaries = [
+      min,
+      ...[0.2, 0.4, 0.6, 0.8].map(
+        (position) => Math.round(quantile(position) / niceStep) * niceStep,
+      ),
+      max,
+    ].map((boundary) => Math.max(min, Math.min(max, boundary)));
+
+    for (let index = 1; index < boundaries.length; index += 1) {
+      if (boundaries[index] <= boundaries[index - 1]) {
+        boundaries[index] = Math.min(max, boundaries[index - 1] + niceStep);
+      }
+    }
+
+    return MAP_COLORS.map((className, index) => ({
+      className,
+      min: boundaries[index],
+      max: boundaries[index + 1],
+      label:
+        index === MAP_COLORS.length - 1
+          ? `${formatLegendValue(boundaries[index], metric)}+`
+          : `${formatLegendValue(boundaries[index], metric)}-${formatLegendValue(
+              boundaries[index + 1],
+              metric,
+            )}`,
+    }));
+  }
+
   const step = Math.max(niceStep, (max - min) / MAP_COLORS.length);
 
   return MAP_COLORS.map((className, index) => {
@@ -133,8 +182,8 @@ const unavailableMessage = (state) => {
   const stateName = getStateName(state);
   if (platform === "State-based marketplace") {
     return (
-      `${stateName} runs a state-based marketplace, so CMS county/ZIP premium ` +
-      "context is unavailable for its congressional districts in this slice."
+      `${stateName} runs a state-based marketplace. CMS county/ZIP premium ` +
+      "context is unavailable, so local values are labeled when they are PolicyEngine-modeled backfills."
     );
   }
   return `${stateName} has no matched district premium context in the compact dataset.`;
@@ -152,11 +201,13 @@ const formatDistrictName = (feature, context) => {
   return `${stateName} District ${Number(district)}`;
 };
 
-const formatDistrictSummary = (context) =>
-  [
-    `Population-weighted county allocation: ${formatNumber(
-      context.marketplace_plan_selections,
-    )} plan selections;`,
+const formatDistrictSummary = (context) => {
+  const source = context.isPolicyEngineModeled
+    ? "PolicyEngine-modeled state backfill"
+    : "Population-weighted CMS county allocation";
+
+  return [
+    `${source}: ${formatNumber(context.marketplace_plan_selections)} plan selections;`,
     `${formatNumber(context.aptc_consumers)} receive APTC and ${formatNumber(
       context.non_aptc_consumers,
     )} do not.`,
@@ -164,6 +215,7 @@ const formatDistrictSummary = (context) =>
       context.average_premium_after_aptc,
     )}/mo.`,
   ].join(" ");
+};
 
 function CongressionalDistrictPremiumMap({ selectedState, onSelectState }) {
   const [selectedGeoid, setSelectedGeoid] = useState(null);
@@ -239,8 +291,8 @@ function CongressionalDistrictPremiumMap({ selectedState, onSelectState }) {
         <div>
           <h3>Marketplace premium and APTC map</h3>
           <p>
-            Population-weighted congressional district estimates from CMS county
-            PUFs.
+            Observed HealthCare.gov county allocation plus
+            PolicyEngine-modeled state marketplace backfills.
           </p>
         </div>
         <span className="local-year">2026 OEP</span>
@@ -284,6 +336,7 @@ function CongressionalDistrictPremiumMap({ selectedState, onSelectState }) {
             const isSelected = activeGeoid === feature.properties.geoid;
             const isSelectedState =
               selectedState === feature.properties.state && !isSelected;
+            const isModeled = districtContext?.isPolicyEngineModeled;
             const districtLabel = formatDistrictName(feature, districtContext);
             const ariaLabel = districtContext
               ? `${districtLabel}, ${activeMetric.label.toLowerCase()} ${formatMetricValue(
@@ -298,6 +351,7 @@ function CongressionalDistrictPremiumMap({ selectedState, onSelectState }) {
                 className={[
                   "cd-district",
                   bucket?.className || "cd-unavailable",
+                  isModeled ? "modeled" : "",
                   isSelectedState ? "same-state" : "",
                   isSelected ? "selected" : "",
                 ]
@@ -349,14 +403,29 @@ function CongressionalDistrictPremiumMap({ selectedState, onSelectState }) {
                 <strong>{formatCurrency(activeContext.average_aptc)}/mo</strong>
                 avg APTC
               </span>
-              <span>
-                <strong>{formatNumber(activeContext.source_county_count)}</strong>
-                source counties
-              </span>
-              <span>
-                <strong>{formatNumber(activeContext.county_part_count)}</strong>
-                county parts
-              </span>
+              {activeContext.isPolicyEngineModeled ? (
+                <>
+                  <span>
+                    <strong>{formatPercent(activeContext.modeledShare)}</strong>
+                    modeled state share
+                  </span>
+                  <span>
+                    <strong>State PUF</strong>
+                    source level
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span>
+                    <strong>{formatNumber(activeContext.source_county_count)}</strong>
+                    source counties
+                  </span>
+                  <span>
+                    <strong>{formatNumber(activeContext.county_part_count)}</strong>
+                    county parts
+                  </span>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -364,10 +433,10 @@ function CongressionalDistrictPremiumMap({ selectedState, onSelectState }) {
 
       <p className="cd-map-note">
         Rough estimates for {formatNumber(availableDistrictCount)}{" "}
-        HealthCare.gov-platform districts.{" "}
+        congressional districts.{" "}
         {congressionalDistrictContext2026.allocation_method} ZIP-level CMS PUFs
-        would further improve split-county districts where Marketplace
-        enrollment differs from the general population.
+        would further improve split-county HealthCare.gov districts where
+        Marketplace enrollment differs from the general population.
       </p>
     </section>
   );
