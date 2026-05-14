@@ -1,5 +1,4 @@
 import "./globals.css";
-import PolicyEngineHeader from "../components/PolicyEngineHeader";
 
 export const metadata = {
   title: "ACA Calculator",
@@ -9,10 +8,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>
-        <PolicyEngineHeader />
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
