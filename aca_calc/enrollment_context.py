@@ -160,8 +160,8 @@ def get_enrollment_context(
             message=(
                 f"{state_code} runs a state-based marketplace. CMS county/ZIP "
                 "Marketplace PUF detail is not available in this v1, so local "
-                "enrollment context is disabled until observed state-specific "
-                "sources are ingested."
+                "enrollment context is disabled until states publish more "
+                "detailed Marketplace data."
             ),
             source=source,
             source_url=source_url,

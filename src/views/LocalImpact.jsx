@@ -213,7 +213,7 @@ function LocalImpact() {
               <p>
                 {context.fineGrainedCmsAvailable
                   ? "This HealthCare.gov state has CMS county/ZIP PUF detail, but this county is not matched in the compact dataset yet."
-                  : "This state uses a state-based marketplace. We are not showing modeled local estimates in v1; observed state-specific sources can be added in a later data pass."}
+                  : "This state uses a state-based marketplace. We are not showing modeled local estimates in v1; we can add local context when states publish more detailed Marketplace data."}
               </p>
             </div>
           )}

@@ -4,7 +4,7 @@
   "geography": "119th Congressional District",
   "source": "CMS 2026 Marketplace Open Enrollment PUFs and PolicyEngine US Data block-population geography",
   "source_url": "https://www.cms.gov/data-research/statistics-trends-reports/marketplace-products/2026-marketplace-open-enrollment-period-public-use-files",
-  "allocation_method": "HealthCare.gov-platform districts use CMS county-level PUF rows allocated with PolicyEngine population shares. State-based marketplace districts are unavailable in v1 until observed state-specific sources are ingested.",
+  "allocation_method": "HealthCare.gov-platform districts use CMS county-level PUF rows allocated with PolicyEngine population shares. State-based marketplace districts are unavailable in v1 until states publish more detailed Marketplace data.",
   "records": [
     {
       "state": "AK",

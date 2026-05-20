@@ -405,9 +405,7 @@ function CongressionalDistrictPremiumMap({ selectedState, onSelectState }) {
       <p className="cd-map-note">
         Observed county context for {formatNumber(availableDistrictCount)}{" "}
         HealthCare.gov-platform congressional districts.{" "}
-        {congressionalDistrictContext2026.allocation_method} ZIP-level CMS PUFs
-        would further improve split-county HealthCare.gov districts where
-        Marketplace enrollment differs from the general population.
+        {congressionalDistrictContext2026.allocation_method}
       </p>
     </section>
   );

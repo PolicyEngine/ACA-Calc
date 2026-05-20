@@ -144,7 +144,7 @@ export const getEnrollmentContext = (state, county) => {
       status: "state_based_marketplace_fallback",
       fineGrainedCmsAvailable: false,
       countyContextAvailable: false,
-      message: `${stateCode} runs a state-based marketplace. CMS county/ZIP Marketplace PUF detail is not available in this v1, so local enrollment context is disabled until observed state-specific sources are ingested.`,
+      message: `${stateCode} runs a state-based marketplace. CMS county/ZIP Marketplace PUF detail is not available in this v1, so local enrollment context is disabled until states publish more detailed Marketplace data.`,
     };
   }
 
