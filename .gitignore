@@ -48,6 +48,8 @@ Thumbs.db
 # Data/cache
 data/
 .cache/
+!aca_calc/data/
+!aca_calc/data/*.json
 
 # Node.js / React
 node_modules/
