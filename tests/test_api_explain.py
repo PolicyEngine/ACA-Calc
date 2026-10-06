@@ -1,12 +1,19 @@
 """Exercise the explanation route with SDK serialization and no network."""
 
+import importlib
 import json
 from types import SimpleNamespace
 
-import httpx
 import pytest
-from anthropic import Anthropic
+from anthropic import Anthropic, DefaultHttpxClient
 from cachetools import TTLCache
+
+# Mock the provider with the HTTP package the installed SDK uses: the locked
+# SDK uses httpx, while anthropic 1.x (installed unpinned on Modal and in the
+# Dockerfile) uses httpx2 and rejects httpx objects.
+http = importlib.import_module(
+    DefaultHttpxClient.__mro__[-2].__module__.partition(".")[0]
+)
 
 TestClient = pytest.importorskip(
     "fastapi.testclient",
@@ -62,7 +69,7 @@ def route(monkeypatch):
         assert request.method == "POST"
         assert request.url.path == "/v1/messages"
         state.requests.append(json.loads(request.content))
-        return httpx.Response(
+        return http.Response(
             200,
             json={
                 "id": "msg_test",
@@ -83,7 +90,7 @@ def route(monkeypatch):
     monkeypatch.setattr(api, "_local_explanation_cache", state.local_cache)
     with Anthropic(
         api_key="test-only-key",
-        http_client=httpx.Client(transport=httpx.MockTransport(respond)),
+        http_client=http.Client(transport=http.MockTransport(respond)),
     ) as provider:
         monkeypatch.setattr(api.anthropic, "Anthropic", lambda **_: provider)
         with TestClient(api.app) as client:
@@ -140,6 +147,23 @@ def test_response_text_blocks(route, content):
     response = route.client.post("/api/explain", json=REQUEST)
     assert response.status_code == 200
     assert response.json() == EXPLANATION
+
+
+def test_every_text_split_parses_the_same(route):
+    """Text-block boundaries and thinking blocks never change the result."""
+    for cut in range(len(JSON_TEXT) + 1):
+        route.content = [
+            THINKING,
+            text_block(JSON_TEXT[:cut]),
+            THINKING,
+            text_block(JSON_TEXT[cut:]),
+        ]
+        route.local_cache.clear()
+        route.persistent_cache.clear()
+        response = route.client.post("/api/explain", json=REQUEST)
+        assert response.status_code == 200, cut
+        assert response.json() == EXPLANATION, cut
+    assert len(route.requests) == len(JSON_TEXT) + 1
 
 
 @pytest.mark.parametrize(
