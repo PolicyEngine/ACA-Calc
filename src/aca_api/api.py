@@ -696,15 +696,22 @@ async def explain_with_ai(data: ExplainRequest):
         prompt = build_explain_prompt(data)
 
         message = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=2000,
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
+            model="claude-sonnet-5-5",
+            max_tokens=16000,
+            # The locked SDK predates the output_config keyword argument.
+            extra_body={"output_config": {"effort": "low"}},
+            messages=[{"role": "user", "content": prompt}],
         )
 
-        # Parse the response
-        response_text = message.content[0].text
+        if message.stop_reason == "refusal":
+            raise ValueError("AI refused to generate an explanation")
+
+        # Thinking blocks can precede or separate the JSON text blocks.
+        response_text = "".join(
+            block.text for block in message.content if block.type == "text"
+        )
+        if not response_text.strip():
+            raise ValueError("AI response did not contain any text")
 
         # Extract JSON from response (handle potential markdown code blocks)
         if "```json" in response_text:

@@ -71,6 +71,15 @@ County data sourced from PolicyEngine's ACA rating areas database.
 
 ## Development
 
+The optional `/api/explain` endpoint uses `claude-sonnet-5-5` with low effort
+and requires `ANTHROPIC_API_KEY`. Run its regression tests without provider
+credentials or network calls (FastAPI is installed separately in deployment):
+
+```bash
+uv sync --locked --extra dev
+uv run --locked --with fastapi pytest tests/test_api_explain.py -v
+```
+
 ```bash
 # Run tests
 python tests/test_reform_verification.py
