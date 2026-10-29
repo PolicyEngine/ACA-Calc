@@ -2,7 +2,7 @@
 
 Compare 2026 Premium Tax Credits with and without Inflation Reduction Act (IRA) enhancements.
 
-**🔗 [Try the Calculator](https://aca-calc.vercel.app/)**
+**🔗 [Try the Calculator](https://policyengine.org/us/aca-calc)**
 
 ## Overview
 
@@ -16,7 +16,7 @@ The Inflation Reduction Act enhanced ACA subsidies through 2025. This calculator
 
 ### Use the Live App
 
-Visit **[https://aca-calc.vercel.app/](https://aca-calc.vercel.app/)** to use the calculator immediately.
+Visit **[https://policyengine.org/us/aca-calc](https://policyengine.org/us/aca-calc)** to use the calculator immediately.
 
 ### Run Locally
 
