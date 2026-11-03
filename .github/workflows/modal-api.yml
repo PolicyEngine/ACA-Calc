@@ -36,7 +36,7 @@ concurrency:
 
 env:
   API_URL: https://policyengine--aca-calc-api-fastapi-app.modal.run
-  MODAL_VERSION: 1.3.0.post1
+  MODAL_VERSION: 1.4.2
   UV_VERSION: 0.11.7
 
 jobs:

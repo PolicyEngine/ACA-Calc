@@ -107,9 +107,9 @@ To deploy or roll back by hand (needs access to PolicyEngine's Modal
 workspace):
 
 ```bash
-uvx --from modal==1.3.0.post1 modal deploy --env main modal_app.py
-uvx --from modal==1.3.0.post1 modal app history aca-calc-api --env main
-uvx --from modal==1.3.0.post1 modal app rollback aca-calc-api --env main
+uvx --from modal==1.4.2 modal deploy --env main modal_app.py
+uvx --from modal==1.4.2 modal app history aca-calc-api --env main
+uvx --from modal==1.4.2 modal app rollback aca-calc-api --env main
 ```
 
 Each `/api/explain` request that misses the 7-day explanation cache calls the
