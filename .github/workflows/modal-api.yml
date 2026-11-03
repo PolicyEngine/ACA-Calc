@@ -12,6 +12,7 @@ on:
       - src/aca_api/**
       - tests/test_api_explain.py
       - tests/test_modal_requirements.py
+      - tests/test_smoke_test_api.py
       - scripts/smoke_test_api.py
       - .github/workflows/modal-api.yml
   push:
@@ -23,6 +24,7 @@ on:
       - src/aca_api/**
       - tests/test_api_explain.py
       - tests/test_modal_requirements.py
+      - tests/test_smoke_test_api.py
       - scripts/smoke_test_api.py
       - .github/workflows/modal-api.yml
   workflow_dispatch:
@@ -59,7 +61,7 @@ jobs:
           uv venv --python 3.11
           uv pip install -r modal-requirements.txt
       - name: Run the API tests
-        run: .venv/bin/python -m pytest tests/test_api_explain.py tests/test_modal_requirements.py
+        run: .venv/bin/python -m pytest tests/test_api_explain.py tests/test_modal_requirements.py tests/test_smoke_test_api.py
 
   deploy:
     name: Deploy and smoke-test
