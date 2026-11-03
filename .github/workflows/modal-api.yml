@@ -77,14 +77,19 @@ jobs:
         with:
           version: ${{ env.UV_VERSION }}
       - name: Deploy aca-calc-api
+        env:
+          # The API reports it, so the smoke tests can tell this deploy's
+          # containers from the previous version's.
+          ACA_API_COMMIT: ${{ github.sha }}
         run: uvx --from "modal==$MODAL_VERSION" modal deploy --env main modal_app.py
       # The smoke test uses only the standard library, so any Python runs it.
+      # It waits until this commit's containers answer each check.
       - name: Smoke-test the calculator
         id: calculator
-        run: uv run --no-project scripts/smoke_test_api.py "$API_URL"
+        run: uv run --no-project scripts/smoke_test_api.py "$API_URL" --commit "$GITHUB_SHA"
       - name: Roll back to the previous version if the calculator fails
         if: failure() && steps.calculator.outcome == 'failure'
         run: uvx --from "modal==$MODAL_VERSION" modal app rollback aca-calc-api --env main
       # Calls the Anthropic API unless this household's answer is cached.
       - name: Smoke-test AI explanations
-        run: uv run --no-project scripts/smoke_test_api.py "$API_URL" --explain
+        run: uv run --no-project scripts/smoke_test_api.py "$API_URL" --commit "$GITHUB_SHA" --explain

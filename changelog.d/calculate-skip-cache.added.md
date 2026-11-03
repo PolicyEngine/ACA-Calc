@@ -1,0 +1,1 @@
+Add a `skip_cache` option to `/api/calculate` and `/api/calculate-stream` that computes a new answer without reading or writing the cache, and report the commit a CI deploy came from on every API response, in an `X-ACA-API-Commit` header.

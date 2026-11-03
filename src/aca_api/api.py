@@ -134,6 +134,19 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def report_commit(request, call_next):
+    """Name the commit this deploy came from on every response.
+
+    After a deploy, Modal can keep sending requests to the previous version's
+    warm containers for a while, so the deploy's smoke test uses this header
+    to tell them apart.
+    """
+    response = await call_next(request)
+    response.headers["X-ACA-API-Commit"] = os.environ.get("ACA_API_COMMIT", "")
+    return response
+
+
 def convert_to_native(obj):
     """Convert numpy types to Python native types for JSON serialization."""
     if isinstance(obj, np.floating):
@@ -174,9 +187,9 @@ async def calculate_ptc(data: CalculateRequest):
     Returns arrays of PTC values under baseline, IRA extension, and 700% FPL
     scenarios for the specified household.
     """
-    # Check cache first (persistent or local)
+    # Check cache first (persistent or local), unless the request skips it
     cache_key = get_cache_key(data)
-    cached = get_from_cache(cache_key, "calc")
+    cached = None if data.skip_cache else get_from_cache(cache_key, "calc")
     if cached is not None:
         return cached
 
@@ -277,7 +290,8 @@ async def calculate_ptc(data: CalculateRequest):
         )
 
         # Cache the result (persistent + local)
-        set_in_cache(cache_key, response, "calc")
+        if not data.skip_cache:
+            set_in_cache(cache_key, response, "calc")
         return response
 
     except ValueError as e:
@@ -292,9 +306,10 @@ async def calculate_ptc_stream(data: CalculateRequest):
 
     Returns Server-Sent Events with progress updates as each simulation completes.
     """
-    # Check cache first (persistent or local) - if cached, return immediately
+    # Check cache first (persistent or local) - if cached, return immediately,
+    # unless the request skips it
     cache_key = get_cache_key(data)
-    cached = get_from_cache(cache_key, "calc")
+    cached = None if data.skip_cache else get_from_cache(cache_key, "calc")
     if cached is not None:
         async def cached_response():
             yield f"data: {json.dumps({'step': 'cached', 'progress': 100, 'message': 'Using cached results'})}\n\n"
@@ -411,7 +426,8 @@ async def calculate_ptc_stream(data: CalculateRequest):
             )
 
             # Cache the result (persistent + local)
-            set_in_cache(cache_key, response, "calc")
+            if not data.skip_cache:
+                set_in_cache(cache_key, response, "calc")
 
             yield f"data: {json.dumps({'step': 'complete', 'progress': 100, 'result': response.model_dump()})}\n\n"
 

@@ -1,22 +1,29 @@
 """Smoke-test the deployed ACA calculator API.
 
-Usage: python scripts/smoke_test_api.py API_URL [--explain]
+Usage: python scripts/smoke_test_api.py API_URL [--explain] [--commit SHA [--wait SECONDS]]
 
 Checks /api/health, then both calculator endpoints: /api/calculate-stream,
-which the calculator page calls, and /api/calculate, its fallback. Both vary
-the household so the deployed code computes the answer instead of returning
-one from the 7-day calculation cache, and the stream check confirms that it
-did. With --explain it also requests a fixed household's AI narrative from
-/api/explain, which calls the Anthropic API unless the answer is already in
-the 7-day explanation cache. Uses only the standard library, so it runs
-without the app's dependencies.
+which the calculator page calls, and /api/calculate, its fallback. Both
+requests set skip_cache, so the deployed code computes each answer instead of
+returning one from the 7-day calculation cache, and the stream check confirms
+that it did. With --explain it checks /api/health and then /api/explain
+instead of the calculator: it requests a fixed household's AI narrative, which
+calls the Anthropic API unless the answer is already in the 7-day explanation
+cache.
+
+After a deploy, Modal can keep sending requests to the previous version's warm
+containers for a while. With --commit, every response must come from that
+commit's containers, which name it in an X-ACA-API-Commit header; a check that
+another version answers is retried for up to --wait seconds (default 300).
+
+Uses only the standard library, so it runs without the app's dependencies.
 """
 
 import argparse
 import json
 import math
-import random
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -31,11 +38,27 @@ HOUSEHOLD = {
     "show_700fpl": True,
 }
 
-# The calculation cache is keyed on the household, so the calculator checks
-# vary the head's age. HOUSEHOLD's own age is left out because the explain
-# check keeps it in the cache.
-AGES = [age for age in range(21, 65) if age != HOUSEHOLD["age_head"]]
-STREAM_TRIES = 10
+# The calculator checks skip the cache, so they run the deployed code whatever
+# the cache holds. The explain check reads it.
+FRESH = {**HOUSEHOLD, "skip_cache": True}
+
+# Set by --commit and --wait.
+COMMIT = None
+WAIT_SECONDS = 300
+
+
+class OtherVersion(Exception):
+    """A container of some other version answered."""
+
+
+def check_commit(headers):
+    if COMMIT is None:
+        return
+    commit = headers.get("X-ACA-API-Commit")
+    if commit != COMMIT:
+        raise OtherVersion(
+            f"commit {commit}" if commit else "a version that names no commit"
+        )
 
 
 def build_request(url, payload):
@@ -48,8 +71,10 @@ def build_request(url, payload):
 def call(url, payload=None, timeout=300):
     try:
         with urllib.request.urlopen(build_request(url, payload), timeout=timeout) as response:
+            check_commit(response.headers)
             return json.load(response)
     except urllib.error.HTTPError as error:
+        check_commit(error.headers)
         sys.exit(f"FAIL {url} returned {error.code}: {error.read().decode()[:500]}")
 
 
@@ -57,11 +82,29 @@ def stream_events(url, payload, timeout=300):
     """Yield the server-sent events that a POST to url returns."""
     try:
         with urllib.request.urlopen(build_request(url, payload), timeout=timeout) as response:
+            check_commit(response.headers)
             for line in response:
                 if line.startswith(b"data: "):
                     yield json.loads(line[len(b"data: "):])
     except urllib.error.HTTPError as error:
+        check_commit(error.headers)
         sys.exit(f"FAIL {url} returned {error.code}: {error.read().decode()[:500]}")
+
+
+def from_this_deploy(check, base):
+    """Run a check, again while another version's containers answer it."""
+    deadline = time.monotonic() + WAIT_SECONDS
+    while True:
+        try:
+            return check(base)
+        except OtherVersion as other:
+            if time.monotonic() > deadline:
+                sys.exit(
+                    f"FAIL {check.__name__}: {other} still answered after "
+                    f"{WAIT_SECONDS} s, not commit {COMMIT}"
+                )
+            print(f"waiting: {other} answered {check.__name__}", flush=True)
+            time.sleep(5)
 
 
 def read_stream(events):
@@ -107,29 +150,24 @@ def check_health(base):
     print("ok /api/health")
 
 
-def check_calculate_stream(base, ages):
-    # The calculator page's endpoint. Moves to the next age while answers come
-    # from the cache, until the deployed code computes one.
-    for age in ages:
-        household = {**HOUSEHOLD, "age_head": age}
-        computed, result = read_stream(
-            stream_events(f"{base}/api/calculate-stream", household)
-        )
-        if computed:
-            check_result(f"/api/calculate-stream (age {age})", result)
-            return
-    sys.exit(
-        f"FAIL /api/calculate-stream: the answers for ages {list(ages)} all came "
-        "from the cache, so this deploy's code never ran"
+def check_calculate_stream(base, household=FRESH):
+    # The calculator page's endpoint. An API that predates skip_cache ignores
+    # it, so a cached answer means the deploy didn't take.
+    computed, result = read_stream(
+        stream_events(f"{base}/api/calculate-stream", household)
     )
+    if not computed:
+        sys.exit(
+            "FAIL /api/calculate-stream answered from the cache although the "
+            "request skipped it, so the deployed API doesn't honor skip_cache"
+        )
+    check_result("/api/calculate-stream", result)
 
 
-def check_calculate(base, age):
+def check_calculate(base):
     # The page's fallback when the stream fails. Its response doesn't say
-    # whether it came from the cache, so it gets an age the stream check didn't
-    # try.
-    result = call(f"{base}/api/calculate", {**HOUSEHOLD, "age_head": age})
-    check_result(f"/api/calculate (age {age})", result)
+    # whether it came from the cache, so this relies on the request skipping it.
+    check_result("/api/calculate", call(f"{base}/api/calculate", FRESH))
 
 
 def check_explain(base):
@@ -171,17 +209,32 @@ def check_explain(base):
 
 
 def main():
+    global COMMIT, WAIT_SECONDS
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("api_url")
-    parser.add_argument("--explain", action="store_true")
+    parser.add_argument(
+        "--explain",
+        action="store_true",
+        help="check AI explanations instead of the calculator",
+    )
+    parser.add_argument(
+        "--commit", help="accept answers only from containers of this commit"
+    )
+    parser.add_argument(
+        "--wait",
+        type=int,
+        default=WAIT_SECONDS,
+        help="seconds to wait for the commit's containers to answer each check",
+    )
     args = parser.parse_args()
+    COMMIT, WAIT_SECONDS = args.commit, args.wait
     base = args.api_url.rstrip("/")
-    ages = random.sample(AGES, len(AGES))
-    check_health(base)
-    check_calculate_stream(base, ages[:STREAM_TRIES])
-    check_calculate(base, ages[-1])
     if args.explain:
-        check_explain(base)
+        checks = [check_health, check_explain]
+    else:
+        checks = [check_health, check_calculate_stream, check_calculate]
+    for check in checks:
+        from_this_deploy(check, base)
 
 
 if __name__ == "__main__":

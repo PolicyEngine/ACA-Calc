@@ -97,10 +97,15 @@ runs the API tests against the image's pinned packages on pull requests that
 touch the backend. When such a change merges to `main`, it deploys the app and
 smoke-tests `/api/health`, both calculator endpoints (`/api/calculate-stream`,
 which the page calls, and `/api/calculate`, its fallback) and `/api/explain`.
-The calculator checks vary the household so the new code computes the answers
-instead of reading them from the 7-day cache, and the stream check confirms
-that it did. If a calculator check fails, the workflow rolls the app back to
-the previous version.
+The calculator checks set `skip_cache`, which makes both endpoints compute a
+new answer without reading or writing the 7-day cache, and the stream check
+confirms that the new code computed its answer. Modal can keep sending
+requests to the previous version's warm containers for a while after a
+deploy, so the API names the commit a CI deploy came from on every response
+(`X-ACA-API-Commit`), and each check waits until the merged commit's
+containers answer it. If a
+calculator check fails, the workflow rolls the app back to the previous
+version.
 
 The image installs the exact package versions in `modal-requirements.txt`,
 captured from the container that served the calculator before this workflow

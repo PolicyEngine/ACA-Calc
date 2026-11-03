@@ -1,5 +1,6 @@
 """Modal deployment for ACA Calculator API."""
 
+import os
 from pathlib import Path
 
 import modal
@@ -22,7 +23,9 @@ image = (
     .pip_install_from_requirements(str(REQUIREMENTS))
     .add_local_dir("aca_calc", "/root/aca_calc", copy=True)
     .add_local_dir("src/aca_api", "/root/src/aca_api", copy=True)
-    .env({"PYTHONPATH": "/root"})
+    # The commit a CI deploy came from. The API reports it, so the smoke test
+    # can tell this deploy's containers from the previous version's.
+    .env({"PYTHONPATH": "/root", "ACA_API_COMMIT": os.environ.get("ACA_API_COMMIT", "")})
 )
 
 
