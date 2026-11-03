@@ -6,10 +6,10 @@ Checks /api/health, then both calculator endpoints: /api/calculate-stream,
 which the calculator page calls, and /api/calculate, its fallback. Both vary
 the household so the deployed code computes the answer instead of returning
 one from the 7-day calculation cache, and the stream check confirms that it
-did. With --explain it also
-requests a fixed household's AI narrative from /api/explain, which calls the
-Anthropic API unless the answer is already in the 7-day explanation cache.
-Uses only the standard library, so it runs without the app's dependencies.
+did. With --explain it also requests a fixed household's AI narrative from
+/api/explain, which calls the Anthropic API unless the answer is already in
+the 7-day explanation cache. Uses only the standard library, so it runs
+without the app's dependencies.
 """
 
 import argparse
