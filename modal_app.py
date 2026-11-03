@@ -1,5 +1,7 @@
 """Modal deployment for ACA Calculator API."""
 
+from pathlib import Path
+
 import modal
 
 app = modal.App("aca-calc-api")
@@ -10,18 +12,14 @@ calculation_cache = modal.Dict.from_name("aca-calc-cache", create_if_missing=Tru
 # Persistent cache for AI explanations
 explanation_cache = modal.Dict.from_name("aca-explain-cache", create_if_missing=True)
 
+# Exact package versions from the live container, so a deploy changes only this
+# repo's code. Read the notes in the file before changing a pin.
+REQUIREMENTS = Path(__file__).parent / "modal-requirements.txt"
+
 image = (
     modal.Image.debian_slim(python_version="3.11")
     .apt_install("git")
-    .pip_install(
-        "fastapi",
-        "uvicorn",
-        "pydantic",
-        "cachetools",
-        "anthropic",
-        "numpy",
-        "policyengine-us>=1.459.0",
-    )
+    .pip_install_from_requirements(str(REQUIREMENTS))
     .add_local_dir("aca_calc", "/root/aca_calc", copy=True)
     .add_local_dir("src/aca_api", "/root/src/aca_api", copy=True)
     .env({"PYTHONPATH": "/root"})

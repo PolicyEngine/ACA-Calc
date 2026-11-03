@@ -88,6 +88,33 @@ python tests/test_reform_verification.py
 python process_counties.py
 ```
 
+## Deploying the API
+
+The calculator page calls a FastAPI backend on Modal: app `aca-calc-api` in
+the `main` environment of PolicyEngine's Modal workspace, defined in
+`modal_app.py`. The `Modal API` workflow (`.github/workflows/modal-api.yml`)
+runs the API tests against the image's pinned packages on pull requests that
+touch the backend. When such a change merges to `main`, it deploys the app and
+smoke-tests `/api/health`, `/api/calculate` and `/api/explain`. If the
+calculator check fails, it rolls the app back to the previous version.
+
+The image installs the exact package versions in `modal-requirements.txt`,
+captured from the container that served the calculator before this workflow
+existed. Change a pin only with a test of the new set and a comparison of
+`/api/calculate` results.
+
+To deploy or roll back by hand (needs access to PolicyEngine's Modal
+workspace):
+
+```bash
+uvx --from modal==1.3.0.post1 modal deploy --env main modal_app.py
+uvx --from modal==1.3.0.post1 modal app history aca-calc-api --env main
+uvx --from modal==1.3.0.post1 modal app rollback aca-calc-api --env main
+```
+
+Each `/api/explain` request that misses the 7-day explanation cache calls the
+Anthropic API on PolicyEngine's account.
+
 ## License
 
 Open source - see PolicyEngine US license for underlying calculations.
