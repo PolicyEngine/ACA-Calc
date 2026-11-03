@@ -30,14 +30,17 @@ on:
 permissions:
   contents: read
 
+# A newer push supersedes a pull request's run; deploys always run to the end.
 concurrency:
   group: modal-api-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   API_URL: https://policyengine--aca-calc-api-fastapi-app.modal.run
   MODAL_VERSION: 1.4.2
   UV_VERSION: 0.11.7
+  # Use the runner's Python; downloading one has taken over 10 minutes.
+  UV_PYTHON_PREFERENCE: only-system
 
 jobs:
   test:
@@ -45,6 +48,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
           version: ${{ env.UV_VERSION }}
@@ -70,12 +76,13 @@ jobs:
           version: ${{ env.UV_VERSION }}
       - name: Deploy aca-calc-api
         run: uvx --from "modal==$MODAL_VERSION" modal deploy --env main modal_app.py
+      # The smoke test uses only the standard library, so any Python runs it.
       - name: Smoke-test the calculator
         id: calculator
-        run: uv run --no-project --python 3.11 scripts/smoke_test_api.py "$API_URL"
+        run: uv run --no-project scripts/smoke_test_api.py "$API_URL"
       - name: Roll back to the previous version if the calculator fails
         if: failure() && steps.calculator.outcome == 'failure'
         run: uvx --from "modal==$MODAL_VERSION" modal app rollback aca-calc-api --env main
       # Calls the Anthropic API unless this household's answer is cached.
       - name: Smoke-test AI explanations
-        run: uv run --no-project --python 3.11 scripts/smoke_test_api.py "$API_URL" --explain
+        run: uv run --no-project scripts/smoke_test_api.py "$API_URL" --explain
