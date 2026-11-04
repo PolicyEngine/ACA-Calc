@@ -45,6 +45,38 @@ def test_a_stream_that_stops_early_fails():
         smoke.read_stream([{"step": "setup"}, {"step": "baseline"}])
 
 
+# An answer that passes every check in check_result.
+HEALTHY_ANSWER = {
+    "income": [0.0, 1.0],
+    "ptc_baseline": [1.0, 0.0],
+    "ptc_700fpl": [1.0, 0.0],
+    "fpl": 1.0,
+    "slcsp": 1.0,
+}
+
+
+def test_the_result_check_passes_a_healthy_answer():
+    smoke.check_result("answer", HEALTHY_ANSWER)
+
+
+@pytest.mark.parametrize(
+    "change, message",
+    [
+        ({"income": [0.0]}, "income has 1 points"),
+        ({"ptc_baseline": [1.0]}, "ptc_baseline has 1 points"),
+        ({"ptc_baseline": [1.0, -1.0]}, "ptc_baseline has a negative"),
+        ({"ptc_700fpl": [1.0, float("nan")]}, "ptc_700fpl has a negative or non-finite"),
+        ({"fpl": 0.0}, r"\(0\.0, 1\.0\)"),
+        ({"slcsp": 0.0}, r"\(1\.0, 0\.0\)"),
+        ({"ptc_baseline": [0.0, 0.0]}, "baseline PTC is zero"),
+        ({"ptc_700fpl": [0.0, 0.0]}, "700% FPL PTC is zero"),
+    ],
+)
+def test_the_result_check_rejects_a_wrong_answer(change, message):
+    with pytest.raises(AssertionError, match=message):
+        smoke.check_result("answer", {**HEALTHY_ANSWER, **change})
+
+
 def test_an_answer_must_name_the_commit(monkeypatch):
     monkeypatch.setattr(smoke, "COMMIT", "this")
     smoke.check_commit({"X-ACA-API-Commit": "this"})
