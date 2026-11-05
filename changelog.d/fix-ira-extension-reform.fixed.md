@@ -1,0 +1,1 @@
+Fix the IRA-extension scenario, which failed on every request since policyengine-us moved the contribution schedule to three lists, and show the error when a calculation fails instead of a blank page.

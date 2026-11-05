@@ -147,6 +147,7 @@ function Calculator() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let gotResult = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -157,29 +158,40 @@ function Calculator() {
         buffer = lines.pop() || "";
 
         for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const event = JSON.parse(line.slice(6));
-
-              if (event.step === "error") {
-                throw new Error(event.error);
-              }
-
-              if (event.progress !== undefined) {
-                setProgress({ percent: event.progress, message: event.message || "" });
-              }
-
-              if (event.step === "complete" && event.result) {
-                setResults(event.result);
-                setInCache(cacheKey, event.result);
-              }
-            } catch (parseErr) {
-              if (parseErr.message !== "Unexpected end of JSON input") {
-                console.error("SSE parse error:", parseErr);
-              }
+          if (!line.startsWith("data: ")) continue;
+          let event;
+          try {
+            event = JSON.parse(line.slice(6));
+          } catch (parseErr) {
+            if (parseErr.message !== "Unexpected end of JSON input") {
+              console.error("SSE parse error:", parseErr);
             }
+            continue;
+          }
+
+          // The server reports a failure as an event inside an HTTP 200:
+          // stop reading, so the regular endpoint is tried and its error shown
+          if (event.step === "error") {
+            reader.cancel().catch(() => {});
+            throw new Error(event.error || "Calculation failed");
+          }
+
+          if (event.progress !== undefined) {
+            setProgress({ percent: event.progress, message: event.message || "" });
+          }
+
+          if (event.step === "complete" && event.result) {
+            gotResult = true;
+            setResults(event.result);
+            setInCache(cacheKey, event.result);
           }
         }
+      }
+
+      // A stream that closes without a result falls back too, rather than
+      // leaving the page blank
+      if (!gotResult) {
+        throw new Error("The calculation ended without a result");
       }
     } catch (err) {
       // Fallback to regular endpoint if streaming fails
