@@ -28,6 +28,10 @@ class CalculateRequest(BaseModel):
     show_simplified_bracket: bool = Field(
         default=False, description="Calculate simplified bracket reform scenario"
     )
+    skip_cache: bool = Field(
+        default=False,
+        description="Compute a new answer without reading or writing the cache",
+    )
 
     @field_validator("dependent_ages")
     @classmethod
