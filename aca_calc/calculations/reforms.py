@@ -2,46 +2,56 @@
 
 from policyengine_core.reforms import Reform
 
+# The enhanced applicable-percentage schedule of the American Rescue Plan Act
+# (26 U.S.C. 36B(b)(3)(A)(iii), in effect for 2021-2025 after the Inflation
+# Reduction Act's extension): 0% of income up to 150% of the poverty line,
+# rising linearly to 2% at 200%, 4% at 250%, 6% at 300% and 8.5% at 400%.
+# policyengine-us stores the schedule as three lists
+# (gov.aca.required_contribution_percentage.threshold, .initial and .final, in
+# FPL multiples and fractions of income); its formula holds the last bracket's
+# final rate, 8.5%, for every income above 400%. These are its own 2021 values.
+ENHANCED_THRESHOLDS = [0, 1.5, 2.0, 2.5, 3.0, 4.0]
+ENHANCED_INITIAL = [0, 0, 0.02, 0.04, 0.06]
+ENHANCED_FINAL = [0, 0.02, 0.04, 0.06, 0.085]
+
+ENHANCED_PERIOD = "2026-01-01.2100-12-31"
+
 
 def create_enhanced_ptc_reform():
-    """Create reform extending enhanced PTCs (IRA extension) through 2026.
+    """Create reform extending enhanced PTCs (IRA extension) from 2026 on.
 
-    This extends the current IRA-enhanced subsidies indefinitely with:
-    - 8.5% cap at 400%+ FPL
-    - No income eligibility limit above 400% FPL
+    Restores the ARPA/IRA applicable-percentage schedule and removes the 400%
+    FPL eligibility limit, so households above 400% FPL pay at most 8.5% of
+    income for the benchmark plan.
+
+    The three schedule lists are replaced together: the threshold list has one
+    more entry than the rate lists, and the 2026 law's lists have a 133% FPL
+    threshold the enhanced schedule doesn't.
 
     Returns:
         Reform: PolicyEngine reform object
     """
     return Reform.from_dict(
         {
-            "gov.aca.required_contribution_percentage[0].amount": {
-                "2026-01-01.2100-12-31": 0
-            },
-            "gov.aca.required_contribution_percentage[1].amount": {
-                "2026-01-01.2100-12-31": 0
-            },
-            "gov.aca.required_contribution_percentage[2].amount": {
-                "2026-01-01.2100-12-31": 0
-            },
-            "gov.aca.required_contribution_percentage[3].amount": {
-                "2026-01-01.2100-12-31": 0.02
-            },
-            "gov.aca.required_contribution_percentage[4].amount": {
-                "2026-01-01.2100-12-31": 0.04
-            },
-            "gov.aca.required_contribution_percentage[5].amount": {
-                "2026-01-01.2100-12-31": 0.06
-            },
-            "gov.aca.required_contribution_percentage[6].amount": {
-                "2026-01-01.2100-12-31": 0.085
-            },
-            "gov.aca.ptc_income_eligibility[2].amount": {
-                "2026-01-01.2100-12-31": True
-            },
+            "gov.aca.required_contribution_percentage.threshold": {ENHANCED_PERIOD: ENHANCED_THRESHOLDS},
+            "gov.aca.required_contribution_percentage.initial": {ENHANCED_PERIOD: ENHANCED_INITIAL},
+            "gov.aca.required_contribution_percentage.final": {ENHANCED_PERIOD: ENHANCED_FINAL},
+            "gov.aca.ptc_income_eligibility[2].amount": {ENHANCED_PERIOD: True},
         },
         country_id="us",
     )
+
+
+def _contrib_reform(module: str, name: str):
+    """A structural ACA reform from policyengine-us, or an error saying which
+    is missing: a missing reform must not show as zero credits."""
+    try:
+        reforms = __import__(f"policyengine_us.reforms.aca.{module}", fromlist=[name])
+        return getattr(reforms, name)
+    except (ImportError, AttributeError) as e:
+        raise ImportError(
+            f"policyengine-us has no {name} reform (policyengine_us.reforms.aca.{module}): {e}"
+        ) from e
 
 
 def create_700fpl_reform():
@@ -58,13 +68,7 @@ def create_700fpl_reform():
     Returns:
         Reform: PolicyEngine reform object
     """
-    # Import the structural reform from policyengine-us
-    try:
-        from policyengine_us.reforms.aca.aca_ptc_700_fpl_cliff import aca_ptc_700_fpl_cliff
-        return aca_ptc_700_fpl_cliff
-    except ImportError:
-        # Fallback if the reform isn't available in the installed version
-        return None
+    return _contrib_reform("aca_ptc_700_fpl_cliff", "aca_ptc_700_fpl_cliff")
 
 
 def create_additional_bracket_reform():
@@ -81,11 +85,7 @@ def create_additional_bracket_reform():
     Returns:
         Reform: PolicyEngine reform object
     """
-    try:
-        from policyengine_us.reforms.aca.aca_ptc_additional_bracket import aca_ptc_additional_bracket
-        return aca_ptc_additional_bracket
-    except ImportError:
-        return None
+    return _contrib_reform("aca_ptc_additional_bracket", "aca_ptc_additional_bracket")
 
 
 def create_simplified_bracket_reform():
@@ -103,8 +103,4 @@ def create_simplified_bracket_reform():
     Returns:
         Reform: PolicyEngine reform object
     """
-    try:
-        from policyengine_us.reforms.aca.aca_ptc_simplified_bracket import aca_ptc_simplified_bracket
-        return aca_ptc_simplified_bracket
-    except ImportError:
-        return None
+    return _contrib_reform("aca_ptc_simplified_bracket", "aca_ptc_simplified_bracket")

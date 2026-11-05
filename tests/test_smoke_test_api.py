@@ -49,6 +49,7 @@ def test_a_stream_that_stops_early_fails():
 HEALTHY_ANSWER = {
     "income": [0.0, 1.0],
     "ptc_baseline": [1.0, 0.0],
+    "ptc_ira": [1.0, 0.0],
     "ptc_700fpl": [1.0, 0.0],
     "fpl": 1.0,
     "slcsp": 1.0,
@@ -69,6 +70,7 @@ def test_the_result_check_passes_a_healthy_answer():
         ({"fpl": 0.0}, r"\(0\.0, 1\.0\)"),
         ({"slcsp": 0.0}, r"\(1\.0, 0\.0\)"),
         ({"ptc_baseline": [0.0, 0.0]}, "baseline PTC is zero"),
+        ({"ptc_ira": [0.0, 0.0]}, "IRA-extension PTC is zero"),
         ({"ptc_700fpl": [0.0, 0.0]}, "700% FPL PTC is zero"),
     ],
 )
