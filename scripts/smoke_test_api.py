@@ -27,14 +27,13 @@ import time
 import urllib.error
 import urllib.request
 
-# The IRA-extension scenario is off because it fails on the pinned
-# policyengine-us, which restructured gov.aca.required_contribution_percentage.
-# Checking it would roll back every deploy until the reform is fixed.
+# The IRA-extension scenario is the page's default, so the calculator checks
+# include it with the 700% FPL scenario.
 HOUSEHOLD = {
     "age_head": 35,
     "state": "PA",
     "county": "Lebanon County",
-    "show_ira": False,
+    "show_ira": True,
     "show_700fpl": True,
 }
 
@@ -136,6 +135,7 @@ def check_result(label, result):
             )
     assert result["fpl"] > 0 and result["slcsp"] > 0, (result["fpl"], result["slcsp"])
     assert max(result["ptc_baseline"]) > 0, f"{label}: baseline PTC is zero at every income"
+    assert max(result["ptc_ira"]) > 0, f"{label}: IRA-extension PTC is zero at every income"
     assert max(result["ptc_700fpl"]) > 0, f"{label}: 700% FPL PTC is zero at every income"
     print(
         f"ok {label}: {points} points, FPL {result['fpl']:,.0f}, "
@@ -189,6 +189,8 @@ def check_explain(base):
         "medicaid_adult_threshold_pct": 138,
         "medicaid_child_threshold_pct": 162,
         "chip_threshold_pct": 0,
+        # Without the IRA scenario, so the request matches the one cached
+        # before the calculator checks turned it on.
         "show_ira": False,
         "show_700fpl": True,
         "sample_income": sample,
