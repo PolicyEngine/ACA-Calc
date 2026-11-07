@@ -124,6 +124,28 @@ uvx --from modal==1.4.2 modal app rollback aca-calc-api --env main
 Each `/api/explain` request that misses the 7-day explanation cache calls the
 Anthropic API on PolicyEngine's account.
 
+## The frontend's host
+
+policyengine.org serves the frontend at `/us/aca-calc` through
+policyengine-app-v2's zone rewrite (`website/src/data/appZoneRoutes.ts`) to
+`aca-calc.vercel.app`. `next.config.mjs` sends a visit straight to that host,
+with a 308, to the same page on `www.policyengine.org/us/aca-calc`. The rule
+keys on `x-forwarded-host`, which Vercel sets to the host the visitor asked
+for: `aca-calc.vercel.app` on a direct visit, `www.policyengine.org` on a
+request policyengine.org proxies. Previews keep their own hosts, so the rule
+leaves them alone.
+
+After a production deploy, a direct visit should answer 308 and
+policyengine.org should still serve the page:
+
+```bash
+curl -sI https://aca-calc.vercel.app/us/aca-calc
+curl -sI https://www.policyengine.org/us/aca-calc
+```
+
+The first should answer 308 with `location:
+https://www.policyengine.org/us/aca-calc`, the second 200.
+
 ## License
 
 Open source - see PolicyEngine US license for underlying calculations.
