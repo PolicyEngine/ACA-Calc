@@ -22,7 +22,12 @@ const COLORS = {
   bipartisan: "#7c3aed",
   additionalBracket: "#059669",  // emerald-600
   simplifiedBracket: "#d97706",  // amber-600
+  // Variants of H.R. 1834's schedule, drawn dashed because they follow it over
+  // most incomes.
+  cap700: "#1e3a8a",    // blue-900
+  minPremium: "#e11d48", // rose-600
 };
+const VARIANT_DASH = "6 4";
 
 function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: externalVisibleLines }) {
   const hasExternalLineControls =
@@ -39,6 +44,8 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
     fpl700_focus: ["ptcBaseline", "ptc700FPL"],
     additional_focus: ["ptcBaseline", "ptcAdditionalBracket"],
     simplified_focus: ["ptcBaseline", "ptcSimplifiedBracket"],
+    cap700_focus: ["ptcBaseline", "ptc700FPLCap"],
+    minprem_focus: ["ptcBaseline", "ptcMinPremium"],
     both_reforms: ["ptcBaseline", "ptcIRA", "ptc700FPL"],
     impact: ["deltaIRA", "delta700FPL"],
   }[chartState] || ["ptcBaseline"];
@@ -77,6 +84,8 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
         ptc700FPL: data.ptc_700fpl?.[i] || 0,
         ptcAdditionalBracket: data.ptc_additional_bracket?.[i] || 0,
         ptcSimplifiedBracket: data.ptc_simplified_bracket?.[i] || 0,
+        ptc700FPLCap: data.ptc_700fpl_cap?.[i] || 0,
+        ptcMinPremium: data.ptc_min_premium?.[i] || 0,
         netIncomeBaseline: data.net_income_baseline?.[i] || 0,
         netIncomeIRA: data.net_income_ira?.[i] || 0,
         netIncome700FPL: data.net_income_700fpl?.[i] || 0,
@@ -94,6 +103,8 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
         case "ptc700FPL": return externalVisibleLines.fpl700 === true;
         case "ptcAdditionalBracket": return externalVisibleLines.additionalBracket === true;
         case "ptcSimplifiedBracket": return externalVisibleLines.simplifiedBracket === true;
+        case "ptc700FPLCap": return externalVisibleLines.cap700 === true;
+        case "ptcMinPremium": return externalVisibleLines.minPremium === true;
         case "medicaid": return false; // Not togglable
         case "chip": return false; // Not togglable
         default: return false;
@@ -117,7 +128,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
   }, [data, fpl]);
 
   // For impact/focus views, calculate deltas (gains over baseline)
-  const deltaStates = ["impact", "ira_impact", "gain_view", "fpl700_focus", "additional_focus", "simplified_focus", "both_reforms"];
+  const deltaStates = ["impact", "ira_impact", "gain_view", "fpl700_focus", "additional_focus", "simplified_focus", "cap700_focus", "minprem_focus", "both_reforms"];
   const impactData = useMemo(() => {
     if (!deltaStates.includes(chartState)) return chartData;
     return chartData.map((d) => ({
@@ -129,6 +140,8 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
       deltaIRAOver700FPL: Math.max(0, d.ptcIRA - Math.max(d.ptcBaseline, d.ptc700FPL)),
       deltaAdditionalBracket: Math.max(0, d.ptcAdditionalBracket - d.ptcBaseline),
       deltaSimplifiedBracket: Math.max(0, d.ptcSimplifiedBracket - d.ptcBaseline),
+      delta700FPLCap: Math.max(0, d.ptc700FPLCap - d.ptcBaseline),
+      deltaMinPremium: Math.max(0, d.ptcMinPremium - d.ptcBaseline),
     }));
   }, [chartData, chartState]);
 
@@ -181,23 +194,27 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
       case "chip_focus":
         return "CHIP coverage by income";
       case "ira_reform":
-        return "Baseline vs IRA extension";
+        return "Current law vs H.R. 1834";
       case "ira_impact":
-        return "IRA extension vs current law";
+        return "H.R. 1834 vs current law";
       case "fpl700_focus":
         return "700% FPL bill vs current law";
       case "additional_focus":
         return "Additional bracket vs current law";
       case "simplified_focus":
         return "Simplified bracket vs current law";
+      case "cap700_focus":
+        return "Enhanced credits capped at 700% FPL vs current law";
+      case "minprem_focus":
+        return "Enhanced credits with a $5 minimum premium vs current law";
       case "gain_view":
-        return "Gain from reform vs baseline";
+        return "Gain over current law";
       case "both_reforms":
         return "Comparing all policy options";
       case "all_programs":
         return "Health coverage programs by income";
       default:
-        return "Annual health benefits by income (2026)";
+        return data?.year ? `Annual health benefits by income (${data.year})` : "Annual health benefits by income";
     }
   };
 
@@ -222,7 +239,9 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
     && chartState !== "both_reforms"
     && chartState !== "fpl700_focus"
     && chartState !== "additional_focus"
-    && chartState !== "simplified_focus";
+    && chartState !== "simplified_focus"
+    && chartState !== "cap700_focus"
+    && chartState !== "minprem_focus";
 
   return (
     <div className="chart-container">
@@ -259,7 +278,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             fontSize={12}
             domain={getYDomain()}
             ticks={(() => {
-              const maxY = Math.max(...chartData.map(d => Math.max(d.ptcBaseline || 0, d.ptcIRA || 0, d.ptc700FPL || 0)));
+              const maxY = Math.max(...chartData.map(d => Math.max(d.ptcBaseline || 0, d.ptcIRA || 0, d.ptc700FPL || 0, d.ptc700FPLCap || 0, d.ptcMinPremium || 0)));
               const ticks = [];
               for (let i = 0; i <= maxY + 4000; i += 4000) {
                 ticks.push(i);
@@ -267,7 +286,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
               return ticks;
             })()}
             label={{
-              value: (chartState === "impact" || chartState === "gain_view") ? "Gain over baseline" : "Annual value",
+              value: (chartState === "impact" || chartState === "gain_view") ? "Gain over current law" : "Annual value",
               angle: -90,
               position: "insideLeft",
               offset: 10,
@@ -301,7 +320,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
               fontWeight: chartState === "cliff_focus" ? 600 : 400,
             }}
           />
-          {chartState === "both_reforms" && (
+          {(chartState === "both_reforms" || chartState === "cap700_focus") && (
             <ReferenceLine
               x={fpl * 7}
               stroke="#d1d5db"
@@ -315,7 +334,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             <Area
               type="monotone"
               dataKey="ptcBaseline"
-              name="Baseline (Current Law)"
+              name="Current law"
               fill={COLORS.baseline}
               fillOpacity={0.4}
               stroke={COLORS.baseline}
@@ -327,7 +346,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             <Area
               type="monotone"
               dataKey="deltaIRA"
-              name="Additional from IRA"
+              name="Additional from H.R. 1834"
               fill={COLORS.ira}
               fillOpacity={0.5}
               stroke={COLORS.ira}
@@ -341,7 +360,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             <Area
               type="monotone"
               dataKey="ptcBaseline"
-              name="Baseline (Current Law)"
+              name="Current law"
               fill={COLORS.baseline}
               fillOpacity={0.4}
               stroke={COLORS.baseline}
@@ -367,7 +386,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             <Area
               type="monotone"
               dataKey="ptcBaseline"
-              name="Baseline (Current Law)"
+              name="Current law"
               fill={COLORS.baseline}
               fillOpacity={0.4}
               stroke={COLORS.baseline}
@@ -393,7 +412,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             <Area
               type="monotone"
               dataKey="ptcBaseline"
-              name="Baseline (Current Law)"
+              name="Current law"
               fill={COLORS.baseline}
               fillOpacity={0.4}
               stroke={COLORS.baseline}
@@ -414,12 +433,64 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             />
           )}
 
+          {/* 700% FPL CAP FOCUS - baseline + the capped enhanced credits */}
+          {chartState === "cap700_focus" && (
+            <Area
+              type="monotone"
+              dataKey="ptcBaseline"
+              name="Current law"
+              fill={COLORS.baseline}
+              fillOpacity={0.4}
+              stroke={COLORS.baseline}
+              strokeWidth={2}
+              stackId="cap700_stack"
+            />
+          )}
+          {chartState === "cap700_focus" && (
+            <Area
+              type="monotone"
+              dataKey="delta700FPLCap"
+              name="Additional with the 700% FPL cap"
+              fill={COLORS.cap700}
+              fillOpacity={0.4}
+              stroke={COLORS.cap700}
+              strokeWidth={2}
+              stackId="cap700_stack"
+            />
+          )}
+
+          {/* $5 MINIMUM PREMIUM FOCUS - baseline + the enhanced credits with a minimum */}
+          {chartState === "minprem_focus" && (
+            <Area
+              type="monotone"
+              dataKey="ptcBaseline"
+              name="Current law"
+              fill={COLORS.baseline}
+              fillOpacity={0.4}
+              stroke={COLORS.baseline}
+              strokeWidth={2}
+              stackId="minprem_stack"
+            />
+          )}
+          {chartState === "minprem_focus" && (
+            <Area
+              type="monotone"
+              dataKey="deltaMinPremium"
+              name="Additional with the $5 minimum premium"
+              fill={COLORS.minPremium}
+              fillOpacity={0.4}
+              stroke={COLORS.minPremium}
+              strokeWidth={2}
+              stackId="minprem_stack"
+            />
+          )}
+
           {/* GAIN VIEW - lines only showing gains over baseline */}
           {chartState === "gain_view" && shouldShow("ptcIRA") && (
             <Line
               type="monotone"
               dataKey="deltaIRA"
-              name="Gain from IRA Extension"
+              name="Gain from H.R. 1834"
               stroke={COLORS.ira}
               strokeWidth={2.5}
               dot={false}
@@ -455,13 +526,35 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
               dot={false}
             />
           )}
+          {chartState === "gain_view" && shouldShow("ptc700FPLCap") && (
+            <Line
+              type="monotone"
+              dataKey="delta700FPLCap"
+              name="Gain with the 700% FPL cap"
+              stroke={COLORS.cap700}
+              strokeWidth={2.5}
+              strokeDasharray={VARIANT_DASH}
+              dot={false}
+            />
+          )}
+          {chartState === "gain_view" && shouldShow("ptcMinPremium") && (
+            <Line
+              type="monotone"
+              dataKey="deltaMinPremium"
+              name="Gain with the $5 minimum premium"
+              stroke={COLORS.minPremium}
+              strokeWidth={2.5}
+              strokeDasharray={VARIANT_DASH}
+              dot={false}
+            />
+          )}
 
           {/* COMPARISON VIEW - for "Baseline vs Extension" tab (both_reforms) */}
           {chartState === "both_reforms" && shouldShow("ptcBaseline") && (
             <Area
               type="monotone"
               dataKey="ptcBaseline"
-              name="PTC (Baseline)"
+              name="PTC (current law)"
               fill={COLORS.baseline}
               fillOpacity={0.4}
               stroke={COLORS.baseline}
@@ -490,7 +583,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
                 !shouldShow("ptcBaseline") ? "ptcIRA" :
                 shouldShow("ptc700FPL") ? "deltaIRAOver700FPL" : "deltaIRA"
               }
-              name="PTC (IRA Extension)"
+              name="PTC (H.R. 1834)"
               fill={COLORS.ira}
               fillOpacity={0.5}
               stroke={COLORS.ira}
@@ -523,12 +616,36 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             />
           )}
 
+          {chartState === "both_reforms" && shouldShow("ptc700FPLCap") && (
+            <Line
+              type="monotone"
+              dataKey="ptc700FPLCap"
+              name="PTC (700% FPL cap)"
+              stroke={COLORS.cap700}
+              strokeWidth={2.5}
+              strokeDasharray={VARIANT_DASH}
+              dot={false}
+            />
+          )}
+
+          {chartState === "both_reforms" && shouldShow("ptcMinPremium") && (
+            <Line
+              type="monotone"
+              dataKey="ptcMinPremium"
+              name="PTC ($5 minimum premium)"
+              stroke={COLORS.minPremium}
+              strokeWidth={2.5}
+              strokeDasharray={VARIANT_DASH}
+              dot={false}
+            />
+          )}
+
           {/* AI EXPLANATION MODE - for scrollytelling */}
           {showDefaultSeries && defaultVisibleLineKeys.includes("ptcBaseline") && (
             <Line
               type="monotone"
               dataKey="ptcBaseline"
-              name="PTC (Baseline)"
+              name="PTC (current law)"
               stroke={COLORS.baseline}
               strokeWidth={2.5}
               dot={false}
@@ -539,7 +656,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             <Line
               type="monotone"
               dataKey="ptcIRA"
-              name="PTC (IRA Extension)"
+              name="PTC (H.R. 1834)"
               stroke={COLORS.ira}
               strokeWidth={2.5}
               dot={false}

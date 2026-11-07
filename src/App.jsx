@@ -322,9 +322,9 @@ function App() {
       {!embedded && (
         <header className="header">
           <div className="header-content">
-            <h1>ACA Premium Tax Credits: 2025 vs 2026</h1>
+            <h1>ACA Premium Tax Credits</h1>
             <p className="subtitle">
-              Modeling how the scheduled expiration of IRA enhancements affects health insurance costs
+              How the expiration of the enhanced credits, and proposals to extend them, affect health insurance costs
             </p>
             <div className="page-tabs">
               <button

@@ -61,8 +61,14 @@ const getChipThreshold = (state) => {
 // Cache TTL: 24 hours in milliseconds
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 
+// Part of every browser cache key: change it when the API's answers change for
+// the same request (a new policyengine-us pin), so no one sees the old ones.
+const CACHE_VERSION = "policyengine-us-2.105.0";
+
 function getCacheKey(data) {
   const keyData = {
+    version: CACHE_VERSION,
+    year: data.year,
     age_head: data.age_head,
     age_spouse: data.age_spouse,
     dependent_ages: data.dependent_ages || [],
@@ -73,6 +79,8 @@ function getCacheKey(data) {
     show_700fpl: data.show_700fpl,
     show_additional_bracket: data.show_additional_bracket,
     show_simplified_bracket: data.show_simplified_bracket,
+    show_700fpl_cap: data.show_700fpl_cap,
+    show_min_premium: data.show_min_premium,
   };
   return `aca-calc-${JSON.stringify(keyData)}`;
 }
@@ -247,6 +255,7 @@ function Calculator() {
     const hasChildren = (formData.dependent_ages || []).length > 0;
 
     const explainRequest = {
+      year: formData.year,
       age_head: formData.age_head,
       age_spouse: formData.age_spouse,
       dependent_ages: formData.dependent_ages || [],
@@ -265,6 +274,8 @@ function Calculator() {
       show_700fpl: formData.show_700fpl,
       show_additional_bracket: formData.show_additional_bracket,
       show_simplified_bracket: formData.show_simplified_bracket,
+      show_700fpl_cap: formData.show_700fpl_cap,
+      show_min_premium: formData.show_min_premium,
       // PTC values at sample income for all reforms
       sample_income: sampleIncome,
       ptc_baseline_at_sample: findValueAtIncome(sampleIncome, results.income, results.ptc_baseline),
@@ -272,6 +283,8 @@ function Calculator() {
       ptc_700fpl_at_sample: formData.show_700fpl ? findValueAtIncome(sampleIncome, results.income, results.ptc_700fpl) : 0,
       ptc_additional_bracket_at_sample: formData.show_additional_bracket ? findValueAtIncome(sampleIncome, results.income, results.ptc_additional_bracket) : 0,
       ptc_simplified_bracket_at_sample: formData.show_simplified_bracket ? findValueAtIncome(sampleIncome, results.income, results.ptc_simplified_bracket) : 0,
+      ptc_700fpl_cap_at_sample: formData.show_700fpl_cap ? findValueAtIncome(sampleIncome, results.income, results.ptc_700fpl_cap) : 0,
+      ptc_min_premium_at_sample: formData.show_min_premium ? findValueAtIncome(sampleIncome, results.income, results.ptc_min_premium) : 0,
     };
 
     try {
@@ -319,7 +332,7 @@ function Calculator() {
         <div className="calculator-form-container">
           <h2 className="calculator-title">Calculate Your Premium Tax Credits</h2>
           <p className="calculator-subtitle">
-            Enter your household information to see how ACA policy changes would affect your health insurance costs.
+            Enter your household information to see your premium tax credits under current law and under proposals to change them.
           </p>
           <CalculatorForm onCalculate={handleCalculate} loading={loading} />
 
@@ -405,9 +418,12 @@ function Calculator() {
             ptc_700fpl: results.ptc_700fpl,
             ptc_additional_bracket: results.ptc_additional_bracket,
             ptc_simplified_bracket: results.ptc_simplified_bracket,
+            ptc_700fpl_cap: results.ptc_700fpl_cap,
+            ptc_min_premium: results.ptc_min_premium,
             medicaid: results.medicaid,
             chip: results.chip,
             fpl: results.fpl,
+            year: results.year,
           }}
           householdDescription={aiExplanation.household_description}
           onClose={() => setAiExplanation(null)}

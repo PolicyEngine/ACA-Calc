@@ -12,7 +12,12 @@ function CalculatorResults({ data, formData }) {
     fpl700: formData?.show_700fpl ?? false,
     additionalBracket: formData?.show_additional_bracket ?? false,
     simplifiedBracket: formData?.show_simplified_bracket ?? false,
+    cap700: formData?.show_700fpl_cap ?? false,
+    minPremium: formData?.show_min_premium ?? false,
   }), [formData]);
+
+  // An answer from before the API took a year is for 2026.
+  const year = data?.year || 2026;
 
   const [visibleLines, setVisibleLines] = useState({
     baseline: true,
@@ -20,6 +25,8 @@ function CalculatorResults({ data, formData }) {
     fpl700: false,
     additionalBracket: false,
     simplifiedBracket: false,
+    cap700: false,
+    minPremium: false,
   });
 
   // Sync visibleLines with selectedReforms when formData changes
@@ -30,6 +37,8 @@ function CalculatorResults({ data, formData }) {
       fpl700: selectedReforms.fpl700,
       additionalBracket: selectedReforms.additionalBracket,
       simplifiedBracket: selectedReforms.simplifiedBracket,
+      cap700: selectedReforms.cap700,
+      minPremium: selectedReforms.minPremium,
     });
   }, [selectedReforms]);
 
@@ -47,9 +56,12 @@ function CalculatorResults({ data, formData }) {
       ptc_700fpl: data.ptc_700fpl,
       ptc_additional_bracket: data.ptc_additional_bracket,
       ptc_simplified_bracket: data.ptc_simplified_bracket,
+      ptc_700fpl_cap: data.ptc_700fpl_cap,
+      ptc_min_premium: data.ptc_min_premium,
       medicaid: data.medicaid,
       chip: data.chip,
       fpl: data.fpl,
+      year: data.year,
     };
   }, [data]);
 
@@ -110,10 +122,15 @@ function CalculatorResults({ data, formData }) {
         fpl700: 0,
         additionalBracket: 0,
         simplifiedBracket: 0,
+        cap700: 0,
+        minPremium: 0,
         iraGain: 0,
         fpl700Gain: 0,
         additionalBracketGain: 0,
         simplifiedBracketGain: 0,
+        cap700Gain: 0,
+        minPremiumGain: 0,
+        benchmark: 0,
         fplPct: 0,
         onMedicaid: data.medicaid?.[0] > 0,
         onChip: data.chip?.[0] > 0,
@@ -125,6 +142,14 @@ function CalculatorResults({ data, formData }) {
     const fpl700 = interpolatePTC(income, data.income, data.ptc_700fpl);
     const additionalBracket = interpolatePTC(income, data.income, data.ptc_additional_bracket);
     const simplifiedBracket = interpolatePTC(income, data.income, data.ptc_simplified_bracket);
+    const cap700 = interpolatePTC(income, data.income, data.ptc_700fpl_cap);
+    const minPremium = interpolatePTC(income, data.income, data.ptc_min_premium);
+    // The annual benchmark premium for the members eligible for the credit at
+    // this income; an answer from before the API reported it by income has
+    // only the maximum.
+    const benchmark = data.slcsp_by_income?.length
+      ? interpolatePTC(income, data.income, data.slcsp_by_income)
+      : data.slcsp;
     const fplPct = (income / data.fpl) * 100;
 
     return {
@@ -138,6 +163,11 @@ function CalculatorResults({ data, formData }) {
       fpl700Gain: fpl700 - baseline,
       additionalBracketGain: additionalBracket - baseline,
       simplifiedBracketGain: simplifiedBracket - baseline,
+      cap700,
+      minPremium,
+      cap700Gain: cap700 - baseline,
+      minPremiumGain: minPremium - baseline,
+      benchmark,
       fplPct,
       onMedicaid,
       onChip,
@@ -153,9 +183,12 @@ function CalculatorResults({ data, formData }) {
     }).format(value);
   };
 
+  // What the benchmark plan costs after a credit, per month.
+  const netPremium = (credit) => Math.max(0, (userResults?.benchmark || 0) - credit) / 12;
+
   const tabs = [
-    { id: "gain", label: "Gain from Reform" },
-    { id: "comparison", label: "Baseline vs Extension" },
+    { id: "gain", label: "Gain over Current Law" },
+    { id: "comparison", label: "Current Law vs Proposals" },
     { id: "impact", label: "Your Impact" },
   ];
 
@@ -187,7 +220,29 @@ function CalculatorResults({ data, formData }) {
                     onChange={() => toggleLine('ira')}
                   />
                   <span className="toggle-color ira"></span>
-                  IRA Extension
+                  H.R. 1834
+                </label>
+              )}
+              {selectedReforms.cap700 && (
+                <label className={`toggle-item ${visibleLines.cap700 ? 'active' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={visibleLines.cap700}
+                    onChange={() => toggleLine('cap700')}
+                  />
+                  <span className="toggle-color cap700"></span>
+                  700% FPL cap (draft)
+                </label>
+              )}
+              {selectedReforms.minPremium && (
+                <label className={`toggle-item ${visibleLines.minPremium ? 'active' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={visibleLines.minPremium}
+                    onChange={() => toggleLine('minPremium')}
+                  />
+                  <span className="toggle-color min-premium"></span>
+                  $5 minimum premium (draft)
                 </label>
               )}
               {selectedReforms.fpl700 && (
@@ -247,7 +302,7 @@ function CalculatorResults({ data, formData }) {
                   onChange={() => toggleLine('baseline')}
                 />
                 <span className="toggle-color baseline"></span>
-                Baseline
+                Current law
               </label>
               {selectedReforms.ira && (
                 <label className={`toggle-item ${visibleLines.ira ? 'active' : ''}`}>
@@ -257,7 +312,29 @@ function CalculatorResults({ data, formData }) {
                     onChange={() => toggleLine('ira')}
                   />
                   <span className="toggle-color ira"></span>
-                  IRA Extension
+                  H.R. 1834
+                </label>
+              )}
+              {selectedReforms.cap700 && (
+                <label className={`toggle-item ${visibleLines.cap700 ? 'active' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={visibleLines.cap700}
+                    onChange={() => toggleLine('cap700')}
+                  />
+                  <span className="toggle-color cap700"></span>
+                  700% FPL cap (draft)
+                </label>
+              )}
+              {selectedReforms.minPremium && (
+                <label className={`toggle-item ${visibleLines.minPremium ? 'active' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={visibleLines.minPremium}
+                    onChange={() => toggleLine('minPremium')}
+                  />
+                  <span className="toggle-color min-premium"></span>
+                  $5 minimum premium (draft)
                 </label>
               )}
               {selectedReforms.fpl700 && (
@@ -323,7 +400,11 @@ function CalculatorResults({ data, formData }) {
               </div>
             </div>
 
-            {userResults && (
+            {userResults && (() => {
+              // Only members who'd buy a marketplace plan count toward the benchmark,
+              // so it is zero where everyone has Medicaid or CHIP.
+              const showNetPremium = userResults.benchmark > 0;
+              return (
               <div className="impact-results">
                 <div className="impact-summary">
                   <p className="fpl-indicator">
@@ -333,20 +414,56 @@ function CalculatorResults({ data, formData }) {
 
                 <div className="impact-cards">
                   <div className="impact-card baseline">
-                    <h4>Baseline (2026)</h4>
+                    <h4>Current law ({year})</h4>
                     <p className="impact-value">{formatCurrency(userResults.baseline)}</p>
                     <p className="impact-label">Annual PTC</p>
                     <p className="impact-monthly">{formatCurrency(userResults.baseline / 12)}/month</p>
+                    {showNetPremium && (
+                      <p className="impact-net">Benchmark plan after credit: {formatCurrency(netPremium(userResults.baseline))}/month</p>
+                    )}
                   </div>
 
                   {selectedReforms.ira && (
                     <div className="impact-card ira">
-                      <h4>IRA Extension</h4>
+                      <h4>H.R. 1834</h4>
                       <p className="impact-value">{formatCurrency(userResults.ira)}</p>
                       <p className="impact-label">Annual PTC</p>
                       <p className="impact-monthly">{formatCurrency(userResults.ira / 12)}/month</p>
                       {userResults.iraGain > 0 && (
                         <p className="impact-gain">+{formatCurrency(userResults.iraGain)}/year</p>
+                      )}
+                      {showNetPremium && (
+                        <p className="impact-net">Benchmark plan after credit: {formatCurrency(netPremium(userResults.ira))}/month</p>
+                      )}
+                    </div>
+                  )}
+
+                  {selectedReforms.cap700 && (
+                    <div className="impact-card cap700" title="The enhanced credits with eligibility ending at 700% FPL, as in a January 2026 draft of the CARE Act, which was not introduced">
+                      <h4>700% FPL cap (draft)</h4>
+                      <p className="impact-value">{formatCurrency(userResults.cap700)}</p>
+                      <p className="impact-label">Annual PTC</p>
+                      <p className="impact-monthly">{formatCurrency(userResults.cap700 / 12)}/month</p>
+                      {userResults.cap700Gain > 0 && (
+                        <p className="impact-gain">+{formatCurrency(userResults.cap700Gain)}/year</p>
+                      )}
+                      {showNetPremium && (
+                        <p className="impact-net">Benchmark plan after credit: {formatCurrency(netPremium(userResults.cap700))}/month</p>
+                      )}
+                    </div>
+                  )}
+
+                  {selectedReforms.minPremium && (
+                    <div className="impact-card min-premium" title="The enhanced credits, except that the credit can't cover the last $5 a month, as in a January 2026 draft of the CARE Act, which was not introduced">
+                      <h4>$5 minimum premium (draft)</h4>
+                      <p className="impact-value">{formatCurrency(userResults.minPremium)}</p>
+                      <p className="impact-label">Annual PTC</p>
+                      <p className="impact-monthly">{formatCurrency(userResults.minPremium / 12)}/month</p>
+                      {userResults.minPremiumGain > 0 && (
+                        <p className="impact-gain">+{formatCurrency(userResults.minPremiumGain)}/year</p>
+                      )}
+                      {showNetPremium && (
+                        <p className="impact-net">Benchmark plan after credit: {formatCurrency(netPremium(userResults.minPremium))}/month</p>
                       )}
                     </div>
                   )}
@@ -359,6 +476,9 @@ function CalculatorResults({ data, formData }) {
                       <p className="impact-monthly">{formatCurrency(userResults.fpl700 / 12)}/month</p>
                       {userResults.fpl700Gain > 0 && (
                         <p className="impact-gain">+{formatCurrency(userResults.fpl700Gain)}/year</p>
+                      )}
+                      {showNetPremium && (
+                        <p className="impact-net">Benchmark plan after credit: {formatCurrency(netPremium(userResults.fpl700))}/month</p>
                       )}
                     </div>
                   )}
@@ -376,6 +496,9 @@ function CalculatorResults({ data, formData }) {
                       {userResults.additionalBracketGain > 0 && (
                         <p className="impact-gain">+{formatCurrency(userResults.additionalBracketGain)}/year</p>
                       )}
+                      {showNetPremium && (
+                        <p className="impact-net">Benchmark plan after credit: {formatCurrency(netPremium(userResults.additionalBracket))}/month</p>
+                      )}
                     </div>
                   )}
 
@@ -391,6 +514,9 @@ function CalculatorResults({ data, formData }) {
                       <p className="impact-monthly">{formatCurrency(userResults.simplifiedBracket / 12)}/month</p>
                       {userResults.simplifiedBracketGain > 0 && (
                         <p className="impact-gain">+{formatCurrency(userResults.simplifiedBracketGain)}/year</p>
+                      )}
+                      {showNetPremium && (
+                        <p className="impact-net">Benchmark plan after credit: {formatCurrency(netPremium(userResults.simplifiedBracket))}/month</p>
                       )}
                     </div>
                   )}
@@ -436,8 +562,8 @@ function CalculatorResults({ data, formData }) {
                         <p>
                           At {fpl}% FPL, you are <strong>above the 700% FPL threshold</strong>.
                           {hasIra
-                            ? " The IRA Extension would provide subsidies, but the 700% FPL Bill only extends eligibility to 700% FPL."
-                            : " Your required contribution under the IRA Extension (8.5% of income) exceeds the benchmark premium cost, so you would not receive subsidies under either reform option."}
+                            ? " H.R. 1834 would provide subsidies, but the 700% FPL Bill only extends eligibility to 700% FPL."
+                            : " Your required contribution under H.R. 1834 (8.5% of income) exceeds the benchmark premium cost, so you would not receive subsidies under either reform option."}
                         </p>
                       );
                     }
@@ -448,7 +574,7 @@ function CalculatorResults({ data, formData }) {
                         return (
                           <p>
                             At {fpl}% FPL, you are <strong>above the 400% FPL cliff</strong> but within range of both reform options.
-                            Under baseline 2026 law, you would receive no premium tax credits.
+                            Under {year} current law, you would receive no premium tax credits.
                             Both reform options would provide you with subsidies.
                           </p>
                         );
@@ -456,7 +582,7 @@ function CalculatorResults({ data, formData }) {
                         return (
                           <p>
                             At {fpl}% FPL, you are <strong>above the 400% FPL cliff</strong>.
-                            The IRA Extension would provide subsidies. The 700% FPL Bill would not provide subsidies because
+                            H.R. 1834 would provide subsidies. The 700% FPL Bill would not provide subsidies because
                             your required contribution (9.25% of income) would exceed the benchmark premium cost.
                           </p>
                         );
@@ -476,7 +602,7 @@ function CalculatorResults({ data, formData }) {
                       return (
                         <p>
                           At {fpl}% FPL, you are <strong>in the marketplace subsidy range</strong>.
-                          You would receive subsidies under baseline law, but the reform options
+                          You would receive subsidies under current law, and the reform options
                           would increase your credits by lowering your required contribution percentage.
                         </p>
                       );
@@ -484,7 +610,7 @@ function CalculatorResults({ data, formData }) {
                       return (
                         <p>
                           At {fpl}% FPL, you are <strong>in the marketplace subsidy range</strong>.
-                          Your required contribution under baseline law would exceed the benchmark premium cost,
+                          Your required contribution under current law would exceed the benchmark premium cost,
                           so you would not receive subsidies. The reform options lower required contributions and may provide credits.
                         </p>
                       );
@@ -492,7 +618,8 @@ function CalculatorResults({ data, formData }) {
                   })()}
                 </div>
               </div>
-            )}
+              );
+            })()}
 
             {!userResults && (
               <div className="impact-placeholder">

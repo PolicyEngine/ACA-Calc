@@ -517,6 +517,16 @@
   border: 2px solid rgba(217, 119, 6, 0.3);
 }
 
+.impact-card.cap700 {
+  background: rgba(30, 58, 138, 0.08);
+  border: 2px dashed rgba(30, 58, 138, 0.35);
+}
+
+.impact-card.min-premium {
+  background: rgba(225, 29, 72, 0.08);
+  border: 2px dashed rgba(225, 29, 72, 0.3);
+}
+
 .impact-card h4 {
   font-size: 0.875rem;
   font-weight: 600;
@@ -552,6 +562,12 @@
   font-size: 0.9375rem;
   color: var(--pe-text-secondary);
   margin: 0;
+}
+
+.impact-net {
+  font-size: 0.8125rem;
+  color: var(--pe-text-secondary);
+  margin: var(--pe-space-sm) 0 0 0;
 }
 
 .impact-gain {
@@ -721,6 +737,14 @@
 
 .toggle-color.simplified {
   background: #d97706;
+}
+
+.toggle-color.cap700 {
+  background: #1e3a8a;
+}
+
+.toggle-color.min-premium {
+  background: #e11d48;
 }
 
 /* Responsive */

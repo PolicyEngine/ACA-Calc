@@ -10,6 +10,20 @@ const STATES = [
   "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY", "DC",
 ];
 
+// Coverage years the calculator models; the first is the default.
+export const YEARS = [2027, 2026];
+const DEFAULT_YEAR = YEARS[0];
+
+// The $5 minimum premium scenario needs a policyengine-us release with
+// gov.contrib.aca.minimum_premium (policyengine-us #10681) in the API's image.
+// Turn this on in the change that pins that release.
+export const MIN_PREMIUM_AVAILABLE = false;
+
+const parseYear = (value) => {
+  const year = parseInt(value, 10);
+  return YEARS.includes(year) ? year : DEFAULT_YEAR;
+};
+
 const STATE_NAMES = {
   AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California",
   CO: "Colorado", CT: "Connecticut", DE: "Delaware", FL: "Florida", GA: "Georgia",
@@ -40,6 +54,7 @@ const buildShareableUrl = (formData, includeAi = false) => {
   const ageSpouse = formData.age_spouse === "" ? 40 : formData.age_spouse;
   const depAges = formData.dependent_ages.map(age => age === "" ? 10 : age);
 
+  params.set("year", formData.year);
   params.set("age", ageHead);
   if (formData.married) {
     params.set("spouse", ageSpouse);
@@ -56,6 +71,8 @@ const buildShareableUrl = (formData, includeAi = false) => {
   if (!formData.show_700fpl) params.set("700fpl", "0");
   if (formData.show_additional_bracket) params.set("additional", "1");
   if (formData.show_simplified_bracket) params.set("simplified", "1");
+  if (formData.show_700fpl_cap) params.set("cap700", "1");
+  if (formData.show_min_premium) params.set("minprem", "1");
   if (includeAi) params.set("ai", "1");
 
   const baseUrl = window.location.origin + window.location.pathname;
@@ -82,6 +99,7 @@ const getFormDataFromUrl = () => {
   const dependentAges = depsStr ? depsStr.split(",").map(a => parseInt(a, 10)).filter(a => !isNaN(a)) : [];
 
   return {
+    year: parseYear(params.get("year")),
     age_head: parseInt(params.get("age"), 10) || 40,
     age_spouse: parseInt(params.get("spouse"), 10) || 40,
     married: params.has("spouse"),
@@ -94,6 +112,8 @@ const getFormDataFromUrl = () => {
     show_700fpl: params.get("700fpl") !== "0",
     show_additional_bracket: params.get("additional") === "1",
     show_simplified_bracket: params.get("simplified") === "1",
+    show_700fpl_cap: params.get("cap700") === "1",
+    show_min_premium: MIN_PREMIUM_AVAILABLE && params.get("minprem") === "1",
   };
 };
 
@@ -115,6 +135,7 @@ const getInitialFormData = () => {
   }
   const defaults = getRandomDefaults();
   return {
+    year: DEFAULT_YEAR,
     age_head: defaults.age,
     age_spouse: defaults.age,
     married: false,
@@ -127,6 +148,8 @@ const getInitialFormData = () => {
     show_700fpl: true,
     show_additional_bracket: false,
     show_simplified_bracket: false,
+    show_700fpl_cap: false,
+    show_min_premium: false,
   };
 };
 
@@ -224,6 +247,7 @@ function CalculatorForm({ onCalculate, loading }) {
     const depAges = formData.dependent_ages.slice(0, numDeps).map(age => age === "" ? 10 : age);
 
     const submitData = {
+      year: formData.year,
       age_head: ageHead,
       age_spouse: formData.married ? ageSpouse : null,
       dependent_ages: depAges,
@@ -234,6 +258,8 @@ function CalculatorForm({ onCalculate, loading }) {
       show_700fpl: formData.show_700fpl,
       show_additional_bracket: formData.show_additional_bracket,
       show_simplified_bracket: formData.show_simplified_bracket,
+      show_700fpl_cap: formData.show_700fpl_cap,
+      show_min_premium: formData.show_min_premium,
     };
 
     // Update form with normalized values
@@ -251,9 +277,35 @@ function CalculatorForm({ onCalculate, loading }) {
   };
 
   const needsZipCode = formData.state === "CA" && formData.county === "Los Angeles County";
+  const noScenario = !formData.show_ira && !formData.show_700fpl && !formData.show_additional_bracket
+    && !formData.show_simplified_bracket && !formData.show_700fpl_cap && !formData.show_min_premium;
 
   return (
     <form onSubmit={handleSubmit} className="calculator-form">
+      {/* Coverage year */}
+      <div className="form-section">
+        <h3 className="form-section-title">Coverage Year</h3>
+        <div className="form-row">
+          <div className="form-field">
+            <label htmlFor="year">Year</label>
+            <select
+              id="year"
+              name="year"
+              value={formData.year}
+              onChange={(e) => setFormData(prev => ({ ...prev, year: parseYear(e.target.value) }))}
+              disabled={loading}
+            >
+              {YEARS.map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+            <span className="form-hint">
+              Credits for {formData.year} measure income against the {formData.year - 1} poverty guidelines
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* Household Composition */}
       <div className="form-section">
         <h3 className="form-section-title">Household Composition</h3>
@@ -422,11 +474,52 @@ function CalculatorForm({ onCalculate, loading }) {
               disabled={loading}
             />
             <span>
-              <strong>IRA Extension</strong>
-              <span className="checkbox-description">8.5% cap, no income limit above 400% FPL</span>
+              <strong>H.R. 1834</strong>
+              <span className="checkbox-description">
+                Extends the enhanced credits through 2028: an 8.5% cap and no income limit above 400% FPL.
+                Passed the House on January 8, 2026; not enacted
+              </span>
             </span>
           </label>
         </div>
+
+        <div className="form-row">
+          <label className="form-label checkbox-label">
+            <input
+              type="checkbox"
+              name="show_700fpl_cap"
+              checked={formData.show_700fpl_cap}
+              onChange={handleChange}
+              disabled={loading}
+            />
+            <span>
+              <strong>Enhanced credits, capped at 700% FPL</strong>
+              <span className="checkbox-description">
+                As in a January 2026 draft of the CARE Act, which was not introduced
+              </span>
+            </span>
+          </label>
+        </div>
+
+        {MIN_PREMIUM_AVAILABLE && (
+          <div className="form-row">
+            <label className="form-label checkbox-label">
+              <input
+                type="checkbox"
+                name="show_min_premium"
+                checked={formData.show_min_premium}
+                onChange={handleChange}
+                disabled={loading}
+              />
+              <span>
+                <strong>Enhanced credits, with a $5 minimum premium</strong>
+                <span className="checkbox-description">
+                  The credit can't cover the last $5 a month, as in the same January 2026 draft
+                </span>
+              </span>
+            </label>
+          </div>
+        )}
 
         <div className="form-row">
           <label className="form-label checkbox-label">
@@ -439,7 +532,10 @@ function CalculatorForm({ onCalculate, loading }) {
             />
             <span>
               <strong>700% FPL Bill</strong>
-              <span className="checkbox-description">Bipartisan bill extending to 700% FPL with 9.25% cap</span>
+              <span className="checkbox-description">
+                Bipartisan Health Insurance Affordability Act: extends credits to 700% FPL with a 9.25% cap.
+                Introduced December 9, 2025; not enacted
+              </span>
             </span>
           </label>
         </div>
@@ -485,7 +581,7 @@ function CalculatorForm({ onCalculate, loading }) {
         <button
           type="submit"
           className="calculate-button"
-          disabled={loading || (!formData.show_ira && !formData.show_700fpl && !formData.show_additional_bracket && !formData.show_simplified_bracket)}
+          disabled={loading || noScenario}
         >
           {loading ? "Calculating..." : "Calculate Premium Tax Credits"}
         </button>
@@ -505,7 +601,7 @@ function CalculatorForm({ onCalculate, loading }) {
         {shareMessage && <span className="share-message">{shareMessage}</span>}
       </div>
 
-      {!formData.show_ira && !formData.show_700fpl && !formData.show_additional_bracket && !formData.show_simplified_bracket && (
+      {noScenario && (
         <p className="form-warning">Please select at least one policy scenario</p>
       )}
     </form>
