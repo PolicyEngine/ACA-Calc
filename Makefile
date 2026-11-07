@@ -1,4 +1,4 @@
-.PHONY: install test format debug clean dev api frontend build stop
+.PHONY: install test format clean dev api frontend build stop
 
 install:
 	pip install -e ".[dev]"
@@ -10,9 +10,6 @@ test:
 format:
 	black . -l 79
 	@echo "Formatting complete"
-
-debug:
-	uv run streamlit run app.py
 
 clean:
 	rm -rf __pycache__ .pytest_cache .coverage htmlcov
