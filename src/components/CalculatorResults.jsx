@@ -18,6 +18,9 @@ function CalculatorResults({ data, formData }) {
 
   // An answer from before the API took a year is for 2026.
   const year = data?.year || 2026;
+  // A server that predates the year setting answers for 2026 whatever is asked.
+  const requestedYear = formData?.year;
+  const yearMismatch = Boolean(requestedYear) && requestedYear !== year;
 
   const [visibleLines, setVisibleLines] = useState({
     baseline: true,
@@ -194,6 +197,11 @@ function CalculatorResults({ data, formData }) {
 
   return (
     <div className="calculator-results">
+      {yearMismatch && (
+        <p className="results-notice">
+          These results are for {year}: the calculator's server doesn't support {requestedYear} yet.
+        </p>
+      )}
       <div className="results-tabs">
         {tabs.map(tab => (
           <button

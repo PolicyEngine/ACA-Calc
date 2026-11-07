@@ -564,6 +564,15 @@
   margin: 0;
 }
 
+.results-notice {
+  margin: 0 0 var(--pe-space-md) 0;
+  padding: var(--pe-space-sm) var(--pe-space-md);
+  border-radius: 8px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.875rem;
+}
+
 .impact-net {
   font-size: 0.8125rem;
   color: var(--pe-text-secondary);
