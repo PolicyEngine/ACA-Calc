@@ -45,8 +45,8 @@ Thumbs.db
 # Logs
 *.log
 
-# Data/cache
-data/
+# Data/cache (the root's data/ only: src/data/ holds the site's precomputed results)
+/data/
 .cache/
 
 # Node.js / React

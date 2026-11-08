@@ -1,0 +1,1 @@
+Move the Overview and Explore Households pages to 2027 coverage. Their figures, the contribution schedules and the households' income limits come from precomputed policyengine-us results instead of typed-in numbers, and the precompute scripts write where the site reads.

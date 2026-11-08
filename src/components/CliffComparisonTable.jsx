@@ -1,7 +1,11 @@
 import "./CliffComparisonTable.css";
 
-function CliffComparisonTable({ data, showReforms = false, showSlcsp = false, showBaseline2026 = true }) {
-  const { at_650_fpl, household_info } = data;
+// Rows the Overview can show: a year under the law in effect, or a proposal
+// for the chart year. Values come from precompute_cliff_household.py.
+const ROW_CLASSES = { "2025": "row-2025", hr1834: "row-ira", bill700: "row-700fpl" };
+
+function CliffComparisonTable({ data, rows = ["2025"], showSlcsp = false, showBreakdown = false }) {
+  const { household_info, years, proposals, year, example_income } = data;
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('en-US', {
@@ -15,22 +19,27 @@ function CliffComparisonTable({ data, showReforms = false, showSlcsp = false, sh
     return formatCurrency(value / 12) + "/mo";
   };
 
-  // Calculate net premiums
-  const netPremium2025 = Math.max(0, at_650_fpl.slcsp_2025 - at_650_fpl.ptc_2025_ira);
-  const netPremium2026Baseline = at_650_fpl.slcsp_2026; // No PTC in baseline
-  const netPremium2026IRA = Math.max(0, at_650_fpl.slcsp_2026 - at_650_fpl.ptc_2026_ira);
-  const netPremium2026_700 = Math.max(0, at_650_fpl.slcsp_2026 - at_650_fpl.ptc_2026_700fpl);
+  const netPremium = (row) => Math.max(0, row.slcsp - row.ptc);
+  const describe = (key) => {
+    if (years[key]) return { label: key, scenario: years[key].law, values: years[key] };
+    return { label: String(year), scenario: proposals[key].name, values: proposals[key] };
+  };
 
-  // Calculate breakdown of premium change
-  const slcspIncrease = at_650_fpl.slcsp_2026 - at_650_fpl.slcsp_2025;
-  const subsidyLoss = at_650_fpl.ptc_2025_ira; // Lost subsidy (was getting this, now getting 0)
-  const totalIncrease = netPremium2026Baseline - netPremium2025;
+  // The change in net premium from 2025, under the enhanced credits, to the
+  // chart year under current law: the lost credit plus the premium increase.
+  const first = years["2025"];
+  const last = years[String(year)];
+  const subsidyLoss = first.ptc - last.ptc;
+  const slcspIncrease = last.slcsp - first.slcsp;
+  const totalIncrease = netPremium(last) - netPremium(first);
 
   return (
     <div className="cliff-table">
       <div className="table-header">
-        <h3>Single Adult, Age {household_info?.age || 45}</h3>
-        <p>{household_info?.location || "Lebanon County, PA"} · Income: {formatCurrency(at_650_fpl.income_2026)} ({household_info?.fpl_percent || 650}% FPL)</p>
+        <h3>Single Adult, Age {household_info?.age}</h3>
+        <p>
+          {household_info?.location} · Income: {formatCurrency(example_income)} ({last.fpl_percent}% FPL in {year})
+        </p>
       </div>
       <table>
         <thead>
@@ -43,46 +52,27 @@ function CliffComparisonTable({ data, showReforms = false, showSlcsp = false, sh
           </tr>
         </thead>
         <tbody>
-          <tr className="row-2025">
-            <td>2025</td>
-            <td>IRA in effect</td>
-            {showSlcsp && <td>{formatCurrencyMonthly(at_650_fpl.slcsp_2025)}</td>}
-            <td className="ptc-cell positive">{formatCurrencyMonthly(at_650_fpl.ptc_2025_ira)}</td>
-            <td>{formatCurrencyMonthly(netPremium2025)}</td>
-          </tr>
-          {showBaseline2026 && (
-            <tr className="row-baseline">
-              <td>2026</td>
-              <td>Baseline (IRA expires)</td>
-              {showSlcsp && <td>{formatCurrencyMonthly(at_650_fpl.slcsp_2026)}</td>}
-              <td className="ptc-cell zero">$0/mo</td>
-              <td className="premium-increase">{formatCurrencyMonthly(netPremium2026Baseline)}</td>
-            </tr>
-          )}
-          {showReforms && (
-            <>
-              <tr className="row-ira">
-                <td>2026</td>
-                <td>IRA Extended</td>
-                {showSlcsp && <td>{formatCurrencyMonthly(at_650_fpl.slcsp_2026)}</td>}
-                <td className="ptc-cell positive">{formatCurrencyMonthly(at_650_fpl.ptc_2026_ira)}</td>
-                <td>{formatCurrencyMonthly(netPremium2026IRA)}</td>
+          {rows.map((key) => {
+            const { label, scenario, values } = describe(key);
+            const noCredit = values.ptc <= 0;
+            return (
+              <tr key={key} className={ROW_CLASSES[key] || "row-baseline"}>
+                <td>{label}</td>
+                <td>{scenario}</td>
+                {showSlcsp && <td>{formatCurrencyMonthly(values.slcsp)}</td>}
+                <td className={`ptc-cell ${noCredit ? "zero" : "positive"}`}>{formatCurrencyMonthly(values.ptc)}</td>
+                <td className={noCredit && key !== "2025" ? "premium-increase" : undefined}>
+                  {formatCurrencyMonthly(netPremium(values))}
+                </td>
               </tr>
-              <tr className="row-700fpl">
-                <td>2026</td>
-                <td>700% FPL Proposal</td>
-                {showSlcsp && <td>{formatCurrencyMonthly(at_650_fpl.slcsp_2026)}</td>}
-                <td className="ptc-cell positive">{formatCurrencyMonthly(at_650_fpl.ptc_2026_700fpl)}</td>
-                <td>{formatCurrencyMonthly(netPremium2026_700)}</td>
-              </tr>
-            </>
-          )}
+            );
+          })}
         </tbody>
       </table>
 
-      {!showReforms && (
+      {showBreakdown && (
         <div className="cliff-breakdown">
-          <div className="breakdown-title">Net premium change breakdown (2025 → 2026 baseline)</div>
+          <div className="breakdown-title">Net premium change breakdown (2025 → {year} current law)</div>
           <div className="breakdown-items">
             <div className="breakdown-item">
               <span className="breakdown-label">Subsidy expiration</span>

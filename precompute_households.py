@@ -6,17 +6,24 @@ This avoids running expensive PolicyEngine simulations when users load the app.
 
 Usage:
     python precompute_households.py
+
+Writes src/data/households/, which the Explore Households page reads. Rerun
+after every policyengine-us pin.
 """
 
-import json
-import numpy as np
 import gc
+import json
+from importlib.metadata import version
 from pathlib import Path
+
+import numpy as np
 from policyengine_us import Simulation
 from aca_calc.calculations.household import build_household_situation
 from aca_calc.calculations.reforms import create_enhanced_ptc_reform, create_700fpl_reform
 
-# Preset households (same as in app.py)
+# The coverage year the Explore Households page shows.
+YEAR = 2027
+
 PRESET_HOUSEHOLDS = {
     "florida_family": {
         "name": "Florida Family of 4",
@@ -66,70 +73,49 @@ PRESET_HOUSEHOLDS = {
 
 
 def calculate_household_data(household_key: str, household: dict) -> dict:
-    """Calculate all chart data for a household."""
+    """Calculate all chart data for a household, for coverage year YEAR."""
     print(f"  Computing {household_key}...")
 
-    # Build household situation
-    base_situation = build_household_situation(
+    situation = build_household_situation(
         age_head=household["age_head"],
         age_spouse=household["age_spouse"],
         dependent_ages=household["dependent_ages"],
         state=household["state"],
         county=household["county"],
-        year=2026,
+        year=YEAR,
         with_axes=True,
     )
 
-    # Create reforms
-    reform_ira = create_enhanced_ptc_reform()
-    reform_700fpl = create_700fpl_reform()
+    def sweep(reform=None):
+        sim = Simulation(situation=situation, reform=reform)
+        return sim, sim.calculate("aca_ptc", map_to="household", period=YEAR)
 
-    # Run simulations
-    print(f"    Running baseline simulation...")
-    sim_baseline = Simulation(situation=base_situation)
+    print("    Running current law...")
+    sim_baseline, ptc_baseline = sweep()
+    print("    Running H.R. 1834...")
+    _, ptc_ira = sweep(create_enhanced_ptc_reform())
+    print("    Running the 700% FPL bill...")
+    _, ptc_700fpl = sweep(create_700fpl_reform())
 
-    print(f"    Running IRA reform simulation...")
-    sim_ira = Simulation(situation=base_situation, reform=reform_ira)
-
-    sim_700fpl = None
-    if reform_700fpl:
-        print(f"    Running 700% FPL reform simulation...")
-        sim_700fpl = Simulation(situation=base_situation, reform=reform_700fpl)
-
-    # Get income range
-    income_range = sim_baseline.calculate("employment_income", map_to="household", period=2026)
-
-    # Calculate all values
+    income_range = sim_baseline.calculate("employment_income", map_to="household", period=YEAR)
+    # The credit measures income against the prior year's guideline.
+    fpl = sim_baseline.calculate("tax_unit_fpg", period=YEAR - 1)
     data = {
         "household_key": household_key,
         "household_info": household,
+        "year": YEAR,
+        "model_version": version("policyengine-us"),
         "income": income_range.tolist(),
-        "medicaid": sim_baseline.calculate("medicaid_cost", map_to="household", period=2026).tolist(),
-        "chip": sim_baseline.calculate("per_capita_chip", map_to="household", period=2026).tolist(),
-        "ptc_baseline": sim_baseline.calculate("aca_ptc", map_to="household", period=2026).tolist(),
-        "ptc_ira": sim_ira.calculate("aca_ptc", map_to="household", period=2026).tolist(),
-        "ptc_700fpl": sim_700fpl.calculate("aca_ptc", map_to="household", period=2026).tolist() if sim_700fpl else [],
-        "fpl": float(sim_baseline.calculate("tax_unit_fpg", period=2026)[len(income_range)//2]),
-        "slcsp": float(np.max(sim_baseline.calculate("slcsp", map_to="household", period=2026))),
+        "medicaid": sim_baseline.calculate("medicaid", map_to="household", period=YEAR).tolist(),
+        "chip": sim_baseline.calculate("chip", map_to="household", period=YEAR).tolist(),
+        "ptc_baseline": ptc_baseline.tolist(),
+        "ptc_ira": ptc_ira.tolist(),
+        "ptc_700fpl": ptc_700fpl.tolist(),
+        "fpl": float(fpl[len(fpl) // 2]),
+        # Medicaid measures income against the coverage year's guideline.
+        "fpl_current": float(sim_baseline.calculate("tax_unit_fpg", period=YEAR)[len(fpl) // 2]),
+        "slcsp": float(np.max(sim_baseline.calculate("slcsp", map_to="household", period=YEAR))),
     }
-
-    # Calculate net income for impact chart
-    print(f"    Running net income simulations...")
-    base_situation["tax_units"]["your tax unit"]["tax_unit_itemizes"] = {2026: False}
-
-    sim_baseline_net = Simulation(situation=base_situation)
-    sim_ira_net = Simulation(situation=base_situation, reform=reform_ira)
-    sim_700fpl_net = Simulation(situation=base_situation, reform=reform_700fpl) if reform_700fpl else None
-
-    data["net_income_baseline"] = sim_baseline_net.calculate(
-        "household_net_income_including_health_benefits", map_to="household", period=2026
-    ).tolist()
-    data["net_income_ira"] = sim_ira_net.calculate(
-        "household_net_income_including_health_benefits", map_to="household", period=2026
-    ).tolist()
-    data["net_income_700fpl"] = sim_700fpl_net.calculate(
-        "household_net_income_including_health_benefits", map_to="household", period=2026
-    ).tolist() if sim_700fpl_net else []
 
     gc.collect()
     return data
@@ -137,7 +123,7 @@ def calculate_household_data(household_key: str, household: dict) -> dict:
 
 def main():
     """Precompute and save all household data."""
-    output_dir = Path(__file__).parent / "data" / "households"
+    output_dir = Path(__file__).parent / "src" / "data" / "households"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print("Precomputing household data for ACA scrollytelling interactive...")

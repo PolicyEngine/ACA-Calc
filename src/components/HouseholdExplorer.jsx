@@ -45,19 +45,19 @@ In Florida, children can qualify for CHIP at higher income levels than their par
       {
         id: "fl_cliff",
         title: "The 400% FPL cliff",
-        content: `The **gray baseline line** shows premium tax credits under the original ACA rules (in effect in 2026). It drops to **zero at 400% FPL**—the "subsidy cliff."
+        content: `The **gray line** shows premium tax credits under current law: the original ACA rules, in effect again since 2026. It drops to **zero at 400% FPL**—the "subsidy cliff."
 
-For this family of four, 400% FPL is about **$132,000**. Above that income, they lose all subsidies under baseline 2026 rules.
+For this family of four, 400% FPL is about **{fpl400}** in {year}. Above that income, they lose all subsidies under current law.
 
 With children, their FPL threshold is higher than a single adult's, giving them more room before hitting the cliff.`,
         chartState: "cliff_focus",
       },
       {
         id: "fl_ira",
-        title: "IRA extension impact",
-        content: `The **blue shaded area** shows the additional premium tax credits this family would receive under the IRA extension.
+        title: "H.R. 1834 impact",
+        content: `The **blue shaded area** shows the additional premium tax credits this family would receive under H.R. 1834.
 
-Key differences from baseline:
+Key differences from current law:
 • No cliff—subsidies continue above 400% FPL
 • Lower contributions at every income level
 • 8.5% cap on required premium contributions`,
@@ -67,11 +67,11 @@ Key differences from baseline:
         id: "fl_reform",
         title: "Comparing all options",
         content: `The chart shows all three scenarios:
-• **Gray:** Baseline (2026, IRA expired)
-• **Blue:** IRA extension
-• **Purple:** 700% FPL proposal
+• **Gray:** Current law ({year})
+• **Blue:** H.R. 1834
+• **Purple:** 700% FPL bill
 
-For this family of four, 400% FPL is about **$132,000** and 700% FPL is about **$231,000**.`,
+For this family of four, 400% FPL is about **{fpl400}** and 700% FPL is about **{fpl700}**.`,
         chartState: "both_reforms",
       },
     ],
@@ -95,7 +95,7 @@ The chart shows their coverage options across income levels. As a childless coup
       {
         id: "ca_medicaid",
         title: "Medicaid: expansion state",
-        content: `California **expanded Medicaid** (called Medi-Cal), so this couple qualifies for free coverage at incomes up to **138% FPL** (about $27,000 for a couple).
+        content: `California **expanded Medicaid** (called Medi-Cal), so this couple qualifies for free coverage at incomes up to **138% FPL** (about {medicaid138} for a couple).
 
 In non-expansion states, adults without children often fall into a coverage gap at low incomes.
 
@@ -107,17 +107,17 @@ Above the Medicaid threshold, they transition to marketplace coverage with premi
         title: "The cliff and age-based rating",
         content: `**Age-based rating** allows insurers to charge older adults up to **3x more** than younger people. This couple's benchmark plan costs more than a younger person's.
 
-At 400% FPL (~$87,000 for a couple), losing subsidies means paying the full, age-rated premium.
+At 400% FPL (about {fpl400} for a couple), losing subsidies means paying the full, age-rated premium.
 
 The cliff's dollar impact is larger for older adults due to their higher baseline premiums.`,
         chartState: "cliff_focus",
       },
       {
         id: "ca_ira",
-        title: "IRA extension impact",
-        content: `The **blue shaded area** shows the additional premium tax credits this couple would receive with the IRA extension.
+        title: "H.R. 1834 impact",
+        content: `The **blue shaded area** shows the additional premium tax credits this couple would receive under H.R. 1834.
 
-Key differences from baseline:
+Key differences from current law:
 • Subsidies continue at any income level
 • 8.5% cap on required contributions
 • No cliff—gradual phase-out instead of sudden loss
@@ -129,10 +129,10 @@ The shaded area is larger for older adults due to their higher premiums.`,
         id: "ca_reform",
         title: "Reform comparison",
         content: `The chart shows all three scenarios:
-• **IRA extension** (blue): 8.5% cap, no income limit
-• **700% FPL proposal** (purple): Extends to ~$152,000, 9.25% cap
+• **H.R. 1834** (blue): 8.5% cap, no income limit
+• **700% FPL bill** (purple): Extends to about {fpl700}, 9.25% cap
 
-For this couple, 400% FPL is about **$87,000** and 700% FPL is about **$152,000**.`,
+For this couple, 400% FPL is about **{fpl400}** and 700% FPL is about **{fpl700}**.`,
         chartState: "both_reforms",
       },
     ],
@@ -166,29 +166,28 @@ This is the **"coverage gap"**—too poor for subsidies, not eligible for Medica
       {
         id: "tx_cliff",
         title: "The 400% FPL cliff",
-        content: `For a couple, 400% FPL is about **$87,000** in 2026.
+        content: `For a couple, 400% FPL is about **{fpl400}** in {year}.
 
-Above this threshold, baseline subsidies drop to zero. The cliff occurs at a higher dollar amount for couples than for single adults due to larger household size.`,
+Above this threshold, current-law subsidies drop to zero. The cliff occurs at a higher dollar amount for couples than for single adults due to larger household size.`,
         chartState: "cliff_focus",
       },
       {
         id: "tx_ira",
-        title: "IRA extension impact",
-        content: `The **blue shaded area** shows the additional subsidies available with the IRA extension:
+        title: "H.R. 1834 impact",
+        content: `The **blue shaded area** shows the additional subsidies available under H.R. 1834:
 
-• Subsidies continue above $87,000
-• 8.5% cap on required contributions
-• Coverage available below 100% FPL (where baseline provides none in non-expansion states)`,
+• Subsidies continue above {fpl400}
+• 8.5% cap on required contributions`,
         chartState: "ira_impact",
       },
       {
         id: "tx_reform",
         title: "Reform comparison",
         content: `The chart shows all three scenarios:
-• **IRA extension** (blue): No income limit, 8.5% cap
-• **700% FPL proposal** (purple): Extends to ~$152,000, 9.25% cap
+• **H.R. 1834** (blue): No income limit, 8.5% cap
+• **700% FPL bill** (purple): Extends to about {fpl700}, 9.25% cap
 
-For this couple, 400% FPL is about **$87,000** and 700% FPL is about **$152,000**.`,
+For this couple, 400% FPL is about **{fpl400}** and 700% FPL is about **{fpl700}**.`,
         chartState: "both_reforms",
       },
     ],
@@ -214,7 +213,7 @@ New York has **high premiums for young adults** because insurers cannot charge d
         title: "Medicaid in New York",
         content: `New York **expanded Medicaid** and has generous eligibility rules.
 
-This family qualifies for Medicaid at incomes up to **138% FPL** (about $41,000 for a family of 3). New York also has higher income limits for children and pregnant women.
+This family qualifies for Medicaid at incomes up to **138% FPL** (about {medicaid138} for a family of 3). New York also has higher income limits for children and pregnant women.
 
 The transition from Medicaid to marketplace coverage is smoother in expansion states.`,
         chartState: "medicaid_focus",
@@ -230,17 +229,17 @@ This means the 2-year-old may have coverage through Child Health Plus even when 
       {
         id: "ny_cliff",
         title: "The cliff for a family of three",
-        content: `For a family of 3, 400% FPL is about **$109,000** in 2026.
+        content: `For a family of 3, 400% FPL is about **{fpl400}** in {year}.
 
-Above this threshold, baseline subsidies drop to zero. The FPL threshold is the same regardless of local cost of living.`,
+Above this threshold, current-law subsidies drop to zero. The FPL threshold is the same regardless of local cost of living.`,
         chartState: "cliff_focus",
       },
       {
         id: "ny_ira",
-        title: "IRA extension impact",
-        content: `The **blue shaded area** shows the additional premium tax credits available under the IRA extension:
+        title: "H.R. 1834 impact",
+        content: `The **blue shaded area** shows the additional premium tax credits available under H.R. 1834:
 
-• Subsidies continue above $109,000
+• Subsidies continue above {fpl400}
 • 8.5% cap on required contributions
 • Gradual phase-out instead of cliff`,
         chartState: "ira_impact",
@@ -249,10 +248,10 @@ Above this threshold, baseline subsidies drop to zero. The FPL threshold is the 
         id: "ny_reform",
         title: "Reform comparison",
         content: `The chart shows all three scenarios:
-• **IRA extension** (blue): No cliff, 8.5% cap at any income
-• **700% FPL proposal** (purple): Extends to ~$191,000, 9.25% cap
+• **H.R. 1834** (blue): No cliff, 8.5% cap at any income
+• **700% FPL bill** (purple): Extends to about {fpl700}, 9.25% cap
 
-For this family of three, 400% FPL is about **$109,000** and 700% FPL is about **$191,000**.`,
+For this family of three, 400% FPL is about **{fpl400}** and 700% FPL is about **{fpl700}**.`,
         chartState: "both_reforms",
       },
     ],
@@ -260,6 +259,19 @@ For this family of three, 400% FPL is about **$109,000** and 700% FPL is about *
 };
 
 const HOUSEHOLD_KEYS = ["florida_family", "california_couple", "texas_couple", "ny_family"];
+
+// Fill a narrative's figures in from the household's precomputed data: income
+// limits rounded to $1,000. The credit measures income against the prior
+// year's poverty guideline (fpl); Medicaid uses the coverage year's
+// (fpl_current).
+const roundedDollars = (value) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
+    .format(Math.round(value / 1000) * 1000);
+const fill = (text, data) => text
+  .replaceAll("{year}", String(data.year))
+  .replaceAll("{fpl400}", roundedDollars(4 * data.fpl))
+  .replaceAll("{fpl700}", roundedDollars(7 * data.fpl))
+  .replaceAll("{medicaid138}", roundedDollars(1.38 * data.fpl_current));
 
 // Parse markdown-style bold text
 const parseContent = (text) => {
@@ -273,7 +285,7 @@ const parseContent = (text) => {
 };
 
 // Individual scroll section within a household
-function HouseholdScrollSection({ section, index, isActive, onInView }) {
+function HouseholdScrollSection({ section, data, index, isActive, onInView }) {
   const { ref, inView } = useInView({
     threshold: 0.5,
     rootMargin: "-20% 0px -40% 0px",
@@ -292,7 +304,7 @@ function HouseholdScrollSection({ section, index, isActive, onInView }) {
     >
       <h3 className="household-section-title">{section.title}</h3>
       <div className="household-section-content">
-        {section.content.split("\n\n").map((paragraph, i) => (
+        {fill(section.content, data).split("\n\n").map((paragraph, i) => (
           <p key={i}>{parseContent(paragraph)}</p>
         ))}
       </div>
@@ -354,6 +366,7 @@ function HouseholdExplorer() {
             <HouseholdScrollSection
               key={section.id}
               section={section}
+              data={data}
               index={index}
               isActive={activeSection === index}
               onInView={setActiveSection}

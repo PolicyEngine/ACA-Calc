@@ -8,162 +8,199 @@ import HouseholdExplorer from "./components/HouseholdExplorer";
 import Calculator from "./components/Calculator";
 import "./App.css";
 
-// Import precomputed household data
+// Import precomputed data: the example household and the contribution
+// schedules (precompute_cliff_household.py, precompute_contribution_schedules.py)
 import cliffDemoData from "./data/households/cliff_demo.json";
+import schedules from "./data/contribution_schedules.json";
+
+const REVENUE_PROCEDURES = { 2026: "Revenue Procedure 2025-25", 2027: "Revenue Procedure 2026-26" };
+
+const formatDollars = (value) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
+const monthly = (annual) => formatDollars(annual / 12);
+const percentChange = (from, to) => {
+  const change = (100 * (to - from)) / from;
+  return `${change >= 0 ? "+" : ""}${change.toFixed(1)}%`;
+};
+const netPremium = (row) => Math.max(0, row.slcsp - row.ptc);
+
+// The lowest and highest share of income a schedule charges where it gives a credit.
+const rateRange = (key) => {
+  const rates = schedules.schedules[key].filter((rate) => rate !== null && rate > 0);
+  return [Math.min(...rates).toFixed(2), Math.max(...rates).toFixed(2)];
+};
+
+// The highest income at which the example adult has Medicaid, rounded to $1,000.
+const medicaidLimit = (data) => {
+  let limit = 0;
+  data.income.forEach((income, i) => {
+    if (data.medicaid[i] > 0) limit = income;
+  });
+  return formatDollars(Math.round(limit / 1000) * 1000);
+};
 
 // Scroll sections content - background first, then household example, then health programs, then reforms
-const SECTIONS = [
-  // PART 1: Background on how ACA subsidies work
-  {
-    id: "intro",
-    title: "How ACA premium tax credits work",
-    content: `The Affordable Care Act (ACA) created **premium tax credits** to help Americans afford health insurance purchased through the marketplace.
+function buildSections(data) {
+  const year = data.year;
+  const y2025 = data.years["2025"];
+  const y2026 = data.years["2026"];
+  const yNow = data.years[String(year)];
+  const { hr1834, bill700 } = data.proposals;
+  const [min2026, max2026] = rateRange("current_2026");
+  const [minNow, maxNow] = rateRange(`current_${year}`);
+  const netChange = netPremium(yNow) - netPremium(y2025);
+
+  return [
+    // PART 1: Background on how ACA subsidies work
+    {
+      id: "intro",
+      title: "How ACA premium tax credits work",
+      content: `The Affordable Care Act (ACA) created **premium tax credits** to help Americans afford health insurance purchased through the marketplace.
 
 These credits work by capping how much of your income you're required to pay for a benchmark health plan—the **second-lowest cost silver plan (SLCSP)** in your area.
 
 If the benchmark plan costs more than your required contribution, the government pays the difference as a tax credit.`,
-    showContributionChart: true,
-    chartPolicies: ["baseline"],
-  },
-  {
-    id: "arpa_ira",
-    title: "ARPA and IRA enhancements (2021–2025)",
-    content: `The **American Rescue Plan Act (ARPA)** of 2021 temporarily enhanced these subsidies. The **Inflation Reduction Act (IRA)** of 2022 extended them through 2025.
+      showContributionChart: true,
+      chartPolicies: [`current${year}`],
+    },
+    {
+      id: "arpa_ira",
+      title: "ARPA and IRA enhancements (2021–2025)",
+      content: `The **American Rescue Plan Act (ARPA)** of 2021 temporarily enhanced these subsidies. The **Inflation Reduction Act (IRA)** of 2022 extended them through 2025.
 
 Key changes:
 • Removed the 400% FPL ceiling—credits available at any income
 • Capped contributions at 8.5% of income for everyone
 • Lowered contributions at every income level
 
-The chart shows how the IRA (blue) differs from the original ACA (gray).`,
-    showContributionChart: true,
-    chartPolicies: ["baseline", "ira"],
-  },
-  {
-    id: "expiration",
-    title: "What happened in 2026",
-    content: `The ARPA/IRA enhancements **expired** at the end of 2025.
+The chart shows the enhanced schedule (blue) against current law for ${year} (gray).`,
+      showContributionChart: true,
+      chartPolicies: [`current${year}`, "enhanced"],
+    },
+    {
+      id: "expiration",
+      title: "What happened in 2026",
+      content: `The ARPA/IRA enhancements **expired** at the end of 2025.
 
 The subsidy structure reverted to the **original ACA rules**:
 • The 400% FPL ceiling returned
-• Required contributions increased
+• Required contributions rose to between **${min2026}%** and **${max2026}%** of income
 
-The baseline contribution schedule now requires **higher payments** and ends at 400% FPL—the "subsidy cliff."`,
-    showContributionChart: true,
-    chartPolicies: ["baseline"],
-  },
+The contribution schedule now requires **higher payments** and ends at 400% FPL—the "subsidy cliff."`,
+      showContributionChart: true,
+      chartPolicies: ["current2026"],
+    },
+    {
+      id: "current_law",
+      title: `${year}: current law`,
+      content: `For ${year}, the IRS updated the schedule (${REVENUE_PROCEDURES[year]}): required contributions run from **${minNow}%** to **${maxNow}%** of income, and the 400% FPL ceiling remains.
 
-  // PART 2: Household example
-  {
-    id: "example_intro",
-    title: "Example: a middle-income household",
-    content: `To illustrate the impact, consider a 45-year-old single adult in Lebanon County, Pennsylvania, earning **$104,200** a year—about **650% of the federal poverty level**.
+No extension of the enhanced credits has been enacted, so these are the rules for ${year} coverage.`,
+      showContributionChart: true,
+      chartPolicies: ["current2026", `current${year}`],
+    },
 
-In 2025, under the IRA enhancements, this household:
-• Paid **$963/month** for the benchmark plan (SLCSP)
-• Received a **$242/month** tax credit
-• Paid a net premium of **$720/month**`,
-    useCliffData: true,
-    showCliffTable: true,
-    showSlcsp: true,
-    showBaseline2026: false,
-    showReforms: false,
-  },
-  {
-    id: "example_2026",
-    title: "2026: after expiration",
-    content: `In 2026, this household:
+    // PART 2: Household example
+    {
+      id: "example_intro",
+      title: "Example: a middle-income household",
+      content: `To illustrate the impact, consider a 45-year-old single adult in Lebanon County, Pennsylvania, earning **${formatDollars(data.example_income)}** a year—about **${yNow.fpl_percent}% of the federal poverty level** in ${year}.
 
-**a) Faces a higher premium** for their benchmark plan: $1,003/month (up from $963/month, +4.2%)
+In 2025, under the enhanced credits, this household:
+• Paid **${monthly(y2025.slcsp)}/month** for the benchmark plan (SLCSP)
+• Received a **${monthly(y2025.ptc)}/month** tax credit
+• Paid a net premium of **${monthly(netPremium(y2025))}/month**`,
+      cliffRows: ["2025"],
+      showSlcsp: true,
+    },
+    {
+      id: "example_after",
+      title: `2026 and ${year}: after expiration`,
+      content: `In 2026, this household:
 
-**b) Lost their subsidy** entirely: tax credit dropped from $242/month to **$0** because they exceed the 400% FPL ceiling
+**a) Faced a higher premium** for its benchmark plan: ${monthly(y2026.slcsp)}/month (${percentChange(y2025.slcsp, y2026.slcsp)} from 2025)
 
-Net premium rose from $720/month to **$1,003/month**—an increase of **$283/month (+39%)**.`,
-    useCliffData: true,
-    showCliffTable: true,
-    showSlcsp: true,
-    showBaseline2026: true,
-    showReforms: false,
-  },
+**b) Lost its subsidy** entirely: the tax credit dropped from ${monthly(y2025.ptc)}/month to **$0** because its income is above the 400% FPL ceiling
 
-  // PART 3: Policy options for this household
-  {
-    id: "reform_options",
-    title: "Policy options",
-    content: `Two proposals were introduced in Congress:
+In ${year}, the benchmark plan costs **${monthly(yNow.slcsp)}/month** and current law still provides no credit, so the net premium is **${monthly(netPremium(yNow))}/month**: ${monthly(netChange)}/month (${percentChange(netPremium(y2025), netPremium(yNow))}) more than in 2025.`,
+      cliffRows: ["2025", "2026", String(year)],
+      showSlcsp: true,
+      showBreakdown: true,
+    },
 
-**IRA Extension:** Maintains the 8.5% cap structure
-• Tax credit: **$265/month** → Net premium: **$738/month**
+    // PART 3: Policy options for this household
+    {
+      id: "reform_options",
+      title: "Policy options",
+      content: `Two bills in Congress would restore credits above 400% FPL in ${year}. Neither has been enacted.
+
+**H.R. 1834:** Extends the enhanced credits, with the 8.5% cap, through 2028. It passed the House on January 8, 2026.
+• Tax credit: **${monthly(hr1834.ptc)}/month** → Net premium: **${monthly(netPremium(hr1834))}/month**
 
 **Bipartisan Health Insurance Affordability Act:** Introduced by Rep. Dunn (R-FL) and Rep. Schneider (D-IL) on December 9, 2025, this bill extends eligibility to 700% FPL with a 9.25% cap
-• Tax credit: **$223/month** → Net premium: **$780/month**`,
-    useCliffData: true,
-    showCliffTable: true,
-    showSlcsp: false,
-    showReforms: true,
-  },
+• Tax credit: **${monthly(bill700.ptc)}/month** → Net premium: **${monthly(netPremium(bill700))}/month**`,
+      cliffRows: [String(year), "hr1834", "bill700"],
+    },
 
-  // PART 4: Health programs overview (using PA single adult)
-  {
-    id: "health_programs",
-    title: "The full picture: health coverage programs",
-    content: `Premium tax credits are one part of the health coverage landscape. Americans may also qualify for:
+    // PART 4: Health programs overview (using PA single adult)
+    {
+      id: "health_programs",
+      title: "The full picture: health coverage programs",
+      content: `Premium tax credits are one part of the health coverage landscape. Americans may also qualify for:
 
 • **Medicaid:** Free coverage for low-income households (eligibility varies by state)
 • **Marketplace subsidies:** PTCs for those not eligible for other programs
 
-The chart shows how these programs interact across income levels for our Pennsylvania example.`,
-    useCliffData: true,
-    chartState: "all_programs",
-  },
-  {
-    id: "medicaid",
-    title: "Medicaid coverage",
-    content: `**Medicaid** provides coverage for low-income Americans. Pennsylvania expanded Medicaid, so adults qualify up to **138% FPL**.
+The chart shows how these programs interact across income levels for our Pennsylvania example in ${year}.`,
+      chartState: "all_programs",
+    },
+    {
+      id: "medicaid",
+      title: "Medicaid coverage",
+      content: `**Medicaid** provides coverage for low-income Americans. Pennsylvania expanded Medicaid, so adults qualify up to **138% FPL**.
 
-For our 45-year-old, this means Medicaid covers incomes up to about $22,000. If they earn more, they may be eligible for premium tax credits (PTCs).`,
-    useCliffData: true,
-    chartState: "medicaid_focus",
-  },
-  {
-    id: "reforms_chart",
-    title: "Premium tax credits under different policies",
-    content: `The chart shows premium tax credits across income levels under three scenarios:
+For our 45-year-old, this means Medicaid covers incomes up to about ${medicaidLimit(data)}. If they earn more, they may be eligible for premium tax credits (PTCs).`,
+      chartState: "medicaid_focus",
+    },
+    {
+      id: "reforms_chart",
+      title: "Premium tax credits under different policies",
+      content: `The chart shows premium tax credits across income levels in ${year} under three scenarios:
 
-• **Gray line:** Baseline (post-IRA expiration)
-• **Blue line:** IRA extension
+• **Gray line:** Current law
+• **Blue line:** H.R. 1834
 • **Purple line:** Bipartisan Health Insurance Affordability Act
 
-The baseline drops to zero at 400% FPL. Both reform options continue providing credits at higher incomes.`,
-    useCliffData: true,
-    chartState: "both_reforms",
-  },
-  {
-    id: "ira_impact_chart",
-    title: "IRA extension: the difference",
-    content: `The **blue shaded area** represents the additional premium tax credits available under the IRA extension compared to baseline.
+Current law drops to zero at 400% FPL. Both bills continue providing credits at higher incomes.`,
+      chartState: "both_reforms",
+    },
+    {
+      id: "ira_impact_chart",
+      title: "H.R. 1834: the difference",
+      content: `The **blue shaded area** represents the additional premium tax credits available under H.R. 1834 compared to current law.
 
 For this Pennsylvania household:
-• Below 400% FPL: The IRA provides **lower required contributions**
-• Above 400% FPL: The IRA provides **full subsidy access** where baseline provides none
+• Below 400% FPL: H.R. 1834 provides **lower required contributions**
+• Above 400% FPL: H.R. 1834 provides **credits** where current law provides none
 
 The size of the shaded area shows the dollar value of the difference at each income level.`,
-    useCliffData: true,
-    chartState: "ira_impact",
-  },
+      chartState: "ira_impact",
+    },
 
-  // PART 5: Household case studies - links to explorer
-  {
-    id: "explore_households",
-    title: "Explore different households",
-    content: `The impact of ACA policy changes varies by household type, location, and income level.
+    // PART 5: Household case studies - links to explorer
+    {
+      id: "explore_households",
+      title: "Explore different households",
+      content: `The impact of ACA policy changes varies by household type, location, and income level.
 
 Click below to explore how four different households are affected—with details on Medicaid expansion, CHIP eligibility, and the subsidy cliff for each.`,
-    useCliffData: true,
-    chartState: "both_reforms",
-    showHouseholdExplorerLink: true,
-  },
-];
+      chartState: "both_reforms",
+      showHouseholdExplorerLink: true,
+    },
+  ];
+}
+
+const SECTIONS = buildSections(cliffDemoData);
 
 // URL routing helpers
 const PAGE_ROUTES = {
@@ -258,13 +295,13 @@ function App() {
         />
       );
     }
-    if (currentSection.showCliffTable) {
+    if (currentSection.cliffRows) {
       return (
         <CliffComparisonTable
           data={cliffDemoData}
-          showReforms={currentSection.showReforms}
+          rows={currentSection.cliffRows}
           showSlcsp={currentSection.showSlcsp}
-          showBaseline2026={currentSection.showBaseline2026 !== false}
+          showBreakdown={currentSection.showBreakdown}
         />
       );
     }

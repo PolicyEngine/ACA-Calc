@@ -1,16 +1,16 @@
 # ACA Premium Tax Credit Calculator
 
-Compare 2026 Premium Tax Credits with and without Inflation Reduction Act (IRA) enhancements.
+Compare ACA premium tax credits under current law and under proposals to extend the enhanced credits, for 2026 and 2027 coverage.
 
 **🔗 [Try the Calculator](https://policyengine.org/us/aca-calc)**
 
 ## Overview
 
-The Inflation Reduction Act enhanced ACA subsidies through 2025. This calculator shows what your credits would be in 2026 with and without extending these enhancements.
+The American Rescue Plan Act enhanced ACA premium tax credits for 2021 and 2022, and the Inflation Reduction Act extended them through 2025. They expired after 2025, so 2026 and 2027 coverage follows the original ACA schedule. The calculator shows a household's credits under current law and under proposals to extend the enhanced credits, such as H.R. 1834.
 
 **Key Differences:**
-- **With IRA Extension**: No income cap, lower premium contributions (0-8.5% of income)
-- **After IRA Expires**: 400% FPL cap ("subsidy cliff"), higher contributions (2-9.5% of income)
+- **Enhanced credits (2021–2025)**: No income cap; required contributions from 0% to 8.5% of income
+- **Current law (2026 on)**: No credit above 400% FPL (the "subsidy cliff"); required contributions from about 2% to 10% of income, set each year by the IRS
 
 ## Quick Start
 
@@ -37,15 +37,6 @@ The app will open at http://localhost:8501
 - ✅ **Real-time Comparison**: Side-by-side baseline vs. IRA extension
 - ✅ **Interactive Charts**: See how credits change across income levels
 - ✅ **Household Flexibility**: Single, married, with/without dependents
-
-## Example Results
-
-| Scenario | Income | Baseline PTC | With IRA | Savings |
-|----------|--------|--------------|----------|---------|
-| NJ Family of 3 | $50,000 | $8,515 | $10,626 | $2,111/year |
-| TX Couple (Travis) | $60,000 | $6,974 | $9,195 | $2,221/year |
-| CA Couple + Child | $75,000 | $12,913 | $15,695 | $2,782/year |
-| NY Single @ 400% FPL | $62,280 | $0 | $2,899 | $2,899/year |
 
 ## Technical Details
 
