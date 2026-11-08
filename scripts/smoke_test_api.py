@@ -3,10 +3,10 @@
 Usage: python scripts/smoke_test_api.py API_URL [--explain] [--commit SHA [--wait SECONDS]]
 
 Checks /api/health, then both calculator endpoints: /api/calculate-stream,
-which the calculator page calls, and /api/calculate, its fallback. Both
-requests set skip_cache, so the deployed code computes each answer instead of
-returning one from the 7-day calculation cache, and the stream check confirms
-that it did. With --explain it checks /api/health and then /api/explain
+which the calculator page calls, and /api/calculate, its fallback, and then a
+2027 calculation. The requests set skip_cache, so the deployed code computes
+each answer instead of returning one from the 7-day calculation cache, and the
+stream check confirms that it did. With --explain it checks /api/health and then /api/explain
 instead of the calculator: it requests a fixed household's AI narrative, which
 calls the Anthropic API unless the answer is already in the 7-day explanation
 cache.
@@ -170,6 +170,17 @@ def check_calculate(base):
     check_result("/api/calculate", call(f"{base}/api/calculate", FRESH))
 
 
+def check_calculate_2027(base):
+    # Requests without a year get 2026; the calculator page asks for 2027.
+    # The credit measures income against the prior year's poverty guideline.
+    result = call(f"{base}/api/calculate", {**FRESH, "year": 2027})
+    assert result.get("year") == 2027, f"asked for 2027, got {result.get('year')}"
+    assert result.get("fpl_year") == 2026, (
+        f"2027 credits use the 2026 guideline, got {result.get('fpl_year')}"
+    )
+    check_result("/api/calculate (2027)", result)
+
+
 def check_explain(base):
     # A fixed household, so after the first deploy the answer usually comes
     # from the explanation cache rather than a new Anthropic API call.
@@ -234,7 +245,7 @@ def main():
     if args.explain:
         checks = [check_health, check_explain]
     else:
-        checks = [check_health, check_calculate_stream, check_calculate]
+        checks = [check_health, check_calculate_stream, check_calculate, check_calculate_2027]
     for check in checks:
         from_this_deploy(check, base)
 

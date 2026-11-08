@@ -2,8 +2,11 @@
 #
 # Captured with `pip freeze` from the live aca-calc-api container on 2026-11-03,
 # minus the 14 packages that Modal's 2025.06 image builder installs at the same
-# versions. Deploying from this file reproduces the calculator that has served
-# since May 2026 (policyengine-us 1.691.3), so a redeploy changes only the code.
+# versions. On 2026-11-07 policyengine-us moved from 1.691.3 to 2.105.0, the
+# latest release, which has the 2027 applicable percentages and the bracket
+# variants' eligibility fix (policyengine-us #10680), with the
+# policyengine-core and spm-calculator versions it requires; every other pin
+# is unchanged.
 #
 # To upgrade a package, change its pin here, run the tests against the new set,
 # and compare /api/calculate results before deploying.
@@ -58,11 +61,8 @@ parso==0.8.7
 pexpect==4.9.0
 plotly==5.24.1
 pluggy==1.6.0
-policyengine-core==3.26.4
-# PyPI no longer serves policyengine-us 1.691.3 (of the 1.691 series it keeps
-# only 1.691.1), so this builds it from its release commit. The build matches
-# the live container's installed files hash for hash.
-policyengine-us @ https://github.com/PolicyEngine/policyengine-us/archive/2cb12a24dad22d85a82549f6d164b9d5fbadbe5e.tar.gz
+policyengine-core==3.34.9
+policyengine-us==2.105.0
 prompt_toolkit==3.0.52
 psutil==6.1.1
 ptyprocess==0.7.0
@@ -81,7 +81,7 @@ shellingham==1.5.4
 six==1.17.0
 sniffio==1.3.1
 sortedcontainers==2.4.0
-spm-calculator==0.3.1
+spm-calculator==1.1.0
 stack-data==0.6.3
 standard-imghdr==3.13.0
 starlette==1.0.0

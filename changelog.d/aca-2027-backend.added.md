@@ -1,0 +1,1 @@
+Model 2027 coverage in the calculator API (requests without a year still get 2026), with H.R. 1834 and two January 2026 draft variants of it: a 700% FPL cap, and a $5 minimum premium that stays off until policyengine-us models it. Report the benchmark premium at each income. Pin policyengine-us 2.105.0 and give the Modal function 4 GB.

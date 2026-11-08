@@ -2,6 +2,17 @@
 
 from pydantic import BaseModel, Field, field_validator
 
+# Coverage years the calculator models. Requests without a year get 2026, so
+# a page that predates the year setting keeps its answers.
+YEARS = (2026, 2027)
+DEFAULT_YEAR = 2026
+
+
+def check_year(year: int) -> int:
+    if year not in YEARS:
+        raise ValueError(f"year must be one of {', '.join(map(str, YEARS))}")
+    return year
+
 
 class CalculateRequest(BaseModel):
     """Request model for PTC calculation."""
@@ -18,9 +29,14 @@ class CalculateRequest(BaseModel):
     zip_code: str | None = Field(
         default=None, description="ZIP code (required for LA County)"
     )
-    show_ira: bool = Field(default=True, description="Calculate IRA extension scenario")
+    year: int = Field(default=DEFAULT_YEAR, description="Coverage year (2026 or 2027)")
+    show_ira: bool = Field(
+        default=True,
+        description="Calculate H.R. 1834, the enhanced credits extended (the IRA extension)",
+    )
     show_700fpl: bool = Field(
-        default=False, description="Calculate 700% FPL bill scenario"
+        default=False,
+        description="Calculate the Bipartisan Health Insurance Affordability Act (700% FPL bill)",
     )
     show_additional_bracket: bool = Field(
         default=False, description="Calculate additional bracket reform scenario"
@@ -28,10 +44,23 @@ class CalculateRequest(BaseModel):
     show_simplified_bracket: bool = Field(
         default=False, description="Calculate simplified bracket reform scenario"
     )
+    show_700fpl_cap: bool = Field(
+        default=False,
+        description="Calculate the enhanced credits capped at 700% FPL (January 2026 draft)",
+    )
+    show_min_premium: bool = Field(
+        default=False,
+        description="Calculate the enhanced credits with a $5 minimum premium (January 2026 draft)",
+    )
     skip_cache: bool = Field(
         default=False,
         description="Compute a new answer without reading or writing the cache",
     )
+
+    @field_validator("year")
+    @classmethod
+    def validate_year(cls, v):
+        return check_year(v)
 
     @field_validator("dependent_ages")
     @classmethod
@@ -63,9 +92,9 @@ class CalculateRequest(BaseModel):
 class CalculateResponse(BaseModel):
     """Response model for PTC calculation."""
 
-    income: list[float] = Field(description="Income values (10,001 points)")
-    ptc_baseline: list[float] = Field(description="PTC under baseline (2026 law)")
-    ptc_ira: list[float] = Field(description="PTC under IRA extension")
+    income: list[float] = Field(description="Income values (1,001 points)")
+    ptc_baseline: list[float] = Field(description="PTC under current law for the year")
+    ptc_ira: list[float] = Field(description="PTC under H.R. 1834 (the IRA extension)")
     ptc_700fpl: list[float] = Field(description="PTC under 700% FPL bill")
     ptc_additional_bracket: list[float] = Field(
         default_factory=list, description="PTC under additional bracket reform"
@@ -73,8 +102,31 @@ class CalculateResponse(BaseModel):
     ptc_simplified_bracket: list[float] = Field(
         default_factory=list, description="PTC under simplified bracket reform"
     )
-    fpl: float = Field(description="Federal Poverty Level for household size")
+    ptc_700fpl_cap: list[float] = Field(
+        default_factory=list,
+        description="PTC under the enhanced credits capped at 700% FPL",
+    )
+    ptc_min_premium: list[float] = Field(
+        default_factory=list,
+        description="PTC under the enhanced credits with a $5 minimum premium",
+    )
+    year: int = Field(default=DEFAULT_YEAR, description="Coverage year")
+    fpl: float = Field(
+        description=(
+            "Poverty guideline for the household's size that the credit uses: "
+            "the one for the year before the coverage year"
+        )
+    )
+    fpl_year: int | None = Field(default=None, description="The guideline's year")
+    model_version: str = Field(default="", description="policyengine-us version")
     slcsp: float = Field(description="Second-lowest cost silver plan (annual)")
+    slcsp_by_income: list[float] = Field(
+        default_factory=list,
+        description=(
+            "Annual benchmark premium for the members eligible for the credit at "
+            "each income, zero where none is"
+        ),
+    )
     medicaid: list[float] = Field(description="Medicaid value by income")
     chip: list[float] = Field(description="CHIP value by income")
 
@@ -85,7 +137,13 @@ class ScrollySection(BaseModel):
     id: str = Field(description="Unique section identifier")
     title: str = Field(description="Section title")
     content: str = Field(description="Markdown content for section")
-    chartState: str = Field(description="Chart state: all_programs, medicaid_focus, chip_focus, cliff_focus, ira_impact, both_reforms")
+    chartState: str = Field(
+        description=(
+            "Chart state: all_programs, medicaid_focus, chip_focus, cliff_focus, "
+            "ira_impact, fpl700_focus, additional_focus, simplified_focus, "
+            "cap700_focus, minprem_focus or both_reforms"
+        )
+    )
 
 
 class ExplainRequest(BaseModel):
@@ -97,6 +155,7 @@ class ExplainRequest(BaseModel):
     dependent_ages: list[int] = Field(default_factory=list, description="Ages of dependents")
     state: str = Field(description="Two-letter state code")
     county: str = Field(description="County name")
+    year: int = Field(default=DEFAULT_YEAR, description="Coverage year (2026 or 2027)")
     is_expansion_state: bool = Field(description="Whether state expanded Medicaid")
 
     # Calculated values
@@ -115,6 +174,8 @@ class ExplainRequest(BaseModel):
     show_700fpl: bool = Field(default=True, description="Whether 700% FPL bill is selected")
     show_additional_bracket: bool = Field(default=False, description="Whether additional bracket is selected")
     show_simplified_bracket: bool = Field(default=False, description="Whether simplified bracket is selected")
+    show_700fpl_cap: bool = Field(default=False, description="Whether the 700% FPL cap variant is selected")
+    show_min_premium: bool = Field(default=False, description="Whether the $5 minimum premium variant is selected")
 
     # Key data points for narrative
     sample_income: float = Field(description="Sample income to analyze")
@@ -123,6 +184,13 @@ class ExplainRequest(BaseModel):
     ptc_700fpl_at_sample: float = Field(default=0, description="700% FPL PTC at sample income")
     ptc_additional_bracket_at_sample: float = Field(default=0, description="Additional bracket PTC at sample income")
     ptc_simplified_bracket_at_sample: float = Field(default=0, description="Simplified bracket PTC at sample income")
+    ptc_700fpl_cap_at_sample: float = Field(default=0, description="700% FPL cap variant PTC at sample income")
+    ptc_min_premium_at_sample: float = Field(default=0, description="$5 minimum premium variant PTC at sample income")
+
+    @field_validator("year")
+    @classmethod
+    def validate_year(cls, v):
+        return check_year(v)
 
 
 class ExplainResponse(BaseModel):

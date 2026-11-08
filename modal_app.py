@@ -33,7 +33,9 @@ image = (
     image=image,
     secrets=[modal.Secret.from_name("anthropic-api-key")],
     timeout=300,
-    memory=2048,
+    # policyengine-us 2.x needs about 0.9 GB to load and 2.4-2.9 GB once a
+    # request has run its scenarios' reforms.
+    memory=4096,
 )
 @modal.asgi_app()
 def fastapi_app():
