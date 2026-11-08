@@ -134,17 +134,10 @@ def main():
 
     for household_key, household in PRESET_HOUSEHOLDS.items():
         print(f"Processing: {household['name']}")
-        data = calculate_household_data(household_key, household)
-        all_data[household_key] = data
-
-        # Save individual file
-        output_file = output_dir / f"{household_key}.json"
-        with open(output_file, "w") as f:
-            json.dump(data, f)
-        print(f"  Saved to {output_file}")
+        all_data[household_key] = calculate_household_data(household_key, household)
         print()
 
-    # Also save combined file for single-load option
+    # The Explore Households page reads the combined file.
     combined_file = output_dir / "all_households.json"
     with open(combined_file, "w") as f:
         json.dump(all_data, f)
