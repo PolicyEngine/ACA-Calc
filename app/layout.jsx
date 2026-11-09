@@ -4,9 +4,16 @@ import "@policyengine/ui-kit/styles.css";
 import "./globals.css";
 import Script from "next/script";
 
+// next.config.mjs sets this; metadata URLs don't get the basePath on their own.
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "/us/aca-calc";
+
 export const metadata = {
   title: "ACA Calculator",
   description: "PolicyEngine ACA premium tax credit calculator and subsidy cliff explorer",
+  // PolicyEngine's logo, as on policyengine.org, which serves this path from
+  // its own favicon.svg (policyengine-app-v2's policyEngineIconRewrites.ts);
+  // a direct visit to a Vercel host gets public/favicon.svg, the same file.
+  icons: { icon: `${BASE_PATH}/favicon.svg` },
 };
 
 export default function RootLayout({ children }) {
