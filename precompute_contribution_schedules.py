@@ -1,8 +1,8 @@
 """
 Precompute the Overview's contribution schedule chart: the share of income a
 household pays for the benchmark plan, by income as a percent of the poverty
-guideline, under current law (2026 and 2027), the enhanced schedule (2021-2025,
-which H.R. 1834 would extend) and the 700% FPL bill (2027).
+guideline, under current law (2026 and 2027) and the enhanced schedule
+(2021-2025, which H.R. 1834 would revive).
 
 Computed by policyengine-us across an income axis for a single adult in
 Travis County, TX: Texas didn't expand Medicaid, so every income from 100% FPL
@@ -18,7 +18,7 @@ import numpy as np
 from policyengine_us import Simulation
 
 from aca_calc.calculations.household import build_household_situation
-from aca_calc.calculations.reforms import create_700fpl_reform, create_enhanced_ptc_reform
+from aca_calc.calculations.reforms import create_enhanced_ptc_reform
 
 OUTPUT = Path(__file__).parent / "src" / "data" / "contribution_schedules.json"
 # Percent of the poverty guideline, in steps of 1%.
@@ -56,7 +56,6 @@ def main():
             "current_2027": schedule(2027),
             # The enhanced schedule doesn't change by year.
             "enhanced": schedule(2027, create_enhanced_ptc_reform()),
-            "bill700": schedule(2027, create_700fpl_reform()),
         },
     }
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)

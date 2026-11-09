@@ -1,0 +1,139 @@
+{
+  "model_version": "2.115.0",
+  "year": 2027,
+  "prior_year": 2026,
+  "examples": [
+    {
+      "key": "texas_single",
+      "name": "Single adult",
+      "description": "Age 40, Harris County, Texas",
+      "income": 40000,
+      "people": 1,
+      "scenarios": {
+        "current_2026": {
+          "fpl_percent": 256,
+          "slcsp": 8179.25830078125,
+          "ptc": 4742.4580078125,
+          "net_premium": 3436.80029296875,
+          "marketplace_members": 1,
+          "medicaid_or_chip_members": 0
+        },
+        "current_2027": {
+          "fpl_percent": 251,
+          "slcsp": 9241.7587890625,
+          "ptc": 5777.7587890625,
+          "net_premium": 3464.0,
+          "marketplace_members": 1,
+          "medicaid_or_chip_members": 0
+        },
+        "hr1834_2027": {
+          "fpl_percent": 251,
+          "slcsp": 9241.7587890625,
+          "ptc": 7641.7587890625,
+          "net_premium": 1600.0,
+          "marketplace_members": 1,
+          "medicaid_or_chip_members": 0
+        }
+      }
+    },
+    {
+      "key": "florida_family",
+      "name": "Family of four",
+      "description": "Parents aged 40, children aged 10 and 8, Hillsborough County, Florida",
+      "income": 75000,
+      "people": 4,
+      "scenarios": {
+        "current_2026": {
+          "fpl_percent": 233,
+          "slcsp": 24740.4375,
+          "ptc": 18879.63671875,
+          "net_premium": 5860.80078125,
+          "marketplace_members": 4,
+          "medicaid_or_chip_members": 0
+        },
+        "current_2027": {
+          "fpl_percent": 227,
+          "slcsp": 26406.892578125,
+          "ptc": 20560.4921875,
+          "net_premium": 5846.400390625,
+          "marketplace_members": 4,
+          "medicaid_or_chip_members": 0
+        },
+        "hr1834_2027": {
+          "fpl_percent": 227,
+          "slcsp": 26406.892578125,
+          "ptc": 24096.892578125,
+          "net_premium": 2310.0,
+          "marketplace_members": 4,
+          "medicaid_or_chip_members": 0
+        }
+      }
+    },
+    {
+      "key": "pennsylvania_single",
+      "name": "Single adult",
+      "description": "Age 45, Lebanon County, Pennsylvania",
+      "income": 104000,
+      "people": 1,
+      "scenarios": {
+        "current_2026": {
+          "fpl_percent": 665,
+          "slcsp": 13522.7685546875,
+          "ptc": 0.0,
+          "net_premium": 13522.7685546875,
+          "marketplace_members": 1,
+          "medicaid_or_chip_members": 0
+        },
+        "current_2027": {
+          "fpl_percent": 652,
+          "slcsp": 14836.53515625,
+          "ptc": 0.0,
+          "net_premium": 14836.53515625,
+          "marketplace_members": 1,
+          "medicaid_or_chip_members": 0
+        },
+        "hr1834_2027": {
+          "fpl_percent": 652,
+          "slcsp": 14836.53515625,
+          "ptc": 5996.53515625,
+          "net_premium": 8840.0,
+          "marketplace_members": 1,
+          "medicaid_or_chip_members": 0
+        }
+      }
+    },
+    {
+      "key": "california_couple",
+      "name": "Couple in their 60s",
+      "description": "Ages 64 and 62, San Benito County, California",
+      "income": 90000,
+      "people": 2,
+      "scenarios": {
+        "current_2026": {
+          "fpl_percent": 426,
+          "slcsp": 49011.23828125,
+          "ptc": 0.0,
+          "net_premium": 49011.23828125,
+          "marketplace_members": 2,
+          "medicaid_or_chip_members": 0
+        },
+        "current_2027": {
+          "fpl_percent": 416,
+          "slcsp": 55460.09765625,
+          "ptc": 0.0,
+          "net_premium": 55460.09765625,
+          "marketplace_members": 2,
+          "medicaid_or_chip_members": 0
+        },
+        "hr1834_2027": {
+          "fpl_percent": 416,
+          "slcsp": 55460.09765625,
+          "ptc": 47810.09765625,
+          "net_premium": 7650.0,
+          "marketplace_members": 2,
+          "medicaid_or_chip_members": 0
+        }
+      }
+    }
+  ]
+}
