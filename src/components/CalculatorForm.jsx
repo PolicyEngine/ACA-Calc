@@ -15,9 +15,9 @@ export const YEARS = [2027, 2026];
 const DEFAULT_YEAR = YEARS[0];
 
 // The $5 minimum premium scenario needs a policyengine-us release with
-// gov.contrib.aca.minimum_premium (policyengine-us #10681) in the API's image.
-// Turn this on in the change that pins that release.
-export const MIN_PREMIUM_AVAILABLE = false;
+// gov.contrib.aca.minimum_premium (policyengine-us #10681) in the API's image;
+// the API pins 2.115.0, which has it.
+export const MIN_PREMIUM_AVAILABLE = true;
 
 const parseYear = (value) => {
   const year = parseInt(value, 10);

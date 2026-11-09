@@ -1,1 +1,1 @@
-Default the calculator to 2027 coverage, with 2026 selectable; add the enhanced credits capped at 700% FPL; show the benchmark plan's monthly cost after each scenario's credit; and call the IRA extension H.R. 1834.
+Default the calculator to 2027 coverage, with 2026 selectable; add the enhanced credits capped at 700% FPL and the enhanced credits with a $5 minimum premium; show the benchmark plan's monthly cost after each scenario's credit; and call the IRA extension H.R. 1834.

@@ -63,7 +63,7 @@ const CACHE_TTL = 24 * 60 * 60 * 1000;
 
 // Part of every browser cache key: change it when the API's answers change for
 // the same request (a new policyengine-us pin), so no one sees the old ones.
-const CACHE_VERSION = "policyengine-us-2.105.0";
+const CACHE_VERSION = "policyengine-us-2.115.0";
 
 function getCacheKey(data) {
   const keyData = {
