@@ -1,0 +1,36 @@
+.premium-chart {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.premium-chart-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--pe-gray-800);
+  margin-bottom: var(--pe-space-md);
+  text-align: center;
+}
+
+.premium-chart-tooltip {
+  background: var(--pe-surface);
+  border: 1px solid var(--pe-border);
+  border-radius: var(--pe-radius-md);
+  padding: var(--pe-space-md);
+  box-shadow: var(--pe-shadow-lg);
+  min-width: 200px;
+}
+
+.premium-chart-tooltip p {
+  font-size: 0.875rem;
+  margin: 4px 0;
+  font-weight: 500;
+}
+
+.premium-chart-tooltip .premium-chart-tooltip-income {
+  font-weight: 600;
+  color: var(--pe-gray-800);
+  margin-bottom: var(--pe-space-sm);
+  padding-bottom: var(--pe-space-sm);
+  border-bottom: 1px solid var(--pe-border-light);
+}
