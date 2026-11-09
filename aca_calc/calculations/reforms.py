@@ -14,8 +14,7 @@ ENHANCED_THRESHOLDS = [0, 1.5, 2.0, 2.5, 3.0, 4.0]
 ENHANCED_INITIAL = [0, 0, 0.02, 0.04, 0.06]
 ENHANCED_FINAL = [0, 0.02, 0.04, 0.06, 0.085]
 
-# H.R. 1834 extends the enhanced schedule for 2026 through 2028; the January
-# 2026 draft variants below use the same years.
+# H.R. 1834 extends the enhanced schedule for 2026 through 2028.
 ENHANCED_PERIOD = "2026-01-01.2028-12-31"
 
 
@@ -50,64 +49,6 @@ def create_enhanced_ptc_reform():
         Reform: PolicyEngine reform object
     """
     return Reform.from_dict({**_enhanced_schedule(), **NO_INCOME_CAP}, country_id="us")
-
-
-def create_700fpl_cap_reform():
-    """The enhanced schedule with eligibility ending at 700% FPL.
-
-    A January 2026 draft of the CARE Act, which was never introduced, paired
-    the enhanced schedule with a 700% FPL income cap. Between 400% and 700%
-    FPL households pay 8.5% of income; above 700% there is no credit.
-
-    Returns:
-        Reform: PolicyEngine reform object
-    """
-    return Reform.from_dict(
-        {
-            **_enhanced_schedule(),
-            # Move the ineligible bracket's start from 400% to 700% FPL.
-            "gov.aca.ptc_income_eligibility[2].threshold": {ENHANCED_PERIOD: 7},
-        },
-        country_id="us",
-    )
-
-
-MINIMUM_PREMIUM_MODULE = "aca_ptc_minimum_premium"
-
-
-def minimum_premium_available() -> bool:
-    """Whether the installed policyengine-us has the minimum premium reform
-    (gov.contrib.aca.minimum_premium, policyengine-us #10681)."""
-    try:
-        _contrib_reform(MINIMUM_PREMIUM_MODULE, MINIMUM_PREMIUM_MODULE)
-    except ImportError:
-        return False
-    return True
-
-
-def create_minimum_premium_reform():
-    """The enhanced schedule with a $5 monthly minimum premium.
-
-    The January 2026 CARE Act draft required every tax unit to pay at least $5
-    a month toward its premiums: the credit can't cover the last $5 a month.
-    policyengine-us models it as the contributed reform
-    gov.contrib.aca.minimum_premium, $5 by default.
-
-    Returns:
-        Reform: PolicyEngine reform object
-
-    Raises:
-        ImportError: if the installed policyengine-us has no such reform.
-    """
-    _contrib_reform(MINIMUM_PREMIUM_MODULE, MINIMUM_PREMIUM_MODULE)
-    return Reform.from_dict(
-        {
-            **_enhanced_schedule(),
-            **NO_INCOME_CAP,
-            "gov.contrib.aca.minimum_premium.in_effect": {ENHANCED_PERIOD: True},
-        },
-        country_id="us",
-    )
 
 
 def _contrib_reform(module: str, name: str):

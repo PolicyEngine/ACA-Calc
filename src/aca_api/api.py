@@ -29,9 +29,6 @@ from aca_calc.calculations.reforms import (
     create_700fpl_reform,
     create_additional_bracket_reform,
     create_simplified_bracket_reform,
-    create_700fpl_cap_reform,
-    create_minimum_premium_reform,
-    minimum_premium_available,
 )
 
 # The model version is part of every cache key, so a new pin never serves
@@ -45,8 +42,6 @@ SCENARIOS = [
     ("show_700fpl", "ptc_700fpl", create_700fpl_reform),
     ("show_additional_bracket", "ptc_additional_bracket", create_additional_bracket_reform),
     ("show_simplified_bracket", "ptc_simplified_bracket", create_simplified_bracket_reform),
-    ("show_700fpl_cap", "ptc_700fpl_cap", create_700fpl_cap_reform),
-    ("show_min_premium", "ptc_min_premium", create_minimum_premium_reform),
 ]
 
 # Local cache fallback for development (in-memory, lost on restart)
@@ -194,22 +189,12 @@ def get_cache_key(data: CalculateRequest) -> str:
         "show_700fpl": data.show_700fpl,
         "show_additional_bracket": data.show_additional_bracket,
         "show_simplified_bracket": data.show_simplified_bracket,
-        "show_700fpl_cap": data.show_700fpl_cap,
-        "show_min_premium": data.show_min_premium,
+        "show_prior_year": data.show_prior_year,
         "year": data.year,
         "model_version": MODEL_VERSION,
     }
     key_str = json.dumps(key_data, sort_keys=True)
     return hashlib.md5(key_str.encode()).hexdigest()
-
-
-def check_scenarios(data: CalculateRequest):
-    """Refuse a scenario the installed model can't run, saying why."""
-    if data.show_min_premium and not minimum_premium_available():
-        raise ValueError(
-            "The $5 minimum premium scenario needs a policyengine-us release with "
-            f"gov.contrib.aca.minimum_premium; this API runs policyengine-us {MODEL_VERSION}."
-        )
 
 
 def household_situation(data: CalculateRequest) -> dict:
@@ -247,6 +232,26 @@ def run_baseline(data: CalculateRequest, situation: dict) -> dict:
     }
 
 
+def run_prior_year(data: CalculateRequest) -> dict:
+    """Current law a year before the coverage year, for the same household and
+    incomes (the income axis doesn't change with the year), or nothing if the
+    request doesn't ask for it."""
+    if not data.show_prior_year:
+        return {}
+    prior = data.model_copy(update={"year": data.year - 1})
+    sim = Simulation(situation=household_situation(prior))
+    fpl = sim.calculate("tax_unit_fpg", period=prior.year - 1)
+    return {
+        "ptc_prior_year": convert_to_native(
+            sim.calculate("aca_ptc", map_to="household", period=prior.year)
+        ),
+        "slcsp_by_income_prior_year": convert_to_native(
+            sim.calculate("slcsp", map_to="household", period=prior.year)
+        ),
+        "fpl_prior_year": float(fpl[len(fpl) // 2]),
+    }
+
+
 def run_scenario(data: CalculateRequest, situation: dict, flag: str, create_reform, zeros):
     """A scenario's credits across the income axis, or zeros if it is off."""
     if not getattr(data, flag):
@@ -255,7 +260,9 @@ def run_scenario(data: CalculateRequest, situation: dict, flag: str, create_refo
     return sim.calculate("aca_ptc", map_to="household", period=data.year)
 
 
-def build_response(data: CalculateRequest, baseline: dict, scenarios: dict) -> CalculateResponse:
+def build_response(
+    data: CalculateRequest, baseline: dict, scenarios: dict, prior_year: dict
+) -> CalculateResponse:
     return CalculateResponse(
         income=convert_to_native(baseline["income"]),
         ptc_baseline=convert_to_native(baseline["ptc_baseline"]),
@@ -268,6 +275,7 @@ def build_response(data: CalculateRequest, baseline: dict, scenarios: dict) -> C
         medicaid=convert_to_native(baseline["medicaid"]),
         chip=convert_to_native(baseline["chip"]),
         model_version=MODEL_VERSION,
+        **prior_year,
     )
 
 
@@ -285,8 +293,8 @@ async def calculate_ptc(data: CalculateRequest):
         return cached
 
     try:
-        check_scenarios(data)
         situation = household_situation(data)
+        prior_year = simulation_executor.submit(run_prior_year, data)
         baseline = run_baseline(data, situation)
 
         # Run the selected scenarios in parallel
@@ -296,7 +304,7 @@ async def calculate_ptc(data: CalculateRequest):
             for flag, field, create in SCENARIOS
         }
         scenarios = {field: future.result() for field, future in futures.items()}
-        response = build_response(data, baseline, scenarios)
+        response = build_response(data, baseline, scenarios, prior_year.result())
 
         # Cache the result (persistent + local)
         if not data.skip_cache:
@@ -332,8 +340,9 @@ async def calculate_ptc_stream(data: CalculateRequest):
             yield f"data: {json.dumps({'step': 'setup', 'progress': 10, 'message': 'Setting up household...'})}\n\n"
             await asyncio.sleep(0)  # Allow event to be sent
 
-            check_scenarios(data)
             situation = household_situation(data)
+            loop = asyncio.get_event_loop()
+            prior_year = loop.run_in_executor(simulation_executor, run_prior_year, data)
 
             # Step 2: Run the current-law simulation
             message = f"Calculating current law ({data.year})..."
@@ -347,7 +356,6 @@ async def calculate_ptc_stream(data: CalculateRequest):
             await asyncio.sleep(0)
 
             zeros = np.zeros_like(baseline["ptc_baseline"])
-            loop = asyncio.get_event_loop()
             results = await asyncio.gather(
                 *(
                     loop.run_in_executor(
@@ -362,7 +370,7 @@ async def calculate_ptc_stream(data: CalculateRequest):
             yield f"data: {json.dumps({'step': 'finalizing', 'progress': 90, 'message': 'Finalizing results...'})}\n\n"
             await asyncio.sleep(0)
 
-            response = build_response(data, baseline, scenarios)
+            response = build_response(data, baseline, scenarios, await prior_year)
 
             # Cache the result (persistent + local)
             if not data.skip_cache:
@@ -448,10 +456,8 @@ def build_explain_prompt(data: ExplainRequest) -> str:
         reform_data_lines.append(f"- Additional Bracket PTC: ${data.ptc_additional_bracket_at_sample:,.0f}/year (${data.ptc_additional_bracket_at_sample/12:,.0f}/month)")
     if data.show_simplified_bracket:
         reform_data_lines.append(f"- Simplified Bracket PTC: ${data.ptc_simplified_bracket_at_sample:,.0f}/year (${data.ptc_simplified_bracket_at_sample/12:,.0f}/month)")
-    if data.show_700fpl_cap:
-        reform_data_lines.append(f"- Enhanced credits capped at 700% FPL PTC: ${data.ptc_700fpl_cap_at_sample:,.0f}/year (${data.ptc_700fpl_cap_at_sample/12:,.0f}/month)")
-    if data.show_min_premium:
-        reform_data_lines.append(f"- Enhanced credits with a $5 minimum premium PTC: ${data.ptc_min_premium_at_sample:,.0f}/year (${data.ptc_min_premium_at_sample/12:,.0f}/month)")
+    if data.show_prior_year:
+        reform_data_lines.insert(0, f"- Current-law PTC ({year - 1}): ${data.ptc_prior_year_at_sample:,.0f}/year (${data.ptc_prior_year_at_sample/12:,.0f}/month)")
 
     reform_data_text = "\n".join(reform_data_lines)
 
@@ -491,20 +497,6 @@ SIMPLIFIED BRACKET (show_simplified_bracket=True):
 - Simplest structure, with the fastest phase-out of the options
 - CRFB estimates it would cost about $175 billion through 2035""")
 
-    if data.show_700fpl_cap:
-        reform_descriptions.append("""
-ENHANCED CREDITS CAPPED AT 700% FPL (show_700fpl_cap=True):
-- The enhanced (ARPA/IRA) contribution schedule, with eligibility ending at 700% FPL
-- A January 2026 draft of the CARE Act, which was never introduced, paired the enhanced schedule with this cap
-- Between 400% and 700% FPL, households pay at most 8.5% of income for the benchmark plan; above 700% FPL there is no credit""")
-
-    if data.show_min_premium:
-        reform_descriptions.append("""
-ENHANCED CREDITS WITH A $5 MINIMUM PREMIUM (show_min_premium=True):
-- The enhanced (ARPA/IRA) contribution schedule with no income limit, except that the credit cannot cover the last $5 a month of a household's premium
-- From the same January 2026 CARE Act draft, which was never introduced
-- A household whose credit would otherwise cover the whole benchmark premium pays $5 a month ($60 a year)""")
-
     reform_descriptions_text = "\n".join(reform_descriptions) if reform_descriptions else "No reforms selected."
 
     # Build dynamic sections based on selected reforms
@@ -513,7 +505,14 @@ ENHANCED CREDITS WITH A $5 MINIMUM PREMIUM (show_min_premium=True):
     sections_json = []
 
     # Section 1: Always intro
-    sections_spec.append(f'{section_num}. id: "intro", chartState: "all_programs" - Introduce this household and their location. State the SLCSP cost of ${data.slcsp:,.0f}/year.')
+    prior_year_note = (
+        f" Compare it with the {year - 1} benchmark of ${data.slcsp_prior_year:,.0f}/year, and"
+        f" say how the household's current-law credit at ${data.sample_income:,.0f} changes"
+        f" between {year - 1} and {year}."
+        if data.show_prior_year
+        else ""
+    )
+    sections_spec.append(f'{section_num}. id: "intro", chartState: "all_programs" - Introduce this household and their location. State the SLCSP cost of ${data.slcsp:,.0f}/year.{prior_year_note}')
     sections_json.append('{{"id": "intro", "title": "...", "content": "...", "chartState": "all_programs"}}')
     section_num += 1
 
@@ -556,18 +555,6 @@ ENHANCED CREDITS WITH A $5 MINIMUM PREMIUM (show_min_premium=True):
         sections_json.append('{{"id": "simplified", "title": "...", "content": "...", "chartState": "simplified_focus"}}')
         section_num += 1
 
-    if data.show_700fpl_cap:
-        diff = data.ptc_700fpl_cap_at_sample - data.ptc_baseline_at_sample
-        sections_spec.append(f'{section_num}. id: "cap700", chartState: "cap700_focus" - Explain the enhanced credits capped at 700% FPL, from a January 2026 draft of the CARE Act that was never introduced. At ${data.sample_income:,.0f} income, it provides ${data.ptc_700fpl_cap_at_sample:,.0f}/year vs current law ${data.ptc_baseline_at_sample:,.0f}/year (difference: ${diff:,.0f}/year). Explain that it follows the enhanced schedule up to 700% FPL (${data.fpl_700_income:,.0f}) and ends there.')
-        sections_json.append('{{"id": "cap700", "title": "...", "content": "...", "chartState": "cap700_focus"}}')
-        section_num += 1
-
-    if data.show_min_premium:
-        diff = data.ptc_min_premium_at_sample - data.ptc_baseline_at_sample
-        sections_spec.append(f'{section_num}. id: "minprem", chartState: "minprem_focus" - Explain the enhanced credits with a $5 minimum premium, from a January 2026 draft of the CARE Act that was never introduced. At ${data.sample_income:,.0f} income, it provides ${data.ptc_min_premium_at_sample:,.0f}/year vs current law ${data.ptc_baseline_at_sample:,.0f}/year (difference: ${diff:,.0f}/year). Explain that the credit cannot cover the last $5 a month of the premium.')
-        sections_json.append('{{"id": "minprem", "title": "...", "content": "...", "chartState": "minprem_focus"}}')
-        section_num += 1
-
     # Final comparison section (always included)
     selected_reforms = []
     if data.show_ira:
@@ -578,16 +565,18 @@ ENHANCED CREDITS WITH A $5 MINIMUM PREMIUM (show_min_premium=True):
         selected_reforms.append("Additional Bracket")
     if data.show_simplified_bracket:
         selected_reforms.append("Simplified Bracket")
-    if data.show_700fpl_cap:
-        selected_reforms.append("enhanced credits capped at 700% FPL")
-    if data.show_min_premium:
-        selected_reforms.append("enhanced credits with a $5 minimum premium")
 
     if len(selected_reforms) > 1:
         reforms_list = ", ".join(selected_reforms)
         sections_spec.append(f'{section_num}. id: "comparison", chartState: "both_reforms" - Compare all selected reforms: current law vs {reforms_list}. Use the exact PTC values provided for ${data.sample_income:,.0f} income. Summarize which provides the most/least subsidy for this household.')
         sections_json.append('{{"id": "comparison", "title": "...", "content": "...", "chartState": "both_reforms"}}')
 
+    prior_year_benchmark = (
+        f"\n- Annual benchmark plan (SLCSP) in {year - 1}: ${data.slcsp_prior_year:,.0f}"
+        f" (${data.slcsp_prior_year/12:,.0f}/month)"
+        if data.show_prior_year
+        else ""
+    )
     sections_spec_text = "\n\n".join(sections_spec)
     sections_json_text = ",\n    ".join(sections_json)
     total_sections = len(sections_json)
@@ -618,7 +607,7 @@ KEY FINANCIAL DATA:
 - Federal Poverty Level (FPL) for this household: ${data.fpl:,.0f} (the {year - 1} poverty guideline, which {year} premium tax credits use)
 - 400% FPL (current-law subsidy limit): ${data.fpl_400_income:,.0f}
 - 700% FPL: ${data.fpl_700_income:,.0f}
-- Annual benchmark plan (SLCSP): ${data.slcsp:,.0f} (${data.slcsp/12:,.0f}/month)
+- Annual benchmark plan (SLCSP): ${data.slcsp:,.0f} (${data.slcsp/12:,.0f}/month){prior_year_benchmark}
 
 SELECTED REFORMS AND THEIR DETAILS:
 {reform_descriptions_text}
@@ -630,7 +619,7 @@ Generate exactly {total_sections} scrollytelling sections in JSON format. Each s
 - id: unique identifier
 - title: descriptive section title (5-10 words)
 - content: 2-3 short paragraphs using **bold** for key numbers. Use exact values provided above.
-- chartState: MUST be one of these exact strings: "all_programs", "medicaid_focus", "chip_focus", "cliff_focus", "ira_impact", "fpl700_focus", "additional_focus", "simplified_focus", "cap700_focus", "minprem_focus", "both_reforms"
+- chartState: MUST be one of these exact strings: "all_programs", "medicaid_focus", "chip_focus", "cliff_focus", "ira_impact", "fpl700_focus", "additional_focus", "simplified_focus", "both_reforms"
 
 REQUIRED SECTIONS (use these EXACT chartState values and ids):
 {sections_spec_text}
@@ -662,8 +651,8 @@ def get_explain_cache_key(data: ExplainRequest) -> str:
         "show_700fpl": data.show_700fpl,
         "show_additional_bracket": data.show_additional_bracket,
         "show_simplified_bracket": data.show_simplified_bracket,
-        "show_700fpl_cap": data.show_700fpl_cap,
-        "show_min_premium": data.show_min_premium,
+        "show_prior_year": data.show_prior_year,
+        "slcsp_prior_year": round(data.slcsp_prior_year, 0),
         "year": data.year,
         "model_version": MODEL_VERSION,
     }

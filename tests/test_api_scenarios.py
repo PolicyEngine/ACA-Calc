@@ -1,4 +1,5 @@
-"""The calculator API for 2026 and 2027 coverage, and its extension scenarios.
+"""The calculator API for 2026 and 2027 coverage, 2026 alongside 2027, and the
+extension scenarios.
 
 A single 60-year-old in Travis County, Texas: Texas didn't expand Medicaid, so
 the credit starts at 100% FPL, and at 60 the benchmark premium is above 8.5%
@@ -16,7 +17,6 @@ TestClient = pytest.importorskip(
 ).TestClient
 
 from aca_calc.calculations.household import build_household_situation
-from aca_calc.calculations.reforms import minimum_premium_available
 from src.aca_api import api
 from src.aca_api.models import CalculateRequest
 
@@ -26,8 +26,6 @@ ALL_SCENARIOS = {
     "show_700fpl": True,
     "show_additional_bracket": True,
     "show_simplified_bracket": True,
-    "show_700fpl_cap": True,
-    "show_min_premium": True,
 }
 # Single-person poverty guidelines for the 48 states and Alaska (HHS).
 GUIDELINE_2025 = 15_650
@@ -43,8 +41,9 @@ def client():
 
 @pytest.fixture(scope="module")
 def answer_2027(client):
-    """Current law and every available scenario for 2027 coverage."""
-    response = client.post("/api/calculate", json={**HOUSEHOLD, **ALL_SCENARIOS, "year": 2027})
+    """Current law and every scenario for 2027 coverage, with 2026 current law."""
+    request = {**HOUSEHOLD, **ALL_SCENARIOS, "year": 2027, "show_prior_year": True}
+    response = client.post("/api/calculate", json=request)
     assert response.status_code == 200, response.text
     answer = {
         key: np.array(value) if isinstance(value, list) else value
@@ -77,8 +76,17 @@ def test_the_cache_key_names_the_year_and_the_model_version(monkeypatch):
     key_2026 = api.get_cache_key(CalculateRequest(**request, year=2026))
     key_2027 = api.get_cache_key(CalculateRequest(**request, year=2027))
     assert key_2026 != key_2027
+    with_2026 = CalculateRequest(**request, year=2027, show_prior_year=True)
+    assert api.get_cache_key(with_2026) != key_2027
     monkeypatch.setattr(api, "MODEL_VERSION", "another version")
     assert api.get_cache_key(CalculateRequest(**request, year=2026)) != key_2026
+
+
+def test_only_2027_requests_can_ask_for_the_year_before():
+    with pytest.raises(ValidationError, match="show_prior_year"):
+        CalculateRequest(
+            age_head=40, state="TX", county="Travis County", year=2026, show_prior_year=True
+        )
 
 
 def test_the_answer_names_its_year_guideline_and_model(answer_2027):
@@ -113,14 +121,16 @@ def test_hr1834_in_2027_continues_above_400_percent(answer_2027):
     assert (answer_2027["ptc_ira"][between(answer_2027, 4, 7)] > 0).all()
 
 
-def test_the_700_percent_cap_follows_hr1834_and_ends_at_700_percent(answer_2027):
-    below_700 = between(answer_2027, 1, 7)
-    np.testing.assert_allclose(
-        answer_2027["ptc_700fpl_cap"][below_700], answer_2027["ptc_ira"][below_700], atol=1
-    )
-    above_700 = answer_2027["multiple"] > 7.01
-    assert (answer_2027["ptc_700fpl_cap"][above_700] == 0).all()
-    assert (answer_2027["ptc_ira"][above_700 & (answer_2027["multiple"] < 8)] > 0).all()
+def test_2026_current_law_comes_back_for_the_same_incomes(answer_2027):
+    # 2026 credits measure income against the 2025 guideline and end at 400%
+    # of it.
+    assert answer_2027["fpl_prior_year"] == GUIDELINE_2025
+    prior = answer_2027["ptc_prior_year"]
+    assert len(prior) == len(answer_2027["income"])
+    assert len(answer_2027["slcsp_by_income_prior_year"]) == len(answer_2027["income"])
+    multiple = answer_2027["income"] / GUIDELINE_2025
+    assert (prior[(multiple > 1.5 * 1.01) & (multiple < 4 * 0.99)] > 0).all()
+    assert (prior[multiple > 4.01] == 0).all()
 
 
 @pytest.mark.parametrize(
@@ -139,39 +149,8 @@ def test_a_scenario_that_is_off_returns_zeros(client):
     assert answer["year"] == 2026
     assert answer["fpl"] == GUIDELINE_2025
     assert max(answer["ptc_ira"]) > 0
-    for field in ("ptc_700fpl", "ptc_700fpl_cap", "ptc_min_premium"):
+    for field in ("ptc_700fpl", "ptc_additional_bracket", "ptc_simplified_bracket"):
         assert len(answer[field]) == len(answer["income"])
         assert max(answer[field]) == 0
+    assert answer["ptc_prior_year"] is None
 
-
-def test_the_installed_model_has_the_minimum_premium():
-    assert minimum_premium_available()
-
-
-def test_the_minimum_premium_leaves_60_dollars_where_hr1834_covers_the_premium(answer_2027):
-    # Below 150% FPL the enhanced schedule's contribution is 0%, so H.R. 1834's
-    # credit is the whole benchmark premium; the minimum leaves $5 a month.
-    below_150 = between(answer_2027, 1, 1.5)
-    np.testing.assert_allclose(
-        answer_2027["ptc_min_premium"][below_150], answer_2027["slcsp"] - 60, atol=1
-    )
-
-
-def test_the_minimum_premium_matches_hr1834_where_the_household_pays_more(answer_2027):
-    # From 200% FPL the required contribution is at least 2% of income, far
-    # more than $60 a year, so the minimum doesn't bind.
-    above_200 = between(answer_2027, 2, 7)
-    np.testing.assert_allclose(
-        answer_2027["ptc_min_premium"][above_200], answer_2027["ptc_ira"][above_200], atol=1
-    )
-
-
-def test_a_model_without_the_minimum_premium_says_what_it_needs(client, monkeypatch):
-    monkeypatch.setattr(api, "minimum_premium_available", lambda: False)
-    request = {**HOUSEHOLD, "show_ira": False, "show_min_premium": True, "year": 2027}
-    response = client.post("/api/calculate", json=request)
-    assert response.status_code == 400
-    assert "gov.contrib.aca.minimum_premium" in response.json()["detail"]
-    stream = client.post("/api/calculate-stream", json=request)
-    assert '"step": "error"' in stream.text
-    assert "gov.contrib.aca.minimum_premium" in stream.text
