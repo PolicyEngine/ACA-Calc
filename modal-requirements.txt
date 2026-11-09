@@ -4,9 +4,8 @@
 # minus the 14 packages that Modal's 2025.06 image builder installs at the same
 # versions. Since then policyengine-us has moved from 1.691.3 to 2.115.0
 # (2026-11-09), the first release with the published 2027 premiums
-# (policyengine-us #10682) and the minimum premium reform (#10681), with the
-# policyengine-core and spm-calculator versions it requires; every other pin
-# is unchanged.
+# (policyengine-us #10682), with the policyengine-core and spm-calculator
+# versions it requires; every other pin is unchanged.
 #
 # To upgrade a package, change its pin here, run the tests against the new set,
 # and compare /api/calculate results before deploying.

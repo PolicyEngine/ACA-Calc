@@ -2,43 +2,43 @@
 
 ## Code Structure
 
-### Main Application (`app.py`)
+### API (`src/aca_api/`)
 
-**Key Functions:**
+- **`api.py`**: the FastAPI app.
+  - `/api/calculate-stream`, which the calculator page calls, and `/api/calculate`, its fallback, run current law and the selected scenarios across an income axis for one household.
+  - `/api/explain` asks Claude for a narrative built from the computed numbers.
+  - `/api/health` reports that the API is up.
+- **`models.py`**: the request and response models.
 
-1. **`calculate_ptc()`** - Core calculation logic
-   - Builds household situation dictionary
-   - Applies reform parameters if requested
-   - Returns PTC and SLCSP values
-   - County format: "Travis County" → "TRAVIS_COUNTY_TX"
+### Calculations (`aca_calc/calculations/`)
 
-2. **`create_chart()`** - Visualization
-   - Generates income sweep curves
-   - Shows user's position on curves
-   - Compares baseline vs reform scenarios
+- **`household.py`**: `build_household_situation()` builds the PolicyEngine situation, with an employment income axis for the charts.
+  - County format: "Travis County" → "TRAVIS_COUNTY_TX".
+- **`reforms.py`**: each scenario as a PolicyEngine reform.
 
-3. **`main()`** - Streamlit UI
-   - Handles user inputs
-   - Displays results
-   - Manages session state
+### Frontend
+
+- **`app/`**: the Next.js entry.
+- **`src/App.jsx`**: the Overview, Explore Households and Calculator pages.
+- **`src/components/`**: the charts, tables and the calculator.
+- **`src/data/households/`**: precomputed results that the Overview and Explore pages read. `precompute_households.py` and `precompute_cliff_household.py` regenerate them.
 
 ### Data Files
 
-- **`counties.json`**: 3,143 counties across all 50 states + DC
-- **`process_counties.py`**: Updates county data from PolicyEngine
+- **`counties.json`**: 3,143 counties across all 50 states + DC.
+- **`process_counties.py`**: updates county data from PolicyEngine.
 
 ## Testing
 
 ```bash
-# Quick verification test
-python tests/test_reform_verification.py
+# Every Python test
+make test
 
-# Comprehensive tests
-python tests/test_app_comprehensive.py
-
-# State-specific tests
-python tests/test_texas.py
-python tests/test_nj.py
+# The API tests CI runs, against the Modal image's exact packages: the
+# test files listed in .github/workflows/modal-api.yml
+uv venv --python 3.11
+uv pip install -r modal-requirements.txt
+.venv/bin/python -m pytest tests/test_api_explain.py tests/test_smoke_test_api.py
 ```
 
 ## PolicyEngine Integration
@@ -60,11 +60,11 @@ situation = {
 
 ### Reform Parameters
 
-IRA enhancements modify these PolicyEngine parameters:
-```python
-"gov.aca.ptc_phase_out_rate[0-6].amount"  # Contribution percentages
-"gov.aca.ptc_income_eligibility[2].amount"  # Remove 400% FPL cap
-```
+The scenarios change these policyengine-us parameters:
+- `gov.aca.required_contribution_percentage.threshold`, `.initial` and `.final`: the contribution schedule, three lists replaced together.
+- `gov.aca.ptc_income_eligibility[2]`: the 400% FPL limit.
+
+Other scenarios use policyengine-us's contributed reforms (`policyengine_us.reforms.aca`).
 
 ### County Format
 
@@ -80,38 +80,9 @@ PolicyEngine expects: `COUNTY_NAME_STATE`
 - Verify state has marketplace data
 - Try without county (uses state default)
 
-### Reform Not Applied
-- Ensure `use_reform=True` parameter
-- Check Reform.from_dict() imports correctly
-- Verify date format: "2026-01-01.2100-12-31"
-
-### Calculations Don't Match Notebook
-- Check PolicyEngine version
-- Verify household structure matches
-- Confirm income is split correctly for couples
-
-## Adding Features
-
-### New State-Specific Logic
-1. Add to `calculate_ptc()` function
-2. Test with multiple counties in that state
-3. Compare against PolicyEngine web app
-
-### UI Changes
-1. Modify `main()` function
-2. Update session state handling
-3. Test with various household types
-
-### New Visualizations
-1. Add to or modify `create_chart()`
-2. Use Plotly for consistency
-3. Include hover tooltips
-
-## Performance Tips
-
-- Use `@st.cache_data` for expensive operations
-- Load counties.json once at startup
-- Minimize redundant PolicyEngine simulations
+### A Scenario Fails
+- A reform that names a parameter policyengine-us no longer has fails the request. The API reports the error, and the page shows it, rather than zero credits.
+- Check the reform's parameter paths against the installed policyengine-us.
 
 ## Questions?
 

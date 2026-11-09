@@ -1,5 +1,0 @@
-streamlit
-policyengine_us>=1.409.0
-numpy
-pandas
-plotly
