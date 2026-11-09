@@ -21,14 +21,16 @@ Visit **[https://policyengine.org/us/aca-calc](https://policyengine.org/us/aca-c
 ### Run Locally
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+# The frontend, at http://localhost:3000/us/aca-calc
+bun install
+bun run dev
 
-# Run the app
-streamlit run app.py
+# The API, at http://localhost:5001, which the calculator page calls unless
+# NEXT_PUBLIC_API_URL names another
+uv run --with fastapi --with uvicorn uvicorn src.aca_api.api:app --port 5001
 ```
 
-The app will open at http://localhost:8501
+`make api` runs the API in Docker instead.
 
 ## Features
 
@@ -51,8 +53,8 @@ The app will open at http://localhost:8501
 
 Built with:
 - **[PolicyEngine US](https://policyengine.org)**: Open-source tax-benefit microsimulation
-- **[Streamlit](https://streamlit.io)**: Interactive web interface
-- **[Plotly](https://plotly.com)**: Data visualization
+- **[Next.js](https://nextjs.org)** and **[Recharts](https://recharts.org)**: the frontend, on Vercel
+- **[FastAPI](https://fastapi.tiangolo.com)**: the calculator's API, on Modal
 
 County data sourced from PolicyEngine's ACA rating areas database.
 
@@ -60,13 +62,21 @@ County data sourced from PolicyEngine's ACA rating areas database.
 
 ```
 .
-├── app.py                  # Main Streamlit application
-├── counties.json           # County data for all states
-├── process_counties.py     # County data processor
-├── requirements.txt        # Python dependencies
-├── tests/                  # Test files
-├── notebooks/              # Analysis notebooks
-└── archive/                # Historical files
+├── app/                    # Next.js entry (layout and page)
+├── src/
+│   ├── App.jsx             # The Overview, Explore Households and Calculator pages
+│   ├── components/         # Charts, tables and the calculator
+│   ├── data/households/    # Precomputed results the Overview and Explore pages read
+│   └── aca_api/            # The FastAPI backend (api.py, models.py)
+├── aca_calc/calculations/  # The household builder and the scenarios' reforms
+├── modal_app.py            # The API's Modal deployment
+├── modal-requirements.txt  # The API image's exact package versions
+├── precompute_*.py         # Regenerate the precomputed household results
+├── scripts/                # The post-deploy smoke test
+├── counties.json           # County lists for the calculator form
+├── process_counties.py     # Regenerates counties.json
+├── tests/                  # Python tests
+└── notebooks/              # Analysis notebooks
 ```
 
 ## Development
@@ -81,8 +91,8 @@ uv run --locked --with fastapi pytest tests/test_api_explain.py -v
 ```
 
 ```bash
-# Run tests
-python tests/test_reform_verification.py
+# Run the Python tests
+make test
 
 # Update county data
 python process_counties.py
@@ -123,6 +133,28 @@ uvx --from modal==1.4.2 modal app rollback aca-calc-api --env main
 
 Each `/api/explain` request that misses the 7-day explanation cache calls the
 Anthropic API on PolicyEngine's account.
+
+## The frontend's host
+
+policyengine.org serves the frontend at `/us/aca-calc` through
+policyengine-app-v2's zone rewrite (`website/src/data/appZoneRoutes.ts`) to
+`aca-calc.vercel.app`. `next.config.mjs` sends a visit straight to that host,
+with a 308, to the same page on `www.policyengine.org/us/aca-calc`. The rule
+keys on `x-forwarded-host`, which Vercel sets to the host the visitor asked
+for: `aca-calc.vercel.app` on a direct visit, `www.policyengine.org` on a
+request policyengine.org proxies. Previews keep their own hosts, so the rule
+leaves them alone.
+
+After a production deploy, a direct visit should answer 308 and
+policyengine.org should still serve the page:
+
+```bash
+curl -sI https://aca-calc.vercel.app/us/aca-calc
+curl -sI https://www.policyengine.org/us/aca-calc
+```
+
+The first should answer 308 with `location:
+https://www.policyengine.org/us/aca-calc`, the second 200.
 
 ## License
 
