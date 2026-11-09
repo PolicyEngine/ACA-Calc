@@ -27,6 +27,7 @@ ALL_SCENARIOS = {
     "show_additional_bracket": True,
     "show_simplified_bracket": True,
     "show_700fpl_cap": True,
+    "show_min_premium": True,
 }
 # Single-person poverty guidelines for the 48 states and Alaska (HHS).
 GUIDELINE_2025 = 15_650
@@ -143,10 +144,30 @@ def test_a_scenario_that_is_off_returns_zeros(client):
         assert max(answer[field]) == 0
 
 
-@pytest.mark.skipif(
-    minimum_premium_available(), reason="the installed policyengine-us models the minimum premium"
-)
-def test_the_minimum_premium_scenario_says_what_it_needs(client):
+def test_the_installed_model_has_the_minimum_premium():
+    assert minimum_premium_available()
+
+
+def test_the_minimum_premium_leaves_60_dollars_where_hr1834_covers_the_premium(answer_2027):
+    # Below 150% FPL the enhanced schedule's contribution is 0%, so H.R. 1834's
+    # credit is the whole benchmark premium; the minimum leaves $5 a month.
+    below_150 = between(answer_2027, 1, 1.5)
+    np.testing.assert_allclose(
+        answer_2027["ptc_min_premium"][below_150], answer_2027["slcsp"] - 60, atol=1
+    )
+
+
+def test_the_minimum_premium_matches_hr1834_where_the_household_pays_more(answer_2027):
+    # From 200% FPL the required contribution is at least 2% of income, far
+    # more than $60 a year, so the minimum doesn't bind.
+    above_200 = between(answer_2027, 2, 7)
+    np.testing.assert_allclose(
+        answer_2027["ptc_min_premium"][above_200], answer_2027["ptc_ira"][above_200], atol=1
+    )
+
+
+def test_a_model_without_the_minimum_premium_says_what_it_needs(client, monkeypatch):
+    monkeypatch.setattr(api, "minimum_premium_available", lambda: False)
     request = {**HOUSEHOLD, "show_ira": False, "show_min_premium": True, "year": 2027}
     response = client.post("/api/calculate", json=request)
     assert response.status_code == 400

@@ -2,9 +2,9 @@
 #
 # Captured with `pip freeze` from the live aca-calc-api container on 2026-11-03,
 # minus the 14 packages that Modal's 2025.06 image builder installs at the same
-# versions. On 2026-11-07 policyengine-us moved from 1.691.3 to 2.105.0, the
-# latest release, which has the 2027 applicable percentages and the bracket
-# variants' eligibility fix (policyengine-us #10680), with the
+# versions. Since then policyengine-us has moved from 1.691.3 to 2.115.0
+# (2026-11-09), the first release with the published 2027 premiums
+# (policyengine-us #10682) and the minimum premium reform (#10681), with the
 # policyengine-core and spm-calculator versions it requires; every other pin
 # is unchanged.
 #
@@ -62,7 +62,7 @@ pexpect==4.9.0
 plotly==5.24.1
 pluggy==1.6.0
 policyengine-core==3.34.9
-policyengine-us==2.105.0
+policyengine-us==2.115.0
 prompt_toolkit==3.0.52
 psutil==6.1.1
 ptyprocess==0.7.0
