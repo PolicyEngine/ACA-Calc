@@ -5,13 +5,21 @@ from pathlib import Path
 
 import modal
 
-app = modal.App("aca-calc-api")
+# The live app is aca-calc-api. A preview deploy sets ACA_API_APP_NAME, say
+# aca-calc-api-preview, to run a branch's backend beside it with caches of its
+# own; the image carries the name, so its containers open the same caches.
+APP_NAME = os.environ.get("ACA_API_APP_NAME", "aca-calc-api")
+CACHE_SUFFIX = APP_NAME.removeprefix("aca-calc-api")
+
+app = modal.App(APP_NAME)
 
 # Persistent cache for calculation results (7-day TTL handled in application)
-calculation_cache = modal.Dict.from_name("aca-calc-cache", create_if_missing=True)
+calculation_cache = modal.Dict.from_name(f"aca-calc-cache{CACHE_SUFFIX}", create_if_missing=True)
 
 # Persistent cache for AI explanations
-explanation_cache = modal.Dict.from_name("aca-explain-cache", create_if_missing=True)
+explanation_cache = modal.Dict.from_name(
+    f"aca-explain-cache{CACHE_SUFFIX}", create_if_missing=True
+)
 
 # Exact package versions from the live container, so a deploy changes only this
 # repo's code. Read the notes in the file before changing a pin.
@@ -25,7 +33,13 @@ image = (
     .add_local_dir("src/aca_api", "/root/src/aca_api", copy=True)
     # The commit a CI deploy came from. The API reports it, so the smoke test
     # can tell this deploy's containers from the previous version's.
-    .env({"PYTHONPATH": "/root", "ACA_API_COMMIT": os.environ.get("ACA_API_COMMIT", "")})
+    .env(
+        {
+            "PYTHONPATH": "/root",
+            "ACA_API_COMMIT": os.environ.get("ACA_API_COMMIT", ""),
+            "ACA_API_APP_NAME": APP_NAME,
+        }
+    )
 )
 
 
