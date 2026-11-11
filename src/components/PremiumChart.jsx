@@ -123,12 +123,11 @@ function PremiumChart({ data, measure = "net", title, lines: shown = ["prior", "
             stroke="#6b7280"
             fontSize={12}
             label={{
-              value: measure === "net" ? "Benchmark plan after credit, per month" : "Credit per month",
+              value: "Per month",
               angle: -90,
               position: "insideLeft",
-              offset: -30,
+              offset: 10,
               fill: "#6b7280",
-              style: { textAnchor: "middle" },
             }}
           />
           <Tooltip content={<CustomTooltip />} />
