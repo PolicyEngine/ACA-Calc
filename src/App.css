@@ -67,46 +67,6 @@
   color: white;
 }
 
-/* Household Selector */
-.household-selector-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: var(--pe-space-lg);
-  display: flex;
-  flex-direction: column;
-  gap: var(--pe-space-sm);
-}
-
-.household-info {
-  display: flex;
-  align-items: center;
-  gap: var(--pe-space-md);
-  font-size: 0.875rem;
-}
-
-.location {
-  color: var(--pe-text-secondary);
-}
-
-.expansion-badge {
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-
-.expansion-badge.expansion {
-  background: var(--pe-teal-100);
-  color: var(--pe-teal-700);
-}
-
-.expansion-badge.non-expansion {
-  background: #fef3c7;
-  color: #92400e;
-}
-
 /* Scrollytelling Container */
 .scrollytelling-container {
   max-width: 1200px;
@@ -171,13 +131,6 @@
   text-decoration: none !important;
 }
 
-/* Households page */
-.households-page {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: var(--pe-space-lg);
-}
-
 /* Calculator page */
 .calculator-page {
   max-width: 100%;
@@ -231,12 +184,6 @@
 
   .subtitle {
     font-size: 0.875rem;
-  }
-
-  .household-info {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--pe-space-xs);
   }
 
   .chart-sticky {

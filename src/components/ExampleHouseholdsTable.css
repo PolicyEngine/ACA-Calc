@@ -1,0 +1,85 @@
+.examples-table {
+  overflow-y: auto;
+}
+
+.examples-table-header {
+  margin-bottom: 1rem;
+}
+
+.examples-table-header h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--pe-gray-800);
+  margin: 0 0 0.25rem 0;
+}
+
+.examples-table-header p {
+  font-size: 0.85rem;
+  color: var(--pe-gray-500);
+  margin: 0;
+}
+
+.examples-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.examples-table th {
+  text-align: right;
+  padding: 0.75rem 0.5rem;
+  border-bottom: 2px solid var(--pe-gray-200);
+  color: var(--pe-gray-600);
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.examples-table th:first-child {
+  text-align: left;
+}
+
+.examples-table td {
+  padding: 0.75rem 0.5rem;
+  border-bottom: 1px solid var(--pe-gray-100);
+  text-align: right;
+  font-family: var(--pe-font-mono);
+  white-space: nowrap;
+}
+
+.examples-table td:first-child {
+  text-align: left;
+  font-family: inherit;
+  white-space: normal;
+}
+
+.examples-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.example-name {
+  font-weight: 600;
+  color: var(--pe-gray-800);
+}
+
+.example-detail {
+  font-size: 0.8rem;
+  color: var(--pe-gray-500);
+}
+
+.example-change {
+  font-weight: 600;
+  color: var(--pe-gray-700);
+}
+
+.example-revived {
+  font-weight: 600;
+  color: #0284c7;
+}
+
+.examples-table-note {
+  margin: 0.75rem 0 0 0;
+  font-size: 0.8rem;
+  color: var(--pe-gray-500);
+}

@@ -20,7 +20,6 @@ const SERIES = {
   current2026: "current_2026",
   current2027: "current_2027",
   enhanced: "enhanced",
-  bill700: "bill700",
 };
 
 const data = schedules.fpl_percent.map((fpl, i) => {
@@ -36,14 +35,12 @@ const COLORS = {
   current2026: "#9CA3AF", // gray-400
   current2027: "#4B5563", // gray-600
   enhanced: "#0284C7",    // blue-600 from appv2
-  bill700: "#7c3aed",     // purple
 };
 
 const LABELS = {
   current2026: "Current law (2026)",
   current2027: "Current law (2027)",
   enhanced: "Enhanced credits (2021–2025; H.R. 1834)",
-  bill700: "700% FPL bill",
 };
 
 const CURRENT_LAW = ["current2026", "current2027"];

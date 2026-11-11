@@ -37,9 +37,10 @@ const net = (benchmark, credit) => Math.max(0, (benchmark || 0) - (credit || 0))
  * (measure "net") or the credit itself (measure "credit").
  *
  * `data` has the calculator API's fields: income, ptc_prior_year, ptc_baseline,
- * ptc_ira, slcsp_by_income_prior_year, slcsp_by_income, fpl and year.
+ * ptc_ira, slcsp_by_income_prior_year, slcsp_by_income, fpl and year. `lines`
+ * picks the scenarios to draw.
  */
-function PremiumChart({ data, measure = "net", title }) {
+function PremiumChart({ data, measure = "net", title, lines: shown = ["prior", "current", "revived"] }) {
   const year = data?.year || 2027;
   const hasPrior = Boolean(data?.ptc_prior_year?.length);
   const fpl = data?.fpl || 0;
@@ -77,7 +78,7 @@ function PremiumChart({ data, measure = "net", title }) {
     hasPrior && { key: "prior", name: `${year - 1}, current law` },
     { key: "current", name: `${year}, current law` },
     { key: "revived", name: `${year}, H.R. 1834` },
-  ].filter(Boolean);
+  ].filter((line) => line && shown.includes(line.key));
 
   const CustomTooltip = ({ active, payload }) => {
     if (!active || !payload?.length) return null;

@@ -1,28 +1,36 @@
 import { useState, useRef, useEffect } from "react";
-import HealthBenefitsChart from "./components/HealthBenefitsChart";
 import ScrollSection from "./components/ScrollSection";
-import CliffComparisonTable from "./components/CliffComparisonTable";
-import ContributionScheduleTable from "./components/ContributionScheduleTable";
 import ContributionScheduleChart from "./components/ContributionScheduleChart";
-import HouseholdExplorer from "./components/HouseholdExplorer";
+import ExampleHouseholdsTable from "./components/ExampleHouseholdsTable";
+import NationalImpactChart from "./components/NationalImpactChart";
+import PremiumChart from "./components/PremiumChart";
 import Calculator from "./components/Calculator";
 import "./App.css";
 
-// Import precomputed data: the example household and the contribution
-// schedules (precompute_cliff_household.py, precompute_contribution_schedules.py)
+// Precomputed with policyengine-us: the Pennsylvania example across incomes
+// (precompute_cliff_household.py), four example households
+// (precompute_households.py), the contribution schedules
+// (precompute_contribution_schedules.py) and the national figures
+// (precompute_national.py).
 import cliffDemoData from "./data/households/cliff_demo.json";
+import examples from "./data/households/examples.json";
 import schedules from "./data/contribution_schedules.json";
-
-const REVENUE_PROCEDURES = { 2026: "Revenue Procedure 2025-25", 2027: "Revenue Procedure 2026-26" };
+import national from "./data/national_impacts.json";
 
 const formatDollars = (value) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
 const monthly = (annual) => formatDollars(annual / 12);
-const percentChange = (from, to) => {
+const percentChange = (from, to, digits = 1) => {
   const change = (100 * (to - from)) / from;
-  return `${change >= 0 ? "+" : ""}${change.toFixed(1)}%`;
+  return `${change >= 0 ? "+" : "−"}${Math.abs(change).toFixed(digits)}%`;
 };
-const netPremium = (row) => Math.max(0, row.slcsp - row.ptc);
+const billions = (value) => `$${(value / 1e9).toFixed(1)} billion`;
+const millions = (value) => `${(value / 1e6).toFixed(1)} million`;
+// A count of people: millions from a million up, else to the nearest thousand.
+const people = (value) =>
+  value >= 1e6 ? millions(value) : (Math.round(value / 1000) * 1000).toLocaleString("en-US");
+const share = (value, digits = 1) => `${(100 * value).toFixed(digits)}%`;
+const ordinal = (n) => `${n}${{ 1: "st", 2: "nd", 3: "rd" }[n] || "th"}`;
 
 // The lowest and highest share of income a schedule charges where it gives a credit.
 const rateRange = (key) => {
@@ -30,189 +38,193 @@ const rateRange = (key) => {
   return [Math.min(...rates).toFixed(2), Math.max(...rates).toFixed(2)];
 };
 
-// The highest income at which the example adult has Medicaid, rounded to $1,000.
-const medicaidLimit = (data) => {
-  let limit = 0;
-  data.income.forEach((income, i) => {
-    if (data.medicaid[i] > 0) limit = income;
+function buildSections() {
+  const year = examples.year;
+  const priorYear = examples.prior_year;
+  const household = Object.fromEntries(examples.examples.map((example) => [example.key, example]));
+  const values = (key) => ({
+    prior: household[key].scenarios[`current_${priorYear}`],
+    current: household[key].scenarios[`current_${year}`],
+    revived: household[key].scenarios[`hr1834_${year}`],
   });
-  return formatDollars(Math.round(limit / 1000) * 1000);
-};
+  const texas = values("texas_single");
+  const florida = values("florida_family");
+  const pennsylvania = values("pennsylvania_single");
+  const california = values("california_couple");
 
-// Scroll sections content - background first, then household example, then health programs, then reforms
-function buildSections(data) {
-  const year = data.year;
-  const y2025 = data.years["2025"];
-  const y2026 = data.years["2026"];
-  const yNow = data.years[String(year)];
-  const { hr1834, bill700 } = data.proposals;
-  const [min2026, max2026] = rateRange("current_2026");
+  const benchmarkChanges = examples.examples.map((example) => {
+    const { prior, current } = values(example.key);
+    return (100 * (current.slcsp - prior.slcsp)) / prior.slcsp;
+  });
+  const [min2026, max2026] = rateRange(`current_${priorYear}`);
   const [minNow, maxNow] = rateRange(`current_${year}`);
-  const netChange = netPremium(yNow) - netPremium(y2025);
+
+  // The Pennsylvania example across incomes: where current law's credit ends
+  // and where H.R. 1834's would.
+  const cliffIncome = 4 * cliffDemoData.fpl;
+  let revivedEnd = 0;
+  cliffDemoData.ptc_ira.forEach((credit, i) => {
+    if (credit > 0) revivedEnd = cliffDemoData.income[i];
+  });
+
+  // National figures.
+  const lawPrior = national.current_law[String(priorYear)];
+  const lawNow = national.current_law[String(year)];
+  const enhanced = national.enhanced;
+  const aboveCliff = national.by_fpl
+    .filter((band) => band.band.startsWith("400%") || band.band.startsWith("Above"))
+    .reduce((sum, band) => sum + band.reform_ptc - band.baseline_ptc, 0);
+  const deciles = national.deciles;
+  const largestGain = deciles.reduce((a, b) => (b.absolute_change > a.absolute_change ? b : a));
+  const largestShare = deciles.reduce((a, b) => (b.relative_change > a.relative_change ? b : a));
+  const decilesGaining = deciles.filter((row) => row.absolute_change > 0).length;
+  const winners = national.winners_losers.all;
+  const gaining = winners.gain_more_than_5pct + winners.gain_less_than_5pct;
+  const losing = winners.lose_more_than_5pct + winners.lose_less_than_5pct;
+  const poverty = national.poverty.spm;
+  const deep = national.poverty.deep;
+  const povertyChange = (group) =>
+    percentChange(group.baseline_rate, group.reform_rate);
+  const lifted = poverty.all.baseline_headcount - poverty.all.reform_headcount;
+  const { baseline: inequalityBefore, reform: inequalityAfter } = national.inequality;
 
   return [
-    // PART 1: Background on how ACA subsidies work
+    // PART 1: 2027 premiums under current law
     {
-      id: "intro",
-      title: "How ACA premium tax credits work",
-      content: `The Affordable Care Act (ACA) created **premium tax credits** to help Americans afford health insurance purchased through the marketplace.
+      id: "premiums",
+      title: `Benchmark premiums rise in ${year}`,
+      content: `The premium tax credit is pegged to a **benchmark plan**: the second-lowest-cost silver plan where a household lives.
 
-These credits work by capping how much of your income you're required to pay for a benchmark health plan—the **second-lowest cost silver plan (SLCSP)** in your area.
+For ${year}, benchmark premiums rise for each of these four households, by **${Math.min(...benchmarkChanges).toFixed(1)}%** to **${Math.max(...benchmarkChanges).toFixed(1)}%**.
 
-If the benchmark plan costs more than your required contribution, the government pays the difference as a tax credit.`,
-      showContributionChart: true,
-      chartPolicies: [`current${year}`],
+Across all tax units receiving a credit, PolicyEngine estimates the average benchmark premium at **${monthly(lawNow.mean_benchmark_premium)}/month** in ${year}, against ${monthly(lawPrior.mean_benchmark_premium)} in ${priorYear} (${percentChange(lawPrior.mean_benchmark_premium, lawNow.mean_benchmark_premium)}).`,
+      chart: { type: "examples", view: "benchmark" },
     },
     {
-      id: "arpa_ira",
-      title: "ARPA and IRA enhancements (2021–2025)",
-      content: `The **American Rescue Plan Act (ARPA)** of 2021 temporarily enhanced these subsidies. The **Inflation Reduction Act (IRA)** of 2022 extended them through 2025.
+      id: "below_cliff",
+      title: "Below 400% FPL, the credit absorbs the increase",
+      content: `Current law limits what a household pays for the benchmark plan to a share of its income, from **${minNow}%** to **${maxNow}%** in ${year} (${min2026}% to ${max2026}% in ${priorYear}). The credit pays the rest of the premium, so it grows when premiums do.
 
-Key changes:
-• Removed the 400% FPL ceiling—credits available at any income
-• Capped contributions at 8.5% of income for everyone
-• Lowered contributions at every income level
+The Texas adult earning ${formatDollars(household.texas_single.income)} pays **${monthly(texas.current.net_premium)}/month** for the benchmark plan in ${year}, against ${monthly(texas.prior.net_premium)} in ${priorYear}, while the premium rises from ${monthly(texas.prior.slcsp)} to ${monthly(texas.current.slcsp)}.
 
-The chart shows the enhanced schedule (blue) against current law for ${year} (gray).`,
-      showContributionChart: true,
-      chartPolicies: [`current${year}`, "enhanced"],
+The Florida family earning ${formatDollars(household.florida_family.income)} pays ${monthly(florida.current.net_premium)}/month in ${year}, against ${monthly(florida.prior.net_premium)} in ${priorYear}.`,
+      chart: { type: "schedule", policies: [`current${priorYear}`, `current${year}`] },
     },
     {
-      id: "expiration",
-      title: "What happened in 2026",
-      content: `The ARPA/IRA enhancements **expired** at the end of 2025.
+      id: "above_cliff",
+      title: "Above 400% FPL, households pay all of it",
+      content: `The enhanced credits that reached incomes above 400% FPL expired at the end of 2025. Under current law, households there get no credit and pay the whole benchmark premium, the increase included.
 
-The subsidy structure reverted to the **original ACA rules**:
-• The 400% FPL ceiling returned
-• Required contributions rose to between **${min2026}%** and **${max2026}%** of income
+The Pennsylvania adult earning ${formatDollars(household.pennsylvania_single.income)} pays **${monthly(pennsylvania.current.net_premium)}/month** in ${year}, ${monthly(pennsylvania.current.net_premium - pennsylvania.prior.net_premium)} more than in ${priorYear}.
 
-The contribution schedule now requires **higher payments** and ends at 400% FPL—the "subsidy cliff."`,
-      showContributionChart: true,
-      chartPolicies: ["current2026"],
-    },
-    {
-      id: "current_law",
-      title: `${year}: current law`,
-      content: `For ${year}, the IRS updated the schedule (${REVENUE_PROCEDURES[year]}): required contributions run from **${minNow}%** to **${maxNow}%** of income, and the 400% FPL ceiling remains.
+The California couple in their 60s earning ${formatDollars(household.california_couple.income)} pays **${monthly(california.current.net_premium)}/month**, ${monthly(california.current.net_premium - california.prior.net_premium)} more than in ${priorYear}: ${share(california.current.net_premium / household.california_couple.income, 0)} of its income.
 
-No extension of the enhanced credits has been enacted, so these are the rules for ${year} coverage.`,
-      showContributionChart: true,
-      chartPolicies: ["current2026", `current${year}`],
+The chart shows the Pennsylvania adult at every income: the payment jumps to the full premium above 400% FPL (${formatDollars(cliffIncome)}).`,
+      chart: { type: "premium", lines: ["prior", "current"] },
     },
 
-    // PART 2: Household example
+    // PART 2: Reviving the enhanced credits
     {
-      id: "example_intro",
-      title: "Example: a middle-income household",
-      content: `To illustrate the impact, consider a 45-year-old single adult in Lebanon County, Pennsylvania, earning **${formatDollars(data.example_income)}** a year—about **${yNow.fpl_percent}% of the federal poverty level** in ${year}.
+      id: "enhanced",
+      title: "H.R. 1834 would revive the enhanced credits",
+      content: `From 2021 through 2025, the American Rescue Plan Act and the Inflation Reduction Act enhanced the credits: households paid **0%** of income for the benchmark plan up to 150% FPL, and at most **8.5%** at any income, with no income limit.
 
-In 2025, under the enhanced credits, this household:
-• Paid **${monthly(y2025.slcsp)}/month** for the benchmark plan (SLCSP)
-• Received a **${monthly(y2025.ptc)}/month** tax credit
-• Paid a net premium of **${monthly(netPremium(y2025))}/month**`,
-      cliffRows: ["2025"],
-      showSlcsp: true,
+H.R. 1834 would revive that schedule for 2026 through 2028. It passed the House on January 8, 2026; it has not been enacted.
+
+The chart compares the enhanced schedule with current law for ${year}.`,
+      chart: { type: "schedule", policies: [`current${year}`, "enhanced"] },
     },
     {
-      id: "example_after",
-      title: `2026 and ${year}: after expiration`,
-      content: `In 2026, this household:
+      id: "enhanced_households",
+      title: "What it would mean for these households",
+      content: `Under H.R. 1834, each household would pay less for its benchmark plan in ${year}:
+• Texas adult: **${monthly(texas.revived.net_premium)}/month**, against ${monthly(texas.current.net_premium)} under current law
+• Florida family: **${monthly(florida.revived.net_premium)}/month**, against ${monthly(florida.current.net_premium)}
+• Pennsylvania adult: **${monthly(pennsylvania.revived.net_premium)}/month**, against ${monthly(pennsylvania.current.net_premium)}
+• California couple: **${monthly(california.revived.net_premium)}/month**, against ${monthly(california.current.net_premium)}
 
-**a) Faced a higher premium** for its benchmark plan: ${monthly(y2026.slcsp)}/month (${percentChange(y2025.slcsp, y2026.slcsp)} from 2025)
-
-**b) Lost its subsidy** entirely: the tax credit dropped from ${monthly(y2025.ptc)}/month to **$0** because its income is above the 400% FPL ceiling
-
-In ${year}, the benchmark plan costs **${monthly(yNow.slcsp)}/month** and current law still provides no credit, so the net premium is **${monthly(netPremium(yNow))}/month**: ${monthly(netChange)}/month (${percentChange(netPremium(y2025), netPremium(yNow))}) more than in 2025.`,
-      cliffRows: ["2025", "2026", String(year)],
-      showSlcsp: true,
-      showBreakdown: true,
-    },
-
-    // PART 3: Policy options for this household
-    {
-      id: "reform_options",
-      title: "Policy options",
-      content: `Two bills in Congress would restore credits above 400% FPL in ${year}. Neither has been enacted.
-
-**H.R. 1834:** Extends the enhanced credits, with the 8.5% cap, through 2028. It passed the House on January 8, 2026.
-• Tax credit: **${monthly(hr1834.ptc)}/month** → Net premium: **${monthly(netPremium(hr1834))}/month**
-
-**Bipartisan Health Insurance Affordability Act:** Introduced by Rep. Dunn (R-FL) and Rep. Schneider (D-IL) on December 9, 2025, this bill extends eligibility to 700% FPL with a 9.25% cap
-• Tax credit: **${monthly(bill700.ptc)}/month** → Net premium: **${monthly(netPremium(bill700))}/month**`,
-      cliffRows: [String(year), "hr1834", "bill700"],
-    },
-
-    // PART 4: Health programs overview (using PA single adult)
-    {
-      id: "health_programs",
-      title: "The full picture: health coverage programs",
-      content: `Premium tax credits are one part of the health coverage landscape. Americans may also qualify for:
-
-• **Medicaid:** Free coverage for low-income households (eligibility varies by state)
-• **Marketplace subsidies:** PTCs for those not eligible for other programs
-
-The chart shows how these programs interact across income levels for our Pennsylvania example in ${year}.`,
-      chartState: "all_programs",
+The two households above 400% FPL would pay 8.5% of their income instead of the full premium.`,
+      chart: { type: "examples", view: "net" },
     },
     {
-      id: "medicaid",
-      title: "Medicaid coverage",
-      content: `**Medicaid** provides coverage for low-income Americans. Pennsylvania expanded Medicaid, so adults qualify up to **138% FPL**.
+      id: "enhanced_by_income",
+      title: "Across incomes",
+      content: `For the Pennsylvania adult, H.R. 1834 would lower the payment at every income above Pennsylvania's Medicaid limit (138% FPL) up to about **${formatDollars(revivedEnd)}**, where 8.5% of income reaches the full benchmark premium.
 
-For our 45-year-old, this means Medicaid covers incomes up to about ${medicaidLimit(data)}. If they earn more, they may be eligible for premium tax credits (PTCs).`,
-      chartState: "medicaid_focus",
-    },
-    {
-      id: "reforms_chart",
-      title: "Premium tax credits under different policies",
-      content: `The chart shows premium tax credits across income levels in ${year} under three scenarios:
-
-• **Gray line:** Current law
-• **Blue line:** H.R. 1834
-• **Purple line:** Bipartisan Health Insurance Affordability Act
-
-Current law drops to zero at 400% FPL. Both bills continue providing credits at higher incomes.`,
-      chartState: "both_reforms",
-    },
-    {
-      id: "ira_impact_chart",
-      title: "H.R. 1834: the difference",
-      content: `The **blue shaded area** represents the additional premium tax credits available under H.R. 1834 compared to current law.
-
-For this Pennsylvania household:
-• Below 400% FPL: H.R. 1834 provides **lower required contributions**
-• Above 400% FPL: H.R. 1834 provides **credits** where current law provides none
-
-The size of the shaded area shows the dollar value of the difference at each income level.`,
-      chartState: "ira_impact",
+Under current law the payment rises with income up to 400% FPL, then jumps to the full premium of ${monthly(pennsylvania.current.slcsp)}/month.`,
+      chart: { type: "premium", lines: ["prior", "current", "revived"] },
     },
 
-    // PART 5: Household case studies - links to explorer
+    // PART 3: National effects
     {
-      id: "explore_households",
-      title: "Explore different households",
-      content: `The impact of ACA policy changes varies by household type, location, and income level.
+      id: "national_cost",
+      title: "Cost and reach",
+      content: `PolicyEngine estimates that H.R. 1834 would raise federal spending on premium tax credits by **${billions(national.budget.federal_cost)}** in ${year}, from ${billions(lawNow.total_ptc)} under current law to ${billions(enhanced.total_ptc)}. Under current law, spending is ${billions(lawPrior.total_ptc)} in ${priorYear}.
 
-Click below to explore how four different households are affected—with details on Medicaid expansion, CHIP eligibility, and the subsidy cliff for each.`,
-      chartState: "both_reforms",
-      showHouseholdExplorerLink: true,
+The number of people receiving a credit would rise from ${millions(lawNow.people_receiving)} to **${millions(enhanced.people_receiving)}**, including ${millions(national.recipients.people_newly_receiving)} who get no credit under current law.
+
+Of the added spending, ${share(aboveCliff / national.budget.federal_cost, 0)} goes to tax units above 400% FPL.`,
+      chart: { type: "national", mode: "spending" },
+    },
+    {
+      id: "national_deciles",
+      title: "Gains by income decile",
+      content: `Ranking households by net income into deciles of equal population, average net income rises in ${decilesGaining} of 10 deciles.
+
+The average gain is largest in the **${ordinal(largestGain.decile)} decile**, at ${formatDollars(largestGain.absolute_change)} a year. Relative to net income, it is largest in the ${ordinal(largestShare.decile)} decile, at ${largestShare.relative_change.toFixed(2)}%.`,
+      chart: { type: "national", mode: "deciles" },
+    },
+    {
+      id: "national_winners",
+      title: "Who gains",
+      content: `**${share(gaining)}** of people live in households whose net income rises under H.R. 1834; ${share(winners.gain_more_than_5pct)} gain more than 5%.
+
+${losing > 0 ? `${share(losing)} of people live in households whose net income falls.` : "No household's net income falls: the bill only raises credits."} The rest see no change: no one in their household gets a credit under either policy.`,
+      chart: { type: "national", mode: "winners" },
+    },
+    {
+      id: "national_poverty",
+      title: "Poverty",
+      content: `The Supplemental Poverty Measure subtracts what households pay for health coverage, so a larger credit, which lowers the premiums enrollees pay, raises their resources. H.R. 1834 changes the poverty rate from ${share(poverty.all.baseline_rate, 2)} to **${share(poverty.all.reform_rate, 2)}** (${povertyChange(poverty.all)}): ${people(Math.abs(lifted))} ${lifted >= 0 ? "fewer" : "more"} people in poverty.
+
+By age, poverty changes ${povertyChange(poverty.child)} for children, ${povertyChange(poverty.adult)} for adults 18 to 64 and ${povertyChange(poverty.senior)} for seniors. Deep poverty, below half the poverty line, changes ${povertyChange(deep.all)}.`,
+      chart: { type: "national", mode: "poverty" },
+    },
+    {
+      id: "national_inequality",
+      title: "Inequality",
+      content: `The Gini index of household net income moves from ${inequalityBefore.gini.toFixed(4)} to **${inequalityAfter.gini.toFixed(4)}** (${percentChange(inequalityBefore.gini, inequalityAfter.gini, 2)}).
+
+The top 10%'s share of net income moves from ${share(inequalityBefore.top_10_share, 2)} to ${share(inequalityAfter.top_10_share, 2)}, and the top 1%'s from ${share(inequalityBefore.top_1_share, 2)} to ${share(inequalityAfter.top_1_share, 2)}.`,
+      chart: { type: "national", mode: "inequality" },
+    },
+    {
+      id: "methodology",
+      title: "How we estimated this",
+      content: `We ran PolicyEngine US ${national.model_version} over its 2024 microdata, projected to ${priorYear} and ${year}, under current law and with H.R. 1834's schedule. The household examples use the same model and each county's benchmark premiums.
+
+PolicyEngine's household net income leaves out health coverage, including the premium tax credit, so we add each household's change in its credit to its net income. Its poverty measure counts the credit already: it subtracts what households pay for coverage, including marketplace premiums net of the credit.
+
+The estimates are static: the same people enroll under each policy, so they leave out people who would start or stop buying coverage as credits change. Marketplace enrollment comes from the 2024 data.`,
+      chart: { type: "examples", view: "net" },
+      showCalculatorButton: true,
     },
   ];
 }
 
-const SECTIONS = buildSections(cliffDemoData);
+const SECTIONS = buildSections();
 
-// URL routing helpers
+// URL routing helpers. The Explore Households page is gone; its old links
+// open the Overview.
 const PAGE_ROUTES = {
   "": "main",
   "overview": "main",
-  "households": "households",
+  "households": "main",
   "calculator": "calculator",
 };
 
 const ROUTE_PAGES = {
   "main": "",
-  "households": "households",
   "calculator": "calculator",
 };
 
@@ -279,39 +291,27 @@ function App() {
     setActiveSection(index);
   };
 
-  // Determine what to show in the chart area
+  // What the sticky panel shows for the current section
   const renderChartArea = () => {
-    if (currentSection.showContributionChart) {
-      return (
-        <ContributionScheduleChart
-          showPolicies={currentSection.chartPolicies}
-        />
-      );
+    const { chart } = currentSection;
+    switch (chart.type) {
+      case "examples":
+        return <ExampleHouseholdsTable view={chart.view} />;
+      case "schedule":
+        return <ContributionScheduleChart showPolicies={chart.policies} />;
+      case "premium":
+        return (
+          <PremiumChart
+            data={cliffDemoData}
+            lines={chart.lines}
+            title={`What a ${cliffDemoData.household_info.age}-year-old in ${cliffDemoData.household_info.location} pays for the benchmark plan`}
+          />
+        );
+      case "national":
+        return <NationalImpactChart mode={chart.mode} />;
+      default:
+        return null;
     }
-    if (currentSection.showContributionSchedule) {
-      return (
-        <ContributionScheduleTable
-          showSchedules={currentSection.schedules}
-        />
-      );
-    }
-    if (currentSection.cliffRows) {
-      return (
-        <CliffComparisonTable
-          data={cliffDemoData}
-          rows={currentSection.cliffRows}
-          showSlcsp={currentSection.showSlcsp}
-          showBreakdown={currentSection.showBreakdown}
-        />
-      );
-    }
-    return (
-      <HealthBenefitsChart
-        data={cliffDemoData}
-        chartState={currentSection.chartState || "both_reforms"}
-        householdInfo={cliffDemoData.household_info}
-      />
-    );
   };
 
   // Render the main scrolly page
@@ -332,19 +332,12 @@ function App() {
               index={index}
               isActive={activeSection === index}
               onInView={handleSectionInView}
-              onExploreHouseholds={() => navigateToPage("households")}
+              onOpenCalculator={() => navigateToPage("calculator")}
             />
           ))}
         </div>
       </main>
     </>
-  );
-
-  // Render the households explorer page
-  const renderHouseholdsPage = () => (
-    <main className="households-page">
-      <HouseholdExplorer />
-    </main>
   );
 
   // Render the calculator page
@@ -361,7 +354,7 @@ function App() {
           <div className="header-content">
             <h1>ACA Premium Tax Credits</h1>
             <p className="subtitle">
-              How the expiration of the enhanced credits, and proposals to extend them, affect health insurance costs
+              How 2027 premiums change under current law, and what reviving the enhanced credits would do
             </p>
             <div className="page-tabs">
               <button
@@ -369,12 +362,6 @@ function App() {
                 onClick={() => navigateToPage("main")}
               >
                 Overview
-              </button>
-              <button
-                className={`page-tab ${currentPage === "households" ? "active" : ""}`}
-                onClick={() => navigateToPage("households")}
-              >
-                Explore Households
               </button>
               <button
                 className={`page-tab ${currentPage === "calculator" ? "active" : ""}`}
@@ -388,7 +375,6 @@ function App() {
       )}
 
       {currentPage === "main" && renderMainPage()}
-      {currentPage === "households" && renderHouseholdsPage()}
       {currentPage === "calculator" && renderCalculatorPage()}
 
       {!embedded && (
