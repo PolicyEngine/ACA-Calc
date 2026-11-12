@@ -81,7 +81,6 @@
   font-weight: 600;
 }
 
-.explore-button,
 .calculator-button {
   display: inline-flex;
   align-items: center;
@@ -101,19 +100,16 @@
   transition: all var(--pe-transition-fast);
 }
 
-.explore-button:hover,
 .calculator-button:hover {
   background: var(--pe-accent-dark);
   transform: translateY(-1px);
   box-shadow: var(--pe-shadow-md);
 }
 
-.explore-button svg,
 .calculator-button svg {
   transition: transform var(--pe-transition-fast);
 }
 
-.explore-button:hover svg,
 .calculator-button:hover svg {
   transform: translateX(4px);
 }

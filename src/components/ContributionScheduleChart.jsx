@@ -5,109 +5,50 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
 import "./ContributionScheduleChart.css";
 
-// Generate data points for each policy
-const generateContributionData = () => {
-  const data = [];
+// The schedules as policyengine-us computes them: the percent of income a
+// household pays for the benchmark plan at each percent of the poverty
+// guideline, null where the credit isn't available. Regenerate with
+// precompute_contribution_schedules.py.
+import schedules from "../data/contribution_schedules.json";
 
-  // FPL points from 0% to 800%
-  for (let fpl = 0; fpl <= 800; fpl += 10) {
-    const point = { fpl };
-
-    // Original ACA / 2026 baseline (IRS Rev Proc 2025-25)
-    // Jump at 133% is real - that's the Medicaid expansion threshold
-    if (fpl < 100) {
-      point.baseline = 0;
-    } else if (fpl < 133) {
-      // Below 133%: flat at 2.1%
-      point.baseline = 2.1;
-    } else if (fpl <= 150) {
-      // 133-150%: 3.14% to 4.19%
-      point.baseline = 3.14 + (fpl - 133) / (150 - 133) * (4.19 - 3.14);
-    } else if (fpl <= 200) {
-      // 150-200%: 4.19% to 6.6%
-      point.baseline = 4.19 + (fpl - 150) / (200 - 150) * (6.6 - 4.19);
-    } else if (fpl <= 250) {
-      // 200-250%: 6.6% to 8.44%
-      point.baseline = 6.6 + (fpl - 200) / (250 - 200) * (8.44 - 6.6);
-    } else if (fpl <= 300) {
-      // 250-300%: 8.44% to 9.96%
-      point.baseline = 8.44 + (fpl - 250) / (300 - 250) * (9.96 - 8.44);
-    } else if (fpl <= 400) {
-      point.baseline = 9.96;
-    } else {
-      point.baseline = null; // No subsidy above 400%
-    }
-
-    // ARPA/IRA (2021-2025) - from IRS Revenue Procedure 2023-29
-    // 0% contribution up to 150% FPL, then gradual increase
-    if (fpl <= 150) {
-      point.ira = 0;
-    } else if (fpl <= 200) {
-      // 0% to 2%
-      point.ira = (fpl - 150) / (200 - 150) * 2.0;
-    } else if (fpl <= 250) {
-      // 2% to 4%
-      point.ira = 2.0 + (fpl - 200) / (250 - 200) * (4.0 - 2.0);
-    } else if (fpl <= 300) {
-      // 4% to 6%
-      point.ira = 4.0 + (fpl - 250) / (300 - 250) * (6.0 - 4.0);
-    } else {
-      // 6% to 8.5% (capped at 8.5% for all incomes above 300%)
-      point.ira = 6.0 + Math.min((fpl - 300) / (400 - 300) * (8.5 - 6.0), 2.5);
-    }
-
-    // 700% FPL Proposal
-    // Below 100% FPL: 0% contribution
-    if (fpl < 100) {
-      point.bill700 = 0;
-    } else if (fpl <= 150) {
-      point.bill700 = (fpl - 100) / (150 - 100) * 2.0;
-    } else if (fpl <= 200) {
-      point.bill700 = 2.0 + (fpl - 150) / (200 - 150) * (4.0 - 2.0);
-    } else if (fpl <= 250) {
-      point.bill700 = 4.0 + (fpl - 200) / (250 - 200) * (6.0 - 4.0);
-    } else if (fpl <= 300) {
-      point.bill700 = 6.0 + (fpl - 250) / (300 - 250) * (8.5 - 6.0);
-    } else if (fpl <= 400) {
-      point.bill700 = 8.5 + (fpl - 300) / (400 - 300) * (9.0 - 8.5);
-    } else if (fpl <= 500) {
-      point.bill700 = 9.0 + (fpl - 400) / (500 - 400) * (9.25 - 9.0);
-    } else if (fpl <= 700) {
-      point.bill700 = 9.25;
-    } else {
-      point.bill700 = null; // No subsidy above 700%
-    }
-
-    data.push(point);
-  }
-
-  return data;
+const SERIES = {
+  current2026: "current_2026",
+  current2027: "current_2027",
+  enhanced: "enhanced",
 };
 
-const data = generateContributionData();
+const data = schedules.fpl_percent.map((fpl, i) => {
+  const point = { fpl };
+  for (const [policy, key] of Object.entries(SERIES)) {
+    point[policy] = schedules.schedules[key][i];
+  }
+  return point;
+});
 
 // Chart colors - PolicyEngine appv2 design tokens
 const COLORS = {
-  baseline: "#9CA3AF", // gray-400
-  ira: "#0284C7",      // blue-600 from appv2
-  bill700: "#7c3aed",  // purple
+  current2026: "#9CA3AF", // gray-400
+  current2027: "#4B5563", // gray-600
+  enhanced: "#0284C7",    // blue-600 from appv2
 };
 
 const LABELS = {
-  baseline: "Original ACA / 2026+",
-  ira: "Current Policy (2021-2025)",
-  bill700: "700% FPL Proposal",
+  current2026: "Current law (2026)",
+  current2027: "Current law (2027)",
+  enhanced: "Enhanced credits (2021–2025; H.R. 1834)",
 };
 
-function ContributionScheduleChart({ showPolicies = ["baseline", "ira"] }) {
+const CURRENT_LAW = ["current2026", "current2027"];
+
+function ContributionScheduleChart({ showPolicies = ["current2027", "enhanced"] }) {
   const formatPercent = (value) => `${value}%`;
   const formatFPL = (value) => `${value}%`;
+  const showsCurrentLaw = showPolicies.some((policy) => CURRENT_LAW.includes(policy));
 
   return (
     <div className="contribution-chart">
@@ -133,6 +74,8 @@ function ContributionScheduleChart({ showPolicies = ["baseline", "ira"] }) {
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis
             dataKey="fpl"
+            type="number"
+            domain={[0, 800]}
             tickFormatter={formatFPL}
             tick={{ fontSize: 11 }}
             ticks={[0, 100, 200, 300, 400, 500, 600, 700, 800]}
@@ -146,7 +89,7 @@ function ContributionScheduleChart({ showPolicies = ["baseline", "ira"] }) {
           <Tooltip
             formatter={(value, name) => {
               if (value === null) return ["No subsidy", LABELS[name]];
-              return [`${value.toFixed(1)}%`, LABELS[name]];
+              return [`${value.toFixed(2)}%`, LABELS[name]];
             }}
             labelFormatter={(fpl) => `Income: ${fpl}% FPL`}
             contentStyle={{
@@ -158,7 +101,7 @@ function ContributionScheduleChart({ showPolicies = ["baseline", "ira"] }) {
           />
 
           {/* Reference line for 400% FPL */}
-          {showPolicies.includes("baseline") && (
+          {showsCurrentLaw && (
             <ReferenceLine
               x={400}
               stroke="#ef4444"
@@ -167,35 +110,19 @@ function ContributionScheduleChart({ showPolicies = ["baseline", "ira"] }) {
             />
           )}
 
-          {showPolicies.includes("baseline") && (
+          {showPolicies.map((policy) => (
             <Line
-              type="monotone"
-              dataKey="baseline"
-              stroke={COLORS.baseline}
+              key={policy}
+              type="linear"
+              dataKey={policy}
+              name={policy}
+              stroke={COLORS[policy]}
               strokeWidth={2.5}
               dot={false}
               connectNulls={false}
+              isAnimationActive={false}
             />
-          )}
-          {showPolicies.includes("ira") && (
-            <Line
-              type="monotone"
-              dataKey="ira"
-              stroke={COLORS.ira}
-              strokeWidth={2.5}
-              dot={false}
-            />
-          )}
-          {showPolicies.includes("bill700") && (
-            <Line
-              type="monotone"
-              dataKey="bill700"
-              stroke={COLORS.bill700}
-              strokeWidth={2.5}
-              dot={false}
-              connectNulls={false}
-            />
-          )}
+          ))}
         </LineChart>
       </ResponsiveContainer>
 
@@ -203,10 +130,10 @@ function ContributionScheduleChart({ showPolicies = ["baseline", "ira"] }) {
         <div className="x-axis-label">Income (% of Federal Poverty Level)</div>
       </div>
 
-      {showPolicies.includes("baseline") && (
+      {showsCurrentLaw && (
         <div className="chart-note">
           <span className="note-marker">|</span>
-          Red dashed line marks 400% FPL where baseline subsidies end
+          Red dashed line marks 400% FPL, where current-law credits end
         </div>
       )}
     </div>

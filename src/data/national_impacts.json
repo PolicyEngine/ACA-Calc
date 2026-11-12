@@ -1,0 +1,391 @@
+{
+ "model_version": "2.115.0",
+ "dataset": "hf://datasets/policyengine/populace-us/populace_us_2024.h5@populace-us-2024-spm-20260909",
+ "dataset_sha256": "6496cc4393d4d3c6574f76eca231de5898c803b9067645591fd5c4d3e65aee84",
+ "computed": "2026-11-10",
+ "year": 2027,
+ "current_law": {
+  "2026": {
+   "total_ptc": 47238627328.0,
+   "tax_units_receiving": 5659438.5,
+   "people_receiving": 11096138.0,
+   "mean_benchmark_premium": 13764.6806640625,
+   "mean_credit": 8346.8759765625,
+   "mean_net_benchmark_premium": 5417.8046875
+  },
+  "2027": {
+   "total_ptc": 54213197824.0,
+   "tax_units_receiving": 5675002.0,
+   "people_receiving": 11014723.0,
+   "mean_benchmark_premium": 15301.3994140625,
+   "mean_credit": 9552.982421875,
+   "mean_net_benchmark_premium": 5748.416015625
+  }
+ },
+ "enhanced": {
+  "total_ptc": 101451644928.0,
+  "tax_units_receiving": 8076385.0,
+  "people_receiving": 17735212.0,
+  "mean_benchmark_premium": 18843.123046875,
+  "mean_credit": 12561.517578125,
+  "mean_net_benchmark_premium": 6281.60595703125
+ },
+ "budget": {
+  "federal_cost": 47238455296.0
+ },
+ "recipients": {
+  "people_newly_receiving": 6720490.0
+ },
+ "households": {
+  "gaining": 7806718.5,
+  "people_gaining": 28511912.739513263,
+  "total": 125264040.0,
+  "people": 347645433.4287665,
+  "mean_gain_among_gaining": 6051.000517236329
+ },
+ "by_fpl": [
+  {
+   "band": "Up to 150%",
+   "baseline_ptc": 6605293056.0,
+   "reform_ptc": 7110544384.0,
+   "tax_units_baseline": 563383.25,
+   "tax_units_reform": 563383.25
+  },
+  {
+   "band": "150% to 250%",
+   "baseline_ptc": 21210357760.0,
+   "reform_ptc": 26538471424.0,
+   "tax_units_baseline": 2297094.5,
+   "tax_units_reform": 2307539.5
+  },
+  {
+   "band": "250% to 400%",
+   "baseline_ptc": 26397542400.0,
+   "reform_ptc": 34988711936.0,
+   "tax_units_baseline": 2814523.5,
+   "tax_units_reform": 2841517.75
+  },
+  {
+   "band": "400% to 600%",
+   "baseline_ptc": 0.0,
+   "reform_ptc": 20718532608.0,
+   "tax_units_baseline": 0.0,
+   "tax_units_reform": 1509365.75
+  },
+  {
+   "band": "Above 600%",
+   "baseline_ptc": 0.0,
+   "reform_ptc": 12095392768.0,
+   "tax_units_baseline": 0.0,
+   "tax_units_reform": 854578.375
+  }
+ ],
+ "deciles": [
+  {
+   "decile": 1,
+   "baseline_mean": 26814.259765625,
+   "reform_mean": 26837.750110883677,
+   "absolute_change": 23.490345258676825,
+   "relative_change": 0.0876039296404172
+  },
+  {
+   "decile": 2,
+   "baseline_mean": 48586.98828125,
+   "reform_mean": 48671.918255650264,
+   "absolute_change": 84.92997440026375,
+   "relative_change": 0.17479983305126717
+  },
+  {
+   "decile": 3,
+   "baseline_mean": 62937.27734375,
+   "reform_mean": 63125.8600451248,
+   "absolute_change": 188.5827013747985,
+   "relative_change": 0.2996359380861043
+  },
+  {
+   "decile": 4,
+   "baseline_mean": 78287.1875,
+   "reform_mean": 78582.75832300594,
+   "absolute_change": 295.570823005939,
+   "relative_change": 0.37754686615346733
+  },
+  {
+   "decile": 5,
+   "baseline_mean": 96304.1171875,
+   "reform_mean": 96684.65074997775,
+   "absolute_change": 380.5335624777508,
+   "relative_change": 0.3951373768754541
+  },
+  {
+   "decile": 6,
+   "baseline_mean": 118721.359375,
+   "reform_mean": 119553.31835003922,
+   "absolute_change": 831.9589750392188,
+   "relative_change": 0.7007660453173772
+  },
+  {
+   "decile": 7,
+   "baseline_mean": 146706.265625,
+   "reform_mean": 147575.031151927,
+   "absolute_change": 868.765526926989,
+   "relative_change": 0.5921802475346656
+  },
+  {
+   "decile": 8,
+   "baseline_mean": 182157.265625,
+   "reform_mean": 182897.21142072658,
+   "absolute_change": 739.945795726584,
+   "relative_change": 0.40621261698662153
+  },
+  {
+   "decile": 9,
+   "baseline_mean": 242349.75,
+   "reform_mean": 242877.96101521785,
+   "absolute_change": 528.2110152178502,
+   "relative_change": 0.21795401696013725
+  },
+  {
+   "decile": 10,
+   "baseline_mean": 539904.125,
+   "reform_mean": 540011.1734724947,
+   "absolute_change": 107.04847249470185,
+   "relative_change": 0.0198273114684393
+  }
+ ],
+ "winners_losers": {
+  "all": {
+   "lose_more_than_5pct": 0.0,
+   "lose_less_than_5pct": 0.0,
+   "no_change": 0.9181632744094868,
+   "gain_less_than_5pct": 0.057805193601744784,
+   "gain_more_than_5pct": 0.024031531988768676
+  },
+  "deciles": [
+   {
+    "decile": 1,
+    "lose_more_than_5pct": 0.0,
+    "lose_less_than_5pct": 0.0,
+    "no_change": 0.9829078769603649,
+    "gain_less_than_5pct": 0.014935317075414031,
+    "gain_more_than_5pct": 0.002156805964221159
+   },
+   {
+    "decile": 2,
+    "lose_more_than_5pct": 0.0,
+    "lose_less_than_5pct": 0.0,
+    "no_change": 0.9515640728595393,
+    "gain_less_than_5pct": 0.04325654556106386,
+    "gain_more_than_5pct": 0.005179381579397125
+   },
+   {
+    "decile": 3,
+    "lose_more_than_5pct": 0.0,
+    "lose_less_than_5pct": 0.0,
+    "no_change": 0.9180672303794707,
+    "gain_less_than_5pct": 0.06387805899236487,
+    "gain_more_than_5pct": 0.01805471062816459
+   },
+   {
+    "decile": 4,
+    "lose_more_than_5pct": 0.0,
+    "lose_less_than_5pct": 0.0,
+    "no_change": 0.8863873003591207,
+    "gain_less_than_5pct": 0.09844297416281045,
+    "gain_more_than_5pct": 0.01516972547806879
+   },
+   {
+    "decile": 5,
+    "lose_more_than_5pct": 0.0,
+    "lose_less_than_5pct": 0.0,
+    "no_change": 0.8899047025030516,
+    "gain_less_than_5pct": 0.09252762683249303,
+    "gain_more_than_5pct": 0.01756767066445528
+   },
+   {
+    "decile": 6,
+    "lose_more_than_5pct": 0.0,
+    "lose_less_than_5pct": 0.0,
+    "no_change": 0.8640164821647608,
+    "gain_less_than_5pct": 0.08465545712414316,
+    "gain_more_than_5pct": 0.051328060711096024
+   },
+   {
+    "decile": 7,
+    "lose_more_than_5pct": 0.0,
+    "lose_less_than_5pct": 0.0,
+    "no_change": 0.8737064479125639,
+    "gain_less_than_5pct": 0.06893366970173934,
+    "gain_more_than_5pct": 0.05735988238569661
+   },
+   {
+    "decile": 8,
+    "lose_more_than_5pct": 0.0,
+    "lose_less_than_5pct": 0.0,
+    "no_change": 0.9050780164369089,
+    "gain_less_than_5pct": 0.05184947429756973,
+    "gain_more_than_5pct": 0.04307250926552157
+   },
+   {
+    "decile": 9,
+    "lose_more_than_5pct": 0.0,
+    "lose_less_than_5pct": 0.0,
+    "no_change": 0.9378425819305014,
+    "gain_less_than_5pct": 0.035959750979997075,
+    "gain_more_than_5pct": 0.026197667089501456
+   },
+   {
+    "decile": 10,
+    "lose_more_than_5pct": 0.0,
+    "lose_less_than_5pct": 0.0,
+    "no_change": 0.9718871523943977,
+    "gain_less_than_5pct": 0.0238668432446736,
+    "gain_more_than_5pct": 0.004246004360928697
+   }
+  ]
+ },
+ "poverty": {
+  "spm": {
+   "all": {
+    "baseline_rate": 0.13637563586235046,
+    "reform_rate": 0.13456134498119354,
+    "baseline_headcount": 47410368.0,
+    "reform_headcount": 46779640.0
+   },
+   "child": {
+    "baseline_rate": 0.17440418899059296,
+    "reform_rate": 0.1713840812444687,
+    "baseline_headcount": 13671461.0,
+    "reform_headcount": 13434716.0
+   },
+   "adult": {
+    "baseline_rate": 0.1308075189590454,
+    "reform_rate": 0.12909483909606934,
+    "baseline_headcount": 27041408.0,
+    "reform_headcount": 26687352.0
+   },
+   "senior": {
+    "baseline_rate": 0.10710996389389038,
+    "reform_rate": 0.1064714565873146,
+    "baseline_headcount": 6697499.5,
+    "reform_headcount": 6657574.0
+   },
+   "male": {
+    "baseline_rate": 0.1336100697517395,
+    "reform_rate": 0.13162311911582947,
+    "baseline_headcount": 22901812.0,
+    "reform_headcount": 22561232.0
+   },
+   "female": {
+    "baseline_rate": 0.1390654444694519,
+    "reform_rate": 0.13741908967494965,
+    "baseline_headcount": 24508560.0,
+    "reform_headcount": 24218410.0
+   },
+   "white": {
+    "baseline_rate": 0.10038293898105621,
+    "reform_rate": 0.09998276084661484,
+    "baseline_headcount": 20969662.0,
+    "reform_headcount": 20886066.0
+   },
+   "black": {
+    "baseline_rate": 0.22085389494895935,
+    "reform_rate": 0.21885696053504944,
+    "baseline_headcount": 8585831.0,
+    "reform_headcount": 8508199.0
+   },
+   "hispanic": {
+    "baseline_rate": 0.20718052983283997,
+    "reform_rate": 0.20039300620555878,
+    "baseline_headcount": 13506810.0,
+    "reform_headcount": 13064308.0
+   },
+   "other": {
+    "baseline_rate": 0.1253778487443924,
+    "reform_rate": 0.12459923326969147,
+    "baseline_headcount": 4348068.0,
+    "reform_headcount": 4321066.0
+   }
+  },
+  "deep": {
+   "all": {
+    "baseline_rate": 0.02971293404698372,
+    "reform_rate": 0.029633916914463043,
+    "baseline_headcount": 10329566.0,
+    "reform_headcount": 10302096.0
+   },
+   "child": {
+    "baseline_rate": 0.020366106182336807,
+    "reform_rate": 0.020366106182336807,
+    "baseline_headcount": 1596489.25,
+    "reform_headcount": 1596489.25
+   },
+   "adult": {
+    "baseline_rate": 0.028824348002672195,
+    "reform_rate": 0.028691470623016357,
+    "baseline_headcount": 5958763.0,
+    "reform_headcount": 5931293.5
+   },
+   "senior": {
+    "baseline_rate": 0.04436829686164856,
+    "reform_rate": 0.04436829686164856,
+    "baseline_headcount": 2774313.75,
+    "reform_headcount": 2774313.75
+   },
+   "male": {
+    "baseline_rate": 0.03084375523030758,
+    "reform_rate": 0.030790332704782486,
+    "baseline_headcount": 5286861.0,
+    "reform_headcount": 5277704.0
+   },
+   "female": {
+    "baseline_rate": 0.028613107278943062,
+    "reform_rate": 0.028509194031357765,
+    "baseline_headcount": 5042705.5,
+    "reform_headcount": 5024392.0
+   },
+   "white": {
+    "baseline_rate": 0.027009611949324608,
+    "reform_rate": 0.027009611949324608,
+    "baseline_headcount": 5642218.0,
+    "reform_headcount": 5642218.0
+   },
+   "black": {
+    "baseline_rate": 0.04079180210828781,
+    "reform_rate": 0.04079180210828781,
+    "baseline_headcount": 1585806.5,
+    "reform_headcount": 1585806.5
+   },
+   "hispanic": {
+    "baseline_rate": 0.029652977362275124,
+    "reform_rate": 0.029231619089841843,
+    "baseline_headcount": 1933179.375,
+    "reform_headcount": 1905709.625
+   },
+   "other": {
+    "baseline_rate": 0.03369007632136345,
+    "reform_rate": 0.03369007632136345,
+    "baseline_headcount": 1168362.25,
+    "reform_headcount": 1168362.25
+   }
+  }
+ },
+ "inequality": {
+  "baseline": {
+   "gini": 0.4719364047050476,
+   "top_10_share": 0.36114177107810974,
+   "top_1_share": 0.09341564029455185,
+   "bottom_50_share": 0.19241617619991302
+  },
+  "reform": {
+   "gini": 0.4714807844587179,
+   "top_10_share": 0.36009323116920855,
+   "top_1_share": 0.09317059086616102,
+   "bottom_50_share": 0.1924227031284588
+  }
+ },
+ "checks": {
+  "max_other_net_income_change": 543.6640625,
+  "spm_resource_change": 43488772096.0,
+  "spm_units_not_measured": 0
+ }
+}

@@ -1,0 +1,1 @@
+Model 2027 coverage in the calculator API (requests without a year still get 2026), with H.R. 1834, and return 2026 current law for the same household and incomes alongside 2027 when asked (show_prior_year). Report the benchmark premium at each income. Pin policyengine-us 2.115.0, which has the published 2027 premiums, and give the Modal function 4 GB.

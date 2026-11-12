@@ -1,0 +1,1 @@
+Retell the Overview around 2027 premiums: how benchmark premiums rise from 2026 under current law, who pays the increase, and what H.R. 1834 would mean for four example households, from precomputed policyengine-us results.

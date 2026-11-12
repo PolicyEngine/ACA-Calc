@@ -10,6 +10,10 @@ const STATES = [
   "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY", "DC",
 ];
 
+// Every calculation is for 2027 coverage under current law and under H.R.
+// 1834, with 2026 current law alongside.
+export const YEAR = 2027;
+
 const STATE_NAMES = {
   AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California",
   CO: "Colorado", CT: "Connecticut", DE: "Delaware", FL: "Florida", GA: "Georgia",
@@ -52,10 +56,6 @@ const buildShareableUrl = (formData, includeAi = false) => {
   if (formData.zip_code) {
     params.set("zip", formData.zip_code);
   }
-  if (!formData.show_ira) params.set("ira", "0");
-  if (!formData.show_700fpl) params.set("700fpl", "0");
-  if (formData.show_additional_bracket) params.set("additional", "1");
-  if (formData.show_simplified_bracket) params.set("simplified", "1");
   if (includeAi) params.set("ai", "1");
 
   const baseUrl = window.location.origin + window.location.pathname;
@@ -81,6 +81,8 @@ const getFormDataFromUrl = () => {
   const depsStr = params.get("deps");
   const dependentAges = depsStr ? depsStr.split(",").map(a => parseInt(a, 10)).filter(a => !isNaN(a)) : [];
 
+  // Links from before the calculator compared fixed scenarios also carry a
+  // year and scenario choices; only the household is read.
   return {
     age_head: parseInt(params.get("age"), 10) || 40,
     age_spouse: parseInt(params.get("spouse"), 10) || 40,
@@ -90,10 +92,6 @@ const getFormDataFromUrl = () => {
     state: STATES.includes(state) ? state : "",
     county: county,
     zip_code: params.get("zip") || "",
-    show_ira: params.get("ira") !== "0",
-    show_700fpl: params.get("700fpl") !== "0",
-    show_additional_bracket: params.get("additional") === "1",
-    show_simplified_bracket: params.get("simplified") === "1",
   };
 };
 
@@ -123,10 +121,6 @@ const getInitialFormData = () => {
     state: defaults.state,
     county: defaults.county,
     zip_code: "",
-    show_ira: true,
-    show_700fpl: true,
-    show_additional_bracket: false,
-    show_simplified_bracket: false,
   };
 };
 
@@ -224,16 +218,15 @@ function CalculatorForm({ onCalculate, loading }) {
     const depAges = formData.dependent_ages.slice(0, numDeps).map(age => age === "" ? 10 : age);
 
     const submitData = {
+      year: YEAR,
       age_head: ageHead,
       age_spouse: formData.married ? ageSpouse : null,
       dependent_ages: depAges,
       state: formData.state,
       county: formData.county,
       zip_code: formData.zip_code || null,
-      show_ira: formData.show_ira,
-      show_700fpl: formData.show_700fpl,
-      show_additional_bracket: formData.show_additional_bracket,
-      show_simplified_bracket: formData.show_simplified_bracket,
+      show_ira: true,
+      show_prior_year: true,
     };
 
     // Update form with normalized values
@@ -408,84 +401,11 @@ function CalculatorForm({ onCalculate, loading }) {
         )}
       </div>
 
-      {/* Policy Scenarios */}
-      <div className="form-section">
-        <h3 className="form-section-title">Policy Scenarios</h3>
-
-        <div className="form-row">
-          <label className="form-label checkbox-label">
-            <input
-              type="checkbox"
-              name="show_ira"
-              checked={formData.show_ira}
-              onChange={handleChange}
-              disabled={loading}
-            />
-            <span>
-              <strong>IRA Extension</strong>
-              <span className="checkbox-description">8.5% cap, no income limit above 400% FPL</span>
-            </span>
-          </label>
-        </div>
-
-        <div className="form-row">
-          <label className="form-label checkbox-label">
-            <input
-              type="checkbox"
-              name="show_700fpl"
-              checked={formData.show_700fpl}
-              onChange={handleChange}
-              disabled={loading}
-            />
-            <span>
-              <strong>700% FPL Bill</strong>
-              <span className="checkbox-description">Bipartisan bill extending to 700% FPL with 9.25% cap</span>
-            </span>
-          </label>
-        </div>
-
-        <div className="form-row">
-          <label className="form-label checkbox-label">
-            <input
-              type="checkbox"
-              name="show_additional_bracket"
-              checked={formData.show_additional_bracket}
-              onChange={handleChange}
-              disabled={loading}
-            />
-            <span>
-              <strong>Additional Bracket</strong>
-              <span className="checkbox-description">
-                <a href="https://www.crfb.org/blogs/understanding-aca-subsidy-discussion" target="_blank" rel="noopener noreferrer">CRFB</a> "Progressive Alternative": extends enhanced subsidies below 300% FPL, linear phase-up above
-              </span>
-            </span>
-          </label>
-        </div>
-
-        <div className="form-row">
-          <label className="form-label checkbox-label">
-            <input
-              type="checkbox"
-              name="show_simplified_bracket"
-              checked={formData.show_simplified_bracket}
-              onChange={handleChange}
-              disabled={loading}
-            />
-            <span>
-              <strong>Simplified Bracket</strong>
-              <span className="checkbox-description">
-                <a href="https://www.crfb.org/blogs/understanding-aca-subsidy-discussion" target="_blank" rel="noopener noreferrer">CRFB</a> "Smaller Alternative": subsidies halfway between baseline and enhanced
-              </span>
-            </span>
-          </label>
-        </div>
-      </div>
-
       <div className="form-actions">
         <button
           type="submit"
           className="calculate-button"
-          disabled={loading || (!formData.show_ira && !formData.show_700fpl && !formData.show_additional_bracket && !formData.show_simplified_bracket)}
+          disabled={loading}
         >
           {loading ? "Calculating..." : "Calculate Premium Tax Credits"}
         </button>
@@ -504,10 +424,6 @@ function CalculatorForm({ onCalculate, loading }) {
         </button>
         {shareMessage && <span className="share-message">{shareMessage}</span>}
       </div>
-
-      {!formData.show_ira && !formData.show_700fpl && !formData.show_additional_bracket && !formData.show_simplified_bracket && (
-        <p className="form-warning">Please select at least one policy scenario</p>
-      )}
     </form>
   );
 }

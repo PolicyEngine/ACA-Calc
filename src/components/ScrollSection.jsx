@@ -2,10 +2,7 @@ import { useInView } from "react-intersection-observer";
 import { useEffect } from "react";
 import "./ScrollSection.css";
 
-// Calculator URL - uses environment variable or defaults to localhost for development
-const CALCULATOR_URL = process.env.NEXT_PUBLIC_CALCULATOR_URL || "http://localhost:8501";
-
-function ScrollSection({ section, index, isActive, onInView, onExploreHouseholds }) {
+function ScrollSection({ section, index, isActive, onInView, onOpenCalculator }) {
   const { ref, inView } = useInView({
     threshold: 0.5,
     rootMargin: "-20% 0px -40% 0px",
@@ -48,21 +45,13 @@ function ScrollSection({ section, index, isActive, onInView, onExploreHouseholds
           <p key={i}>{parseContent(paragraph)}</p>
         ))}
       </div>
-      {section.showHouseholdExplorerLink && onExploreHouseholds && (
-        <button onClick={onExploreHouseholds} className="explore-button">
-          Explore Households
+      {section.showCalculatorButton && onOpenCalculator && (
+        <button onClick={onOpenCalculator} className="calculator-button">
+          Calculate your household
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M5 12h14M12 5l7 7-7 7" />
           </svg>
         </button>
-      )}
-      {section.showCalculatorLink && (
-        <a href={CALCULATOR_URL} target="_blank" rel="noopener noreferrer" className="calculator-button">
-          Enter Custom Household
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M5 12h14M12 5l7 7-7 7" />
-          </svg>
-        </a>
       )}
     </div>
   );

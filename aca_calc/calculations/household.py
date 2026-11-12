@@ -34,7 +34,14 @@ def build_household_situation(
         "spm_units": {"your household": {"members": ["you"]}},
         "tax_units": {"your tax unit": {"members": ["you"]}},
         "households": {
-            "your household": {"members": ["you"], "state_name": {year: state}}
+            "your household": {
+                "members": ["you"],
+                # The credit measures income against the prior year's poverty
+                # guideline (aca_magi_fraction), so the state is set for that
+                # year too. Without it, Alaska and Hawaii households get the
+                # 48 states' lower guideline.
+                "state_name": {year - 1: state, year: state},
+            }
         },
     }
 

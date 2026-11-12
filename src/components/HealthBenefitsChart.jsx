@@ -181,9 +181,9 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
       case "chip_focus":
         return "CHIP coverage by income";
       case "ira_reform":
-        return "Baseline vs IRA extension";
+        return "Current law vs H.R. 1834";
       case "ira_impact":
-        return "IRA extension vs current law";
+        return "H.R. 1834 vs current law";
       case "fpl700_focus":
         return "700% FPL bill vs current law";
       case "additional_focus":
@@ -191,13 +191,13 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
       case "simplified_focus":
         return "Simplified bracket vs current law";
       case "gain_view":
-        return "Gain from reform vs baseline";
+        return "Gain over current law";
       case "both_reforms":
         return "Comparing all policy options";
       case "all_programs":
         return "Health coverage programs by income";
       default:
-        return "Annual health benefits by income (2026)";
+        return data?.year ? `Annual health benefits by income (${data.year})` : "Annual health benefits by income";
     }
   };
 
@@ -267,7 +267,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
               return ticks;
             })()}
             label={{
-              value: (chartState === "impact" || chartState === "gain_view") ? "Gain over baseline" : "Annual value",
+              value: (chartState === "impact" || chartState === "gain_view") ? "Gain over current law" : "Annual value",
               angle: -90,
               position: "insideLeft",
               offset: 10,
@@ -315,7 +315,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             <Area
               type="monotone"
               dataKey="ptcBaseline"
-              name="Baseline (Current Law)"
+              name="Current law"
               fill={COLORS.baseline}
               fillOpacity={0.4}
               stroke={COLORS.baseline}
@@ -327,7 +327,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             <Area
               type="monotone"
               dataKey="deltaIRA"
-              name="Additional from IRA"
+              name="Additional from H.R. 1834"
               fill={COLORS.ira}
               fillOpacity={0.5}
               stroke={COLORS.ira}
@@ -341,7 +341,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             <Area
               type="monotone"
               dataKey="ptcBaseline"
-              name="Baseline (Current Law)"
+              name="Current law"
               fill={COLORS.baseline}
               fillOpacity={0.4}
               stroke={COLORS.baseline}
@@ -367,7 +367,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             <Area
               type="monotone"
               dataKey="ptcBaseline"
-              name="Baseline (Current Law)"
+              name="Current law"
               fill={COLORS.baseline}
               fillOpacity={0.4}
               stroke={COLORS.baseline}
@@ -393,7 +393,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             <Area
               type="monotone"
               dataKey="ptcBaseline"
-              name="Baseline (Current Law)"
+              name="Current law"
               fill={COLORS.baseline}
               fillOpacity={0.4}
               stroke={COLORS.baseline}

@@ -11,6 +11,7 @@ on:
       - aca_calc/**
       - src/aca_api/**
       - tests/test_api_explain.py
+      - tests/test_api_scenarios.py
       - tests/test_enhanced_ptc_reform.py
       - tests/test_modal_requirements.py
       - tests/test_smoke_test_api.py
@@ -24,6 +25,7 @@ on:
       - aca_calc/**
       - src/aca_api/**
       - tests/test_api_explain.py
+      - tests/test_api_scenarios.py
       - tests/test_enhanced_ptc_reform.py
       - tests/test_modal_requirements.py
       - tests/test_smoke_test_api.py
@@ -63,7 +65,7 @@ jobs:
           uv venv --python 3.11
           uv pip install -r modal-requirements.txt
       - name: Run the API tests
-        run: .venv/bin/python -m pytest tests/test_api_explain.py tests/test_enhanced_ptc_reform.py tests/test_modal_requirements.py tests/test_smoke_test_api.py
+        run: .venv/bin/python -m pytest tests/test_api_explain.py tests/test_api_scenarios.py tests/test_enhanced_ptc_reform.py tests/test_modal_requirements.py tests/test_smoke_test_api.py
 
   deploy:
     name: Deploy and smoke-test

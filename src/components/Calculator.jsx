@@ -61,18 +61,21 @@ const getChipThreshold = (state) => {
 // Cache TTL: 24 hours in milliseconds
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 
+// Part of every browser cache key: change it when the API's answers change for
+// the same request (a new policyengine-us pin), so no one sees the old ones.
+const CACHE_VERSION = "policyengine-us-2.115.0";
+
 function getCacheKey(data) {
   const keyData = {
+    version: CACHE_VERSION,
+    year: data.year,
+    show_prior_year: data.show_prior_year,
     age_head: data.age_head,
     age_spouse: data.age_spouse,
     dependent_ages: data.dependent_ages || [],
     state: data.state,
     county: data.county,
     zip_code: data.zip_code,
-    show_ira: data.show_ira,
-    show_700fpl: data.show_700fpl,
-    show_additional_bracket: data.show_additional_bracket,
-    show_simplified_bracket: data.show_simplified_bracket,
   };
   return `aca-calc-${JSON.stringify(keyData)}`;
 }
@@ -245,8 +248,12 @@ function Calculator() {
     const sampleIncome = results.fpl * 3;
 
     const hasChildren = (formData.dependent_ages || []).length > 0;
+    const priorBenchmark = results.slcsp_by_income_prior_year?.length
+      ? Math.max(...results.slcsp_by_income_prior_year)
+      : 0;
 
     const explainRequest = {
+      year: formData.year,
       age_head: formData.age_head,
       age_spouse: formData.age_spouse,
       dependent_ages: formData.dependent_ages || [],
@@ -260,18 +267,19 @@ function Calculator() {
       medicaid_adult_threshold_pct: getMedicaidAdultThreshold(formData.state),
       medicaid_child_threshold_pct: getMedicaidChildThreshold(formData.state),
       chip_threshold_pct: hasChildren ? getChipThreshold(formData.state) : 0,
-      // Which reforms are selected
-      show_ira: formData.show_ira,
-      show_700fpl: formData.show_700fpl,
-      show_additional_bracket: formData.show_additional_bracket,
-      show_simplified_bracket: formData.show_simplified_bracket,
-      // PTC values at sample income for all reforms
+      // The one comparison the page makes: H.R. 1834 against current law,
+      // with current law a year earlier.
+      show_ira: true,
+      show_700fpl: false,
+      show_additional_bracket: false,
+      show_simplified_bracket: false,
+      show_prior_year: Boolean(results.ptc_prior_year),
+      slcsp_prior_year: priorBenchmark,
+      // PTC values at sample income
       sample_income: sampleIncome,
       ptc_baseline_at_sample: findValueAtIncome(sampleIncome, results.income, results.ptc_baseline),
-      ptc_ira_at_sample: formData.show_ira ? findValueAtIncome(sampleIncome, results.income, results.ptc_ira) : 0,
-      ptc_700fpl_at_sample: formData.show_700fpl ? findValueAtIncome(sampleIncome, results.income, results.ptc_700fpl) : 0,
-      ptc_additional_bracket_at_sample: formData.show_additional_bracket ? findValueAtIncome(sampleIncome, results.income, results.ptc_additional_bracket) : 0,
-      ptc_simplified_bracket_at_sample: formData.show_simplified_bracket ? findValueAtIncome(sampleIncome, results.income, results.ptc_simplified_bracket) : 0,
+      ptc_ira_at_sample: findValueAtIncome(sampleIncome, results.income, results.ptc_ira),
+      ptc_prior_year_at_sample: findValueAtIncome(sampleIncome, results.income, results.ptc_prior_year),
     };
 
     try {
@@ -319,7 +327,7 @@ function Calculator() {
         <div className="calculator-form-container">
           <h2 className="calculator-title">Calculate Your Premium Tax Credits</h2>
           <p className="calculator-subtitle">
-            Enter your household information to see how ACA policy changes would affect your health insurance costs.
+            Enter your household to see what it would pay for the benchmark plan in 2026 and 2027 under current law, and in 2027 if H.R. 1834 revived the enhanced credits.
           </p>
           <CalculatorForm onCalculate={handleCalculate} loading={loading} />
 
@@ -388,7 +396,7 @@ function Calculator() {
                 </svg>
               </div>
               <h3>Enter Your Household Details</h3>
-              <p>Fill out the form and click "Calculate" to see your projected premium tax credits under different policy scenarios.</p>
+              <p>Fill out the form and click "Calculate" to see your benchmark premiums and premium tax credits for 2026 and 2027.</p>
             </div>
           )}
         </div>
@@ -402,12 +410,10 @@ function Calculator() {
             income: results.income,
             ptc_baseline: results.ptc_baseline,
             ptc_ira: results.ptc_ira,
-            ptc_700fpl: results.ptc_700fpl,
-            ptc_additional_bracket: results.ptc_additional_bracket,
-            ptc_simplified_bracket: results.ptc_simplified_bracket,
             medicaid: results.medicaid,
             chip: results.chip,
             fpl: results.fpl,
+            year: results.year,
           }}
           householdDescription={aiExplanation.household_description}
           onClose={() => setAiExplanation(null)}
