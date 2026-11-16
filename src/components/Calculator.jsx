@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import CalculatorForm, { buildShareableUrl, shouldAutoLoadAi } from "./CalculatorForm";
 import CalculatorResults from "./CalculatorResults";
+import ExampleHouseholds from "./ExampleHouseholds";
 import AIExplanation from "./AIExplanation";
 import "./Calculator.css";
 
@@ -115,9 +116,56 @@ function Calculator() {
   // Current law in 2026 and 2027 by default; the form's checkbox adds 2027
   // under H.R. 1834, which the API returns with every calculation.
   const [compareEnhanced, setCompareEnhanced] = useState(false);
+  // The Overview's four households with their stored results
+  // (precompute_calculator_examples.py), loaded with the page.
+  const [examples, setExamples] = useState([]);
+  const [selectedExample, setSelectedExample] = useState(null);
+  // The form remounts with new values only when an example is chosen, so
+  // editing an example and calculating keeps the edits.
+  const [formPreset, setFormPreset] = useState({ key: "initial", values: null });
+  const resultsRef = useRef(null);
   const aiTriggeredRef = useRef(false);
 
+  useEffect(() => {
+    import("../data/households/calculator_examples.json")
+      .then((module) => setExamples((module.default || module).examples || []))
+      .catch(() => setExamples([]));
+  }, []);
+
+  const scrollToResults = () => {
+    requestAnimationFrame(() =>
+      resultsRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" })
+    );
+  };
+
+  // Fill the form with an example and show its stored result, without a request.
+  const handleSelectExample = (example) => {
+    const request = example.request;
+    const values = {
+      age_head: request.age_head,
+      age_spouse: request.age_spouse ?? request.age_head,
+      married: request.age_spouse != null,
+      num_dependents: request.dependent_ages.length,
+      dependent_ages: request.dependent_ages,
+      state: request.state,
+      county: request.county,
+      zip_code: request.zip_code || "",
+    };
+    setFormPreset({ key: `${example.key}-${Date.now()}`, values });
+    setSelectedExample(example);
+    setFormData(request);
+    setResults(example.response);
+    setError(null);
+    setAiExplanation(null);
+    setLoading(false);
+    const url = buildShareableUrl(values);
+    window.history.replaceState(null, "", `#${url.split("#")[1] || ""}`);
+    scrollToResults();
+  };
+
   const handleCalculate = async (data) => {
+    setSelectedExample(null);
+    scrollToResults();
     setLoading(true);
     setError(null);
     setResults(null);
@@ -327,12 +375,27 @@ function Calculator() {
   return (
     <div className="calculator">
       <div className="calculator-layout">
-        <div className="calculator-form-container">
-          <h2 className="calculator-title">Calculate Your Premium Tax Credits</h2>
+        <div className="calculator-intro">
+          <h2 className="calculator-title">Calculate your premium tax credits</h2>
           <p className="calculator-subtitle">
-            Enter your household to see what it would pay for the benchmark plan in 2026 and 2027 under current law, and in 2027 if H.R. 1834 revived the enhanced credits.
+            See what a household would pay for the benchmark plan in 2026 and 2027 under current
+            law. Check the comparison box to add 2027 under H.R. 1834, which would revive the
+            enhanced credits.
           </p>
+        </div>
+
+        <ExampleHouseholds
+          examples={examples}
+          selectedKey={selectedExample?.key}
+          onSelect={handleSelectExample}
+          compareEnhanced={compareEnhanced}
+        />
+
+        <div className="calculator-form-container">
+          <h3 className="calculator-form-heading">Your household</h3>
           <CalculatorForm
+            key={formPreset.key}
+            initialValues={formPreset.values}
             onCalculate={handleCalculate}
             loading={loading}
             compareEnhanced={compareEnhanced}
@@ -347,7 +410,7 @@ function Calculator() {
           )}
         </div>
 
-        <div className="calculator-results-container">
+        <div className="calculator-results-container" ref={resultsRef}>
           {loading && (
             <div className="calculator-loading">
               <div className="progress-container">
@@ -392,7 +455,19 @@ function Calculator() {
                   Get a personalized walkthrough of how these policies affect your household
                 </p>
               </div>
-              <CalculatorResults data={results} formData={formData} compareEnhanced={compareEnhanced} />
+              {selectedExample && (
+                <p className="example-result-note">
+                  Results for the example household: {selectedExample.name.toLowerCase()},{" "}
+                  {selectedExample.description}.
+                </p>
+              )}
+              <CalculatorResults
+                key={selectedExample ? `example-${selectedExample.key}` : "custom"}
+                data={results}
+                formData={formData}
+                compareEnhanced={compareEnhanced}
+                initialIncome={selectedExample?.income ?? null}
+              />
             </>
           )}
 
@@ -403,8 +478,8 @@ function Calculator() {
                   <path d="M9 7h6m-6 4h6m-6 4h4m-7 5h10a2 2 0 002-2V6a2 2 0 00-2-2H7a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </div>
-              <h3>Enter Your Household Details</h3>
-              <p>Fill out the form and click "Calculate" to see your benchmark premiums and premium tax credits for 2026 and 2027.</p>
+              <h3>Choose an example or enter your household</h3>
+              <p>Results appear here: benchmark premiums and premium tax credits for 2026 and 2027.</p>
             </div>
           )}
         </div>

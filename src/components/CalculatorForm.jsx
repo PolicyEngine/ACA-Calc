@@ -124,8 +124,10 @@ const getInitialFormData = () => {
   };
 };
 
-function CalculatorForm({ onCalculate, loading, compareEnhanced = false, onCompareChange }) {
-  const [formData, setFormData] = useState(getInitialFormData);
+function CalculatorForm({ onCalculate, loading, compareEnhanced = false, onCompareChange, initialValues = null }) {
+  // An example household's values when one was chosen (the parent remounts
+  // the form then); otherwise the link's household or random defaults.
+  const [formData, setFormData] = useState(() => initialValues || getInitialFormData());
   const [availableCounties, setAvailableCounties] = useState([]);
   const [shareMessage, setShareMessage] = useState("");
 

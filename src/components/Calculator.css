@@ -1,16 +1,45 @@
 /* Calculator Page Styles */
 
 .calculator {
-  max-width: 1400px;
   margin: 0 auto;
-  padding: var(--pe-space-lg);
 }
 
+/* Top to bottom: the introduction, the example households, the form, then the
+   results. */
 .calculator-layout {
-  display: grid;
-  grid-template-columns: 400px 1fr;
+  display: flex;
+  flex-direction: column;
   gap: var(--pe-space-xl);
+}
+
+.calculator-form-heading {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-gray-900);
+  margin-bottom: var(--pe-space-md);
+}
+
+/* The form's sections side by side when there's room, its buttons below. */
+.calculator-form-container .calculator-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--pe-space-lg);
   align-items: start;
+}
+
+.calculator-form-container .calculator-form .form-actions {
+  grid-column: 1 / -1;
+}
+
+.calculator-form-container .form-section {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.example-result-note {
+  margin-bottom: var(--pe-space-md);
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
 }
 
 .calculator-title {
@@ -30,9 +59,9 @@
 /* Form Container */
 .calculator-form-container {
   background: var(--pe-surface);
+  border: 1px solid var(--border);
   border-radius: var(--pe-radius-lg);
   padding: var(--pe-space-xl);
-  box-shadow: var(--pe-shadow-md);
 }
 
 /* Form Styles */
@@ -239,7 +268,7 @@
 
 /* Results Container */
 .calculator-results-container {
-  min-height: 500px;
+  scroll-margin-top: 72px;
 }
 
 /* Loading State */

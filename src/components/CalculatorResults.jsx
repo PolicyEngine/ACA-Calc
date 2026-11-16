@@ -48,9 +48,10 @@ const closestIndex = (income, incomeArray) => {
   return closest;
 };
 
-function CalculatorResults({ data, formData, compareEnhanced = false }) {
+function CalculatorResults({ data, formData, compareEnhanced = false, initialIncome = null }) {
   const [activeTab, setActiveTab] = useState("net");
-  const [userIncome, setUserIncome] = useState("");
+  // An example household's income, so its cards match the Overview.
+  const [userIncome, setUserIncome] = useState(initialIncome ? String(initialIncome) : "");
 
   // An answer from before the API took a year is for 2026.
   const year = data?.year || 2026;
