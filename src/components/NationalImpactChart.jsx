@@ -58,6 +58,28 @@ const tooltipStyle = {
 const legendStyle = { fontSize: "13px", fontFamily: "var(--font-sans)" };
 const labelStyle = { fill: "var(--color-gray-700)", fontSize: 11, fontFamily: "var(--font-sans)" };
 
+// A bar's value just past its end: below a bar that goes down, above one that
+// goes up.
+const endLabel = (format) =>
+  function EndLabel({ x, y, width, height, value }) {
+    const bottom = Math.max(y, y + height);
+    const top = Math.min(y, y + height);
+    return (
+      <text
+        x={x + width / 2}
+        y={value < 0 ? bottom + 14 : top - 6}
+        textAnchor="middle"
+        {...labelStyle}
+        fontSize={11}
+      >
+        {format(value)}
+      </text>
+    );
+  };
+
+// Room past the longest bar for its label.
+const paddedDomain = [(min) => Math.min(0, min * 1.25), (max) => Math.max(0, max * 1.25)];
+
 function Header({ title, subtitle }) {
   return (
     <>
@@ -222,7 +244,7 @@ function PovertyChart() {
           <BarChart data={data} margin={{ top: 16, right: 8, left: 0, bottom: 16 }}>
             <CartesianGrid {...GRID} vertical={false} />
             <XAxis dataKey="label" {...AXIS} interval={0} />
-            <YAxis tickFormatter={(v) => signedPercent(v)} {...AXIS} width={56} />
+            <YAxis tickFormatter={(v) => signedPercent(v)} domain={paddedDomain} {...AXIS} width={56} />
             <Tooltip
               formatter={(value, name, item) => [
                 `${signedPercent(value, 2)} (${rates(name === "Poverty" ? item.payload.spmRates : item.payload.deepRates)})`,
@@ -232,10 +254,10 @@ function PovertyChart() {
             />
             <Legend verticalAlign="top" align="left" height={36} wrapperStyle={legendStyle} />
             <Bar dataKey="spm" name="Poverty" fill={COLORS.revived} isAnimationActive={false}>
-              <LabelList dataKey="spm" position="bottom" formatter={(v) => signedPercent(v)} {...labelStyle} fontSize={10} />
+              <LabelList dataKey="spm" content={endLabel((v) => signedPercent(v))} />
             </Bar>
             <Bar dataKey="deep" name="Deep poverty" fill={COLORS.deep} isAnimationActive={false}>
-              <LabelList dataKey="deep" position="bottom" formatter={(v) => signedPercent(v)} {...labelStyle} fontSize={10} />
+              <LabelList dataKey="deep" content={endLabel((v) => signedPercent(v))} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
@@ -267,13 +289,13 @@ function InequalityChart() {
           <BarChart data={data} margin={{ top: 16, right: 8, left: 0, bottom: 16 }}>
             <CartesianGrid {...GRID} vertical={false} />
             <XAxis dataKey="label" {...AXIS} interval={0} />
-            <YAxis tickFormatter={(v) => signedPercent(v, 2)} {...AXIS} width={64} />
+            <YAxis tickFormatter={(v) => signedPercent(v, 2)} domain={paddedDomain} {...AXIS} width={64} />
             <Tooltip
               formatter={(value, name, item) => [`${signedPercent(value, 2)} (${item.payload.detail})`, "Change"]}
               contentStyle={tooltipStyle}
             />
             <Bar dataKey="change" fill={COLORS.revived} isAnimationActive={false}>
-              <LabelList dataKey="change" position="bottom" formatter={(v) => signedPercent(v, 2)} {...labelStyle} fontSize={10} />
+              <LabelList dataKey="change" content={endLabel((v) => signedPercent(v, 2))} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
