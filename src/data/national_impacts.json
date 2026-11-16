@@ -1,81 +1,81 @@
 {
- "model_version": "2.115.0",
+ "model_version": "2.138.2",
  "dataset": "hf://datasets/policyengine/populace-us/populace_us_2024.h5@populace-us-2024-spm-20260909",
  "dataset_sha256": "6496cc4393d4d3c6574f76eca231de5898c803b9067645591fd5c4d3e65aee84",
- "computed": "2026-11-10",
+ "computed": "2026-11-16",
  "year": 2027,
  "current_law": {
   "2026": {
-   "total_ptc": 47238627328.0,
+   "total_ptc": 47099658240.0,
    "tax_units_receiving": 5659438.5,
    "people_receiving": 11096138.0,
    "mean_benchmark_premium": 13764.6806640625,
-   "mean_credit": 8346.8759765625,
-   "mean_net_benchmark_premium": 5417.8046875
+   "mean_credit": 8322.3203125,
+   "mean_net_benchmark_premium": 5442.359375
   },
   "2027": {
-   "total_ptc": 54213197824.0,
+   "total_ptc": 53994577920.0,
    "tax_units_receiving": 5675002.0,
    "people_receiving": 11014723.0,
    "mean_benchmark_premium": 15301.3994140625,
-   "mean_credit": 9552.982421875,
-   "mean_net_benchmark_premium": 5748.416015625
+   "mean_credit": 9514.4599609375,
+   "mean_net_benchmark_premium": 5786.9384765625
   }
  },
  "enhanced": {
-  "total_ptc": 101451644928.0,
+  "total_ptc": 97487863808.0,
   "tax_units_receiving": 8076385.0,
   "people_receiving": 17735212.0,
   "mean_benchmark_premium": 18843.123046875,
-  "mean_credit": 12561.517578125,
-  "mean_net_benchmark_premium": 6281.60595703125
+  "mean_credit": 12070.73046875,
+  "mean_net_benchmark_premium": 6772.3935546875
  },
  "budget": {
-  "federal_cost": 47238455296.0
+  "federal_cost": 43493285888.0
  },
  "recipients": {
   "people_newly_receiving": 6720490.0
  },
  "households": {
-  "gaining": 7806718.5,
-  "people_gaining": 28511912.739513263,
+  "gaining": 7669623.0,
+  "people_gaining": 28021108.24528867,
   "total": 125264040.0,
   "people": 347645433.4287665,
-  "mean_gain_among_gaining": 6051.000517236329
+  "mean_gain_among_gaining": 5670.21337890625
  },
  "by_fpl": [
   {
    "band": "Up to 150%",
-   "baseline_ptc": 6605293056.0,
-   "reform_ptc": 7110544384.0,
+   "baseline_ptc": 6605291520.0,
+   "reform_ptc": 7109715968.0,
    "tax_units_baseline": 563383.25,
    "tax_units_reform": 563383.25
   },
   {
    "band": "150% to 250%",
-   "baseline_ptc": 21210357760.0,
-   "reform_ptc": 26538471424.0,
+   "baseline_ptc": 21129736192.0,
+   "reform_ptc": 26055757824.0,
    "tax_units_baseline": 2297094.5,
    "tax_units_reform": 2307539.5
   },
   {
    "band": "250% to 400%",
-   "baseline_ptc": 26397542400.0,
-   "reform_ptc": 34988711936.0,
+   "baseline_ptc": 26259550208.0,
+   "reform_ptc": 32968804352.0,
    "tax_units_baseline": 2814523.5,
    "tax_units_reform": 2841517.75
   },
   {
    "band": "400% to 600%",
    "baseline_ptc": 0.0,
-   "reform_ptc": 20718532608.0,
+   "reform_ptc": 19483113472.0,
    "tax_units_baseline": 0.0,
    "tax_units_reform": 1509365.75
   },
   {
    "band": "Above 600%",
    "baseline_ptc": 0.0,
-   "reform_ptc": 12095392768.0,
+   "reform_ptc": 11870474240.0,
    "tax_units_baseline": 0.0,
    "tax_units_reform": 854578.375
   }
@@ -83,247 +83,247 @@
  "deciles": [
   {
    "decile": 1,
-   "baseline_mean": 26814.259765625,
-   "reform_mean": 26837.750110883677,
-   "absolute_change": 23.490345258676825,
-   "relative_change": 0.0876039296404172
+   "baseline_mean": 26899.0390625,
+   "reform_mean": 26904.3984375,
+   "absolute_change": 5.359375,
+   "relative_change": 0.019924038875691715
   },
   {
    "decile": 2,
-   "baseline_mean": 48586.98828125,
-   "reform_mean": 48671.918255650264,
-   "absolute_change": 84.92997440026375,
-   "relative_change": 0.17479983305126717
+   "baseline_mean": 49065.17578125,
+   "reform_mean": 49111.234375,
+   "absolute_change": 46.05859375,
+   "relative_change": 0.09387226890890106
   },
   {
    "decile": 3,
-   "baseline_mean": 62937.27734375,
-   "reform_mean": 63125.8600451248,
-   "absolute_change": 188.5827013747985,
-   "relative_change": 0.2996359380861043
+   "baseline_mean": 63745.56640625,
+   "reform_mean": 63851.140625,
+   "absolute_change": 105.57421875,
+   "relative_change": 0.1656181358201076
   },
   {
    "decile": 4,
-   "baseline_mean": 78287.1875,
-   "reform_mean": 78582.75832300594,
-   "absolute_change": 295.570823005939,
-   "relative_change": 0.37754686615346733
+   "baseline_mean": 79386.625,
+   "reform_mean": 79662.015625,
+   "absolute_change": 275.390625,
+   "relative_change": 0.3468980133618226
   },
   {
    "decile": 5,
-   "baseline_mean": 96304.1171875,
-   "reform_mean": 96684.65074997775,
-   "absolute_change": 380.5335624777508,
-   "relative_change": 0.3951373768754541
+   "baseline_mean": 97305.671875,
+   "reform_mean": 97675.984375,
+   "absolute_change": 370.3125,
+   "relative_change": 0.38056620222067605
   },
   {
    "decile": 6,
-   "baseline_mean": 118721.359375,
-   "reform_mean": 119553.31835003922,
-   "absolute_change": 831.9589750392188,
-   "relative_change": 0.7007660453173772
+   "baseline_mean": 119508.953125,
+   "reform_mean": 120298.515625,
+   "absolute_change": 789.5625,
+   "relative_change": 0.6606722587337533
   },
   {
    "decile": 7,
-   "baseline_mean": 146706.265625,
-   "reform_mean": 147575.031151927,
-   "absolute_change": 868.765526926989,
-   "relative_change": 0.5921802475346656
+   "baseline_mean": 147391.5,
+   "reform_mean": 148193.78125,
+   "absolute_change": 802.28125,
+   "relative_change": 0.5443198895458693
   },
   {
    "decile": 8,
-   "baseline_mean": 182157.265625,
-   "reform_mean": 182897.21142072658,
-   "absolute_change": 739.945795726584,
-   "relative_change": 0.40621261698662153
+   "baseline_mean": 182806.5625,
+   "reform_mean": 183553.53125,
+   "absolute_change": 746.96875,
+   "relative_change": 0.408611561743031
   },
   {
    "decile": 9,
-   "baseline_mean": 242349.75,
-   "reform_mean": 242877.96101521785,
-   "absolute_change": 528.2110152178502,
-   "relative_change": 0.21795401696013725
+   "baseline_mean": 242757.28125,
+   "reform_mean": 243272.1875,
+   "absolute_change": 514.90625,
+   "relative_change": 0.2121074380750423
   },
   {
    "decile": 10,
-   "baseline_mean": 539904.125,
-   "reform_mean": 540011.1734724947,
-   "absolute_change": 107.04847249470185,
-   "relative_change": 0.0198273114684393
+   "baseline_mean": 540462.8125,
+   "reform_mean": 540564.5,
+   "absolute_change": 101.6875,
+   "relative_change": 0.01881489302282014
   }
  ],
  "winners_losers": {
   "all": {
    "lose_more_than_5pct": 0.0,
    "lose_less_than_5pct": 0.0,
-   "no_change": 0.9181632744094868,
-   "gain_less_than_5pct": 0.057805193601744784,
-   "gain_more_than_5pct": 0.024031531988768676
+   "no_change": 0.9199181443200546,
+   "gain_less_than_5pct": 0.06009905629501063,
+   "gain_more_than_5pct": 0.019982799384934843
   },
   "deciles": [
    {
     "decile": 1,
     "lose_more_than_5pct": 0.0,
     "lose_less_than_5pct": 0.0,
-    "no_change": 0.9829078769603649,
-    "gain_less_than_5pct": 0.014935317075414031,
-    "gain_more_than_5pct": 0.002156805964221159
+    "no_change": 0.9953447111764202,
+    "gain_less_than_5pct": 0.004655286114588076,
+    "gain_more_than_5pct": 2.708991849303019e-09
    },
    {
     "decile": 2,
     "lose_more_than_5pct": 0.0,
     "lose_less_than_5pct": 0.0,
-    "no_change": 0.9515640728595393,
-    "gain_less_than_5pct": 0.04325654556106386,
-    "gain_more_than_5pct": 0.005179381579397125
+    "no_change": 0.9772525514882854,
+    "gain_less_than_5pct": 0.022747448109999263,
+    "gain_more_than_5pct": 4.017152242074928e-10
    },
    {
     "decile": 3,
     "lose_more_than_5pct": 0.0,
     "lose_less_than_5pct": 0.0,
-    "no_change": 0.9180672303794707,
-    "gain_less_than_5pct": 0.06387805899236487,
-    "gain_more_than_5pct": 0.01805471062816459
+    "no_change": 0.9442568949057577,
+    "gain_less_than_5pct": 0.0554372894198411,
+    "gain_more_than_5pct": 0.0003058156744011801
    },
    {
     "decile": 4,
     "lose_more_than_5pct": 0.0,
     "lose_less_than_5pct": 0.0,
-    "no_change": 0.8863873003591207,
-    "gain_less_than_5pct": 0.09844297416281045,
-    "gain_more_than_5pct": 0.01516972547806879
+    "no_change": 0.8746240157933488,
+    "gain_less_than_5pct": 0.1201422422617057,
+    "gain_more_than_5pct": 0.005233741944945596
    },
    {
     "decile": 5,
     "lose_more_than_5pct": 0.0,
     "lose_less_than_5pct": 0.0,
-    "no_change": 0.8899047025030516,
-    "gain_less_than_5pct": 0.09252762683249303,
-    "gain_more_than_5pct": 0.01756767066445528
+    "no_change": 0.8724966319057955,
+    "gain_less_than_5pct": 0.11486857692288324,
+    "gain_more_than_5pct": 0.0126347911713213
    },
    {
     "decile": 6,
     "lose_more_than_5pct": 0.0,
     "lose_less_than_5pct": 0.0,
-    "no_change": 0.8640164821647608,
-    "gain_less_than_5pct": 0.08465545712414316,
-    "gain_more_than_5pct": 0.051328060711096024
+    "no_change": 0.8647187133123577,
+    "gain_less_than_5pct": 0.08334842768108644,
+    "gain_more_than_5pct": 0.05193285900655581
    },
    {
     "decile": 7,
     "lose_more_than_5pct": 0.0,
     "lose_less_than_5pct": 0.0,
-    "no_change": 0.8737064479125639,
-    "gain_less_than_5pct": 0.06893366970173934,
-    "gain_more_than_5pct": 0.05735988238569661
+    "no_change": 0.8767357468240465,
+    "gain_less_than_5pct": 0.06599133340324094,
+    "gain_more_than_5pct": 0.05727291977271254
    },
    {
     "decile": 8,
     "lose_more_than_5pct": 0.0,
     "lose_less_than_5pct": 0.0,
-    "no_change": 0.9050780164369089,
-    "gain_less_than_5pct": 0.05184947429756973,
-    "gain_more_than_5pct": 0.04307250926552157
+    "no_change": 0.8907457109750014,
+    "gain_less_than_5pct": 0.06719122598957745,
+    "gain_more_than_5pct": 0.04206306303542121
    },
    {
     "decile": 9,
     "lose_more_than_5pct": 0.0,
     "lose_less_than_5pct": 0.0,
-    "no_change": 0.9378425819305014,
-    "gain_less_than_5pct": 0.035959750979997075,
-    "gain_more_than_5pct": 0.026197667089501456
+    "no_change": 0.9314749463798218,
+    "gain_less_than_5pct": 0.042495870429243764,
+    "gain_more_than_5pct": 0.0260291831909346
    },
    {
     "decile": 10,
     "lose_more_than_5pct": 0.0,
     "lose_less_than_5pct": 0.0,
-    "no_change": 0.9718871523943977,
-    "gain_less_than_5pct": 0.0238668432446736,
-    "gain_more_than_5pct": 0.004246004360928697
+    "no_change": 0.9714329585769867,
+    "gain_less_than_5pct": 0.024199235705532358,
+    "gain_more_than_5pct": 0.004367805717481055
    }
   ]
  },
  "poverty": {
   "spm": {
    "all": {
-    "baseline_rate": 0.13637563586235046,
-    "reform_rate": 0.13456134498119354,
-    "baseline_headcount": 47410368.0,
-    "reform_headcount": 46779640.0
+    "baseline_rate": 0.13666598498821259,
+    "reform_rate": 0.13466723263263702,
+    "baseline_headcount": 47511308.0,
+    "reform_headcount": 46816448.0
    },
    "child": {
-    "baseline_rate": 0.17440418899059296,
-    "reform_rate": 0.1713840812444687,
-    "baseline_headcount": 13671461.0,
-    "reform_headcount": 13434716.0
+    "baseline_rate": 0.17472374439239502,
+    "reform_rate": 0.17153507471084595,
+    "baseline_headcount": 13696510.0,
+    "reform_headcount": 13446552.0
    },
    "adult": {
-    "baseline_rate": 0.1308075189590454,
-    "reform_rate": 0.12909483909606934,
-    "baseline_headcount": 27041408.0,
-    "reform_headcount": 26687352.0
+    "baseline_rate": 0.1310909390449524,
+    "reform_rate": 0.1291319727897644,
+    "baseline_headcount": 27100000.0,
+    "reform_headcount": 26695028.0
    },
    "senior": {
-    "baseline_rate": 0.10710996389389038,
-    "reform_rate": 0.1064714565873146,
-    "baseline_headcount": 6697499.5,
-    "reform_headcount": 6657574.0
+    "baseline_rate": 0.10738658159971237,
+    "reform_rate": 0.1067480742931366,
+    "baseline_headcount": 6714796.0,
+    "reform_headcount": 6674871.0
    },
    "male": {
-    "baseline_rate": 0.1336100697517395,
-    "reform_rate": 0.13162311911582947,
-    "baseline_headcount": 22901812.0,
-    "reform_headcount": 22561232.0
+    "baseline_rate": 0.13392029702663422,
+    "reform_rate": 0.13170772790908813,
+    "baseline_headcount": 22954986.0,
+    "reform_headcount": 22575736.0
    },
    "female": {
-    "baseline_rate": 0.1390654444694519,
-    "reform_rate": 0.13741908967494965,
-    "baseline_headcount": 24508560.0,
-    "reform_headcount": 24218410.0
+    "baseline_rate": 0.13933643698692322,
+    "reform_rate": 0.137545645236969,
+    "baseline_headcount": 24556320.0,
+    "reform_headcount": 24240714.0
    },
    "white": {
-    "baseline_rate": 0.10038293898105621,
-    "reform_rate": 0.09998276084661484,
-    "baseline_headcount": 20969662.0,
-    "reform_headcount": 20886066.0
+    "baseline_rate": 0.10065335780382156,
+    "reform_rate": 0.10000480711460114,
+    "baseline_headcount": 21026152.0,
+    "reform_headcount": 20890672.0
    },
    "black": {
-    "baseline_rate": 0.22085389494895935,
-    "reform_rate": 0.21885696053504944,
-    "baseline_headcount": 8585831.0,
-    "reform_headcount": 8508199.0
+    "baseline_rate": 0.22135207056999207,
+    "reform_rate": 0.21935513615608215,
+    "baseline_headcount": 8605198.0,
+    "reform_headcount": 8527566.0
    },
    "hispanic": {
-    "baseline_rate": 0.20718052983283997,
-    "reform_rate": 0.20039300620555878,
-    "baseline_headcount": 13506810.0,
-    "reform_headcount": 13064308.0
+    "baseline_rate": 0.20724347233772278,
+    "reform_rate": 0.20026813447475433,
+    "baseline_headcount": 13510913.0,
+    "reform_headcount": 13056167.0
    },
    "other": {
-    "baseline_rate": 0.1253778487443924,
-    "reform_rate": 0.12459923326969147,
-    "baseline_headcount": 4348068.0,
-    "reform_headcount": 4321066.0
+    "baseline_rate": 0.12598268687725067,
+    "reform_rate": 0.12520410120487213,
+    "baseline_headcount": 4369044.0,
+    "reform_headcount": 4342042.5
    }
   },
   "deep": {
    "all": {
-    "baseline_rate": 0.02971293404698372,
-    "reform_rate": 0.029633916914463043,
-    "baseline_headcount": 10329566.0,
-    "reform_headcount": 10302096.0
+    "baseline_rate": 0.02962562069296837,
+    "reform_rate": 0.029546603560447693,
+    "baseline_headcount": 10299212.0,
+    "reform_headcount": 10271742.0
    },
    "child": {
-    "baseline_rate": 0.020366106182336807,
-    "reform_rate": 0.020366106182336807,
-    "baseline_headcount": 1596489.25,
-    "reform_headcount": 1596489.25
+    "baseline_rate": 0.0202370323240757,
+    "reform_rate": 0.0202370323240757,
+    "baseline_headcount": 1586371.25,
+    "reform_headcount": 1586371.25
    },
    "adult": {
-    "baseline_rate": 0.028824348002672195,
-    "reform_rate": 0.028691470623016357,
-    "baseline_headcount": 5958763.0,
-    "reform_headcount": 5931293.5
+    "baseline_rate": 0.02872646041214466,
+    "reform_rate": 0.028593579307198524,
+    "baseline_headcount": 5938527.0,
+    "reform_headcount": 5911057.0
    },
    "senior": {
     "baseline_rate": 0.04436829686164856,
@@ -332,16 +332,16 @@
     "reform_headcount": 2774313.75
    },
    "male": {
-    "baseline_rate": 0.03084375523030758,
-    "reform_rate": 0.030790332704782486,
-    "baseline_headcount": 5286861.0,
-    "reform_headcount": 5277704.0
+    "baseline_rate": 0.030725695192813873,
+    "reform_rate": 0.03067227639257908,
+    "baseline_headcount": 5266624.5,
+    "reform_headcount": 5257468.0
    },
    "female": {
-    "baseline_rate": 0.028613107278943062,
-    "reform_rate": 0.028509194031357765,
-    "baseline_headcount": 5042705.5,
-    "reform_headcount": 5024392.0
+    "baseline_rate": 0.028555696830153465,
+    "reform_rate": 0.02845178358256817,
+    "baseline_headcount": 5032587.5,
+    "reform_headcount": 5014274.0
    },
    "white": {
     "baseline_rate": 0.027009611949324608,
@@ -350,16 +350,16 @@
     "reform_headcount": 5642218.0
    },
    "black": {
-    "baseline_rate": 0.04079180210828781,
-    "reform_rate": 0.04079180210828781,
-    "baseline_headcount": 1585806.5,
-    "reform_headcount": 1585806.5
+    "baseline_rate": 0.04079180583357811,
+    "reform_rate": 0.04079180583357811,
+    "baseline_headcount": 1585806.625,
+    "reform_headcount": 1585806.625
    },
    "hispanic": {
-    "baseline_rate": 0.029652977362275124,
-    "reform_rate": 0.029231619089841843,
-    "baseline_headcount": 1933179.375,
-    "reform_headcount": 1905709.625
+    "baseline_rate": 0.02918737567961216,
+    "reform_rate": 0.02876601740717888,
+    "baseline_headcount": 1902825.25,
+    "reform_headcount": 1875355.375
    },
    "other": {
     "baseline_rate": 0.03369007632136345,
@@ -371,21 +371,21 @@
  },
  "inequality": {
   "baseline": {
-   "gini": 0.4719364047050476,
-   "top_10_share": 0.36114177107810974,
-   "top_1_share": 0.09341564029455185,
-   "bottom_50_share": 0.19241617619991302
+   "gini": 0.4703126549720764,
+   "top_10_share": 0.3599749505519867,
+   "top_1_share": 0.0931411013007164,
+   "bottom_50_share": 0.1936855912208557
   },
   "reform": {
-   "gini": 0.4714807844587179,
-   "top_10_share": 0.36009323116920855,
-   "top_1_share": 0.09317059086616102,
-   "bottom_50_share": 0.1924227031284588
+   "gini": 0.46998709440231323,
+   "top_10_share": 0.3592710494995117,
+   "top_1_share": 0.09291694313287735,
+   "bottom_50_share": 0.19361525774002075
   }
  },
  "checks": {
-  "max_other_net_income_change": 543.6640625,
-  "spm_resource_change": 43488772096.0,
+  "max_other_net_income_change": 542.9697265625,
+  "spm_resource_change": 43488403456.0,
   "spm_units_not_measured": 0
  }
 }
