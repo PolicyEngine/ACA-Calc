@@ -159,9 +159,13 @@ function WinnersChart() {
     label,
     ...Object.fromEntries(bands.map((band) => [band.key, 100 * row[band.key]])),
   });
+  // Top to bottom: everyone, then the deciles from the 10th down to the 1st,
+  // so the 1st decile sits at the bottom.
   const data = [
     toRow("All", national.winners_losers.all),
-    ...national.winners_losers.deciles.map((row) => toRow(String(row.decile), row)),
+    ...[...national.winners_losers.deciles]
+      .sort((a, b) => b.decile - a.decile)
+      .map((row) => toRow(String(row.decile), row)),
   ];
   return (
     <div className="national-chart">
