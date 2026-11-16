@@ -1,5 +1,4 @@
-import { useState, useRef, useEffect } from "react";
-import ScrollSection from "./components/ScrollSection";
+import { useState, useEffect } from "react";
 import ContributionScheduleChart from "./components/ContributionScheduleChart";
 import ExampleHouseholdsTable from "./components/ExampleHouseholdsTable";
 import NationalImpactChart from "./components/NationalImpactChart";
@@ -203,10 +202,9 @@ The top 10%'s share of net income moves from ${share(inequalityBefore.top_10_sha
       title: "How we estimated this",
       content: `We ran PolicyEngine US ${national.model_version} over its 2024 microdata, projected to ${priorYear} and ${year}, under current law and with H.R. 1834's schedule. The household examples use the same model and each county's benchmark premiums.
 
-PolicyEngine's household net income leaves out health coverage, including the premium tax credit, so we add each household's change in its credit to its net income. Its poverty measure counts the credit already: it subtracts what households pay for coverage, including marketplace premiums net of the credit.
+The credit figures are the credit each tax unit uses: the credit it is eligible for, capped at the premium of the plan it enrolls in. Household net income counts that credit as a refundable tax credit, and the poverty measure counts it through the lower premiums enrollees pay.
 
 The estimates are static: the same people enroll under each policy, so they leave out people who would start or stop buying coverage as credits change. Marketplace enrollment comes from the 2024 data.`,
-      chart: { type: "examples", view: "net" },
       showCalculatorButton: true,
     },
   ];
@@ -246,11 +244,65 @@ function isEmbedded() {
   return urlParams.get("embedded") === "true";
 }
 
+// **bold** spans within a line.
+function Inline({ text }) {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith("**") && part.endsWith("**") ? <strong key={i}>{part.slice(2, -2)}</strong> : part
+  );
+}
+
+// A section's text: paragraphs split by blank lines; lines starting with "•"
+// become a list.
+function Prose({ content }) {
+  return content.split("\n\n").map((block, i) => {
+    const lines = block.split("\n");
+    const bullets = lines.filter((line) => line.startsWith("•"));
+    if (!bullets.length) return <p key={i}><Inline text={block} /></p>;
+    const lead = lines.filter((line) => !line.startsWith("•")).join(" ");
+    return (
+      <div key={i}>
+        {lead && <p><Inline text={lead} /></p>}
+        <ul>
+          {bullets.map((line, j) => (
+            <li key={j}><Inline text={line.replace(/^•\s*/, "")} /></li>
+          ))}
+        </ul>
+      </div>
+    );
+  });
+}
+
+function Chart({ chart }) {
+  switch (chart.type) {
+    case "examples":
+      return <ExampleHouseholdsTable view={chart.view} />;
+    case "schedule":
+      return <ContributionScheduleChart showPolicies={chart.policies} />;
+    case "premium":
+      return (
+        <PremiumChart
+          data={cliffDemoData}
+          lines={chart.lines}
+          title={`What a ${cliffDemoData.household_info.age}-year-old in ${cliffDemoData.household_info.location} pays for the benchmark plan, per month`}
+        />
+      );
+    case "national":
+      return <NationalImpactChart mode={chart.mode} />;
+    default:
+      return null;
+  }
+}
+
+// The story's parts, each opening with a heading.
+const PARTS = {
+  premiums: `Premiums in ${examples.year} under current law`,
+  enhanced: "Reviving the enhanced credits",
+  national_cost: "National effects",
+};
+
 function App() {
-  const [activeSection, setActiveSection] = useState(0);
   const [currentPage, setCurrentPage] = useState(() => getPageFromHash());
   const [embedded] = useState(() => isEmbedded());
-  const chartRef = useRef(null);
 
   // Sync URL hash with page state
   useEffect(() => {
@@ -283,61 +335,32 @@ function App() {
     window.scrollTo(0, 0);
   }, [currentPage]);
 
-  // Get current section
-  const currentSection = SECTIONS[activeSection] || SECTIONS[0];
-
-  // Handle section visibility changes
-  const handleSectionInView = (index) => {
-    setActiveSection(index);
-  };
-
-  // What the sticky panel shows for the current section
-  const renderChartArea = () => {
-    const { chart } = currentSection;
-    switch (chart.type) {
-      case "examples":
-        return <ExampleHouseholdsTable view={chart.view} />;
-      case "schedule":
-        return <ContributionScheduleChart showPolicies={chart.policies} />;
-      case "premium":
-        return (
-          <PremiumChart
-            data={cliffDemoData}
-            lines={chart.lines}
-            title={`What a ${cliffDemoData.household_info.age}-year-old in ${cliffDemoData.household_info.location} pays for the benchmark plan`}
-          />
-        );
-      case "national":
-        return <NationalImpactChart mode={chart.mode} />;
-      default:
-        return null;
-    }
-  };
-
-  // Render the main scrolly page
+  // The Overview: one column, each section's chart under its text.
   const renderMainPage = () => (
-    <>
-      <main className="scrollytelling-container">
-        <div className="chart-column" ref={chartRef}>
-          <div className="chart-sticky">
-            {renderChartArea()}
+    <main className="story">
+      {SECTIONS.map((section) => (
+        <section key={section.id} id={section.id} className="story-section">
+          {PARTS[section.id] && <p className="story-part">{PARTS[section.id]}</p>}
+          <h2>{section.title}</h2>
+          <div className="story-prose">
+            <Prose content={section.content} />
           </div>
-        </div>
-
-        <div className="text-column">
-          {SECTIONS.map((section, index) => (
-            <ScrollSection
-              key={section.id}
-              section={section}
-              index={index}
-              isActive={activeSection === index}
-              onInView={handleSectionInView}
-              onOpenCalculator={() => navigateToPage("calculator")}
-            />
-          ))}
-        </div>
-      </main>
-    </>
+          {section.chart && (
+            <figure className="story-figure">
+              <Chart chart={section.chart} />
+            </figure>
+          )}
+          {section.showCalculatorButton && (
+            <button onClick={() => navigateToPage("calculator")} className="story-cta">
+              Calculate your household
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </button>
+          )}
+        </section>
+      ))}
+    </main>
   );
 
   // Render the calculator page

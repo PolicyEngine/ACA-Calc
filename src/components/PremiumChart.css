@@ -1,36 +1,45 @@
 .premium-chart {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+  width: 100%;
+  min-width: 0;
 }
 
 .premium-chart-title {
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 600;
-  color: var(--pe-gray-800);
-  margin-bottom: var(--pe-space-md);
-  text-align: center;
+  line-height: 1.4;
+  color: var(--color-gray-900);
+  margin-bottom: 8px;
 }
 
 .premium-chart-tooltip {
-  background: var(--pe-surface);
-  border: 1px solid var(--pe-border);
-  border-radius: var(--pe-radius-md);
-  padding: var(--pe-space-md);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-container);
+  padding: 10px 12px;
   box-shadow: var(--pe-shadow-lg);
-  min-width: 200px;
+  font-family: var(--font-sans);
 }
 
 .premium-chart-tooltip p {
-  font-size: 0.875rem;
-  margin: 4px 0;
-  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  margin: 2px 0;
+  color: var(--color-gray-700);
 }
 
 .premium-chart-tooltip .premium-chart-tooltip-income {
   font-weight: 600;
-  color: var(--pe-gray-800);
-  margin-bottom: var(--pe-space-sm);
-  padding-bottom: var(--pe-space-sm);
-  border-bottom: 1px solid var(--pe-border-light);
+  color: var(--color-gray-900);
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.premium-chart-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 3px;
+  border-radius: 2px;
 }

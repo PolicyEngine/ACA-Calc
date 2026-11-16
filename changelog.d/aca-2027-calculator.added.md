@@ -1,1 +1,1 @@
-Compare 2027 coverage under current law and under H.R. 1834 in the calculator, with 2026 current law alongside: what the household pays for the benchmark plan after the credit, the credit itself, and both at an income the user enters.
+Compare 2027 coverage with 2026 under current law in the calculator, and, with a checkbox, 2027 under H.R. 1834: what the household pays for the benchmark plan after the credit, the credit itself, and both at an income the user enters.

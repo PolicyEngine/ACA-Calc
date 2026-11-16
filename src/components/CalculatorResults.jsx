@@ -3,9 +3,9 @@ import PremiumChart from "./PremiumChart";
 import "./Calculator.css";
 
 const TABS = [
-  { id: "net", label: "What You'd Pay" },
-  { id: "credit", label: "Premium Tax Credits" },
-  { id: "impact", label: "Your Household" },
+  { id: "net", label: "What you'd pay" },
+  { id: "credit", label: "Premium tax credits" },
+  { id: "impact", label: "Your household" },
 ];
 
 const formatCurrency = (value) =>
@@ -51,6 +51,9 @@ const closestIndex = (income, incomeArray) => {
 function CalculatorResults({ data, formData }) {
   const [activeTab, setActiveTab] = useState("net");
   const [userIncome, setUserIncome] = useState("");
+  // Current law in both years by default; the checkbox adds 2027 under H.R.
+  // 1834, which the API returns with every calculation.
+  const [compareEnhanced, setCompareEnhanced] = useState(false);
 
   // An answer from before the API took a year is for 2026.
   const year = data?.year || 2026;
@@ -97,7 +100,7 @@ function CalculatorResults({ data, formData }) {
             from: `from ${year - 1}`,
           },
         },
-        {
+        compareEnhanced && {
           key: "ira",
           title: `${year}, H.R. 1834`,
           values: userResults.revived,
@@ -140,9 +143,10 @@ function CalculatorResults({ data, formData }) {
           At {fpl}% FPL, your household is <strong>above current law's 400% FPL limit</strong>, so
           it gets no credit and pays the whole benchmark premium: {monthly(current.benchmark)} in {year}
           {prior && <>, against {monthly(prior.benchmark)} in {year - 1}</>}.{" "}
-          {revived.credit > 0
-            ? `H.R. 1834 would limit what it pays for the benchmark plan to 8.5% of income, a credit of ${monthly(revived.credit)}.`
-            : "Under H.R. 1834 it would get no credit either: the benchmark plan costs less than 8.5% of its income."}
+          {compareEnhanced &&
+            (revived.credit > 0
+              ? `H.R. 1834 would limit what it pays for the benchmark plan to 8.5% of income, a credit of ${monthly(revived.credit)}.`
+              : "Under H.R. 1834 it would get no credit either: the benchmark plan costs less than 8.5% of its income.")}
         </p>
       );
     }
@@ -153,8 +157,8 @@ function CalculatorResults({ data, formData }) {
           At {fpl}% FPL, current law limits what your household pays for the benchmark plan to a
           share of its income, and the credit pays the rest, so the credit grows when premiums do.
           Your household would pay {monthly(current.net)} in {year}
-          {prior && <>, against {monthly(prior.net)} in {year - 1}</>}. H.R. 1834 would lower its
-          share of income, to {monthly(revived.net)}.
+          {prior && <>, against {monthly(prior.net)} in {year - 1}</>}.
+          {compareEnhanced && <> H.R. 1834 would lower its share of income, to {monthly(revived.net)}.</>}
         </p>
       );
     }
@@ -163,9 +167,10 @@ function CalculatorResults({ data, formData }) {
       <p>
         At {fpl}% FPL, the benchmark plan costs less than the share of income current law asks your
         household to pay, so it gets no credit.{" "}
-        {revived.credit > 0
-          ? `H.R. 1834 would lower that share, giving a credit of ${monthly(revived.credit)}.`
-          : "H.R. 1834 wouldn't give it a credit either."}
+        {compareEnhanced &&
+          (revived.credit > 0
+            ? `H.R. 1834 would lower that share, giving a credit of ${monthly(revived.credit)}.`
+            : "H.R. 1834 wouldn't give it a credit either.")}
       </p>
     );
   };
@@ -177,6 +182,20 @@ function CalculatorResults({ data, formData }) {
           These results are for {year}: the calculator's server doesn't support {requestedYear} yet.
         </p>
       )}
+      <label className="compare-toggle">
+        <input
+          type="checkbox"
+          checked={compareEnhanced}
+          onChange={(event) => setCompareEnhanced(event.target.checked)}
+        />
+        <span>
+          <strong>Compare with the enhanced credits</strong>
+          <span className="compare-toggle-detail">
+            Add {year} under H.R. 1834, which would revive the 2021–2025 enhanced subsidies
+          </span>
+        </span>
+      </label>
+
       <div className="results-tabs">
         {TABS.map((tab) => (
           <button
@@ -196,6 +215,8 @@ function CalculatorResults({ data, formData }) {
               <PremiumChart
                 data={data}
                 measure={activeTab}
+                lines={compareEnhanced ? ["prior", "current", "revived"] : ["prior", "current"]}
+                height={400}
                 title={
                   activeTab === "net"
                     ? "What your household would pay for the benchmark plan"
@@ -204,9 +225,9 @@ function CalculatorResults({ data, formData }) {
               />
             </div>
             <p className="results-caption">
-              The benchmark plan is the second-lowest-cost silver plan in your area. H.R. 1834
-              would revive the enhanced credits of 2021–2025 for 2026 through 2028; it passed the
-              House on January 8, 2026 and has not been enacted.
+              The benchmark plan is the second-lowest-cost silver plan in your area.
+              {compareEnhanced &&
+                " H.R. 1834 would revive the enhanced credits of 2021–2025 for 2026 through 2028; it passed the House on January 8, 2026 and has not been enacted."}
             </p>
           </>
         )}

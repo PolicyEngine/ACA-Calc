@@ -5,9 +5,11 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
+import { AXIS, AXIS_LABEL, GRID } from "./PremiumChart";
 import "./ContributionScheduleChart.css";
 
 // The schedules as policyengine-us computes them: the percent of income a
@@ -30,93 +32,82 @@ const data = schedules.fpl_percent.map((fpl, i) => {
   return point;
 });
 
-// Chart colors - PolicyEngine appv2 design tokens
-const COLORS = {
-  current2026: "#9CA3AF", // gray-400
-  current2027: "#4B5563", // gray-600
-  enhanced: "#0284C7",    // blue-600 from appv2
+// The same scenario colors as the premium charts (src/index.css).
+const STYLES = {
+  current2026: { color: "var(--pe-prior)", dash: "6 4" },
+  current2027: { color: "var(--pe-current)", dash: undefined },
+  enhanced: { color: "var(--pe-reform)", dash: undefined },
 };
 
 const LABELS = {
-  current2026: "Current law (2026)",
-  current2027: "Current law (2027)",
+  current2026: "2026, current law",
+  current2027: "2027, current law",
   enhanced: "Enhanced credits (2021–2025; H.R. 1834)",
 };
 
 const CURRENT_LAW = ["current2026", "current2027"];
 
 function ContributionScheduleChart({ showPolicies = ["current2027", "enhanced"] }) {
-  const formatPercent = (value) => `${value}%`;
-  const formatFPL = (value) => `${value}%`;
   const showsCurrentLaw = showPolicies.some((policy) => CURRENT_LAW.includes(policy));
 
   return (
     <div className="contribution-chart">
-      <div className="chart-header">
-        <h3>Required Contribution by Income</h3>
-        <p>Maximum percentage of income required to pay for the benchmark plan</p>
-      </div>
+      <h3 className="chart-title">Share of income paid for the benchmark plan</h3>
+      <p className="chart-subtitle">
+        The most a household pays for the benchmark plan, as a percent of its income
+      </p>
 
-      <div className="chart-legend">
-        {showPolicies.map((policy) => (
-          <div key={policy} className="legend-item">
-            <span className="legend-color" style={{ backgroundColor: COLORS[policy] }}></span>
-            <span className="legend-label">{LABELS[policy]}</span>
-          </div>
-        ))}
-      </div>
-
-      <ResponsiveContainer width="100%" height={350}>
-        <LineChart
-          data={data}
-          margin={{ top: 10, right: 20, left: 10, bottom: 40 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+      <ResponsiveContainer width="100%" height={340}>
+        <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+          <CartesianGrid {...GRID} vertical={false} />
           <XAxis
             dataKey="fpl"
             type="number"
             domain={[0, 800]}
-            tickFormatter={formatFPL}
-            tick={{ fontSize: 11 }}
             ticks={[0, 100, 200, 300, 400, 500, 600, 700, 800]}
+            tickFormatter={(value) => `${value}%`}
+            {...AXIS}
+            height={44}
+            label={{ value: "Income, percent of the poverty guideline", position: "insideBottom", offset: 0, ...AXIS_LABEL }}
           />
-          <YAxis
-            tickFormatter={formatPercent}
-            domain={[0, 12]}
-            tick={{ fontSize: 11 }}
-            width={40}
-          />
+          <YAxis domain={[0, 12]} tickFormatter={(value) => `${value}%`} {...AXIS} width={44} />
           <Tooltip
-            formatter={(value, name) => {
-              if (value === null) return ["No subsidy", LABELS[name]];
-              return [`${value.toFixed(2)}%`, LABELS[name]];
-            }}
-            labelFormatter={(fpl) => `Income: ${fpl}% FPL`}
+            formatter={(value, name) =>
+              value === null ? ["No credit", LABELS[name]] : [`${value.toFixed(2)}%`, LABELS[name]]
+            }
+            labelFormatter={(fpl) => `Income at ${fpl}% of the poverty guideline`}
             contentStyle={{
-              backgroundColor: "white",
-              border: "1px solid #e5e7eb",
-              borderRadius: "8px",
+              backgroundColor: "var(--card)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-container)",
               fontSize: "13px",
+              fontFamily: "var(--font-sans)",
             }}
           />
-
-          {/* Reference line for 400% FPL */}
+          <Legend
+            verticalAlign="top"
+            align="left"
+            height={36}
+            iconType="plainline"
+            formatter={(name) => LABELS[name]}
+            wrapperStyle={{ fontSize: "13px", fontFamily: "var(--font-sans)" }}
+          />
           {showsCurrentLaw && (
             <ReferenceLine
               x={400}
-              stroke="#ef4444"
-              strokeDasharray="5 5"
-              strokeWidth={1}
+              stroke="var(--color-gray-400)"
+              strokeDasharray="4 4"
+              label={{ value: "400% FPL", position: "insideTopRight", ...AXIS_LABEL, fontSize: 11 }}
             />
           )}
-
           {showPolicies.map((policy) => (
             <Line
               key={policy}
               type="linear"
               dataKey={policy}
               name={policy}
-              stroke={COLORS[policy]}
+              stroke={STYLES[policy].color}
+              strokeDasharray={STYLES[policy].dash}
               strokeWidth={2.5}
               dot={false}
               connectNulls={false}
@@ -126,15 +117,8 @@ function ContributionScheduleChart({ showPolicies = ["current2027", "enhanced"] 
         </LineChart>
       </ResponsiveContainer>
 
-      <div className="chart-axis-labels">
-        <div className="x-axis-label">Income (% of Federal Poverty Level)</div>
-      </div>
-
       {showsCurrentLaw && (
-        <div className="chart-note">
-          <span className="note-marker">|</span>
-          Red dashed line marks 400% FPL, where current-law credits end
-        </div>
+        <p className="chart-note">Current law gives no credit above 400% FPL, where its lines end.</p>
       )}
     </div>
   );

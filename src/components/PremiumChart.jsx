@@ -12,14 +12,22 @@ import {
 } from "recharts";
 import "./PremiumChart.css";
 
-// The three scenarios the calculator and the Overview compare. Current law a
-// year earlier is dashed, so the two current-law lines read as one law in two
-// years.
+// The three scenarios the calculator and the Overview compare, in
+// PolicyEngine's chart colors (src/index.css). Current law a year earlier is
+// dashed, so the two current-law lines read as one law in two years.
 export const SCENARIO_STYLES = {
-  prior: { color: "#9CA3AF", dash: "6 4" }, // gray-400
-  current: { color: "#4B5563", dash: undefined }, // gray-600
-  revived: { color: "#0284C7", dash: undefined }, // blue-600
+  prior: { color: "var(--pe-prior)", dash: "6 4" },
+  current: { color: "var(--pe-current)", dash: undefined },
+  revived: { color: "var(--pe-reform)", dash: undefined },
 };
+
+// Axis and grid styling shared by the app's charts.
+export const AXIS = {
+  stroke: "var(--border)",
+  tick: { fill: "var(--muted-foreground)", fontSize: 12, fontFamily: "var(--font-sans)" },
+};
+export const AXIS_LABEL = { fill: "var(--muted-foreground)", fontSize: 12, fontFamily: "var(--font-sans)" };
+export const GRID = { stroke: "var(--border)", strokeDasharray: "3 3" };
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat("en-US", {
@@ -38,9 +46,16 @@ const net = (benchmark, credit) => Math.max(0, (benchmark || 0) - (credit || 0))
  *
  * `data` has the calculator API's fields: income, ptc_prior_year, ptc_baseline,
  * ptc_ira, slcsp_by_income_prior_year, slcsp_by_income, fpl and year. `lines`
- * picks the scenarios to draw.
+ * picks the scenarios to draw. The chart is `height` pixels tall and as wide
+ * as its container.
  */
-function PremiumChart({ data, measure = "net", title, lines: shown = ["prior", "current", "revived"] }) {
+function PremiumChart({
+  data,
+  measure = "net",
+  title,
+  lines: shown = ["prior", "current", "revived"],
+  height = 380,
+}) {
   const year = data?.year || 2027;
   const hasPrior = Boolean(data?.ptc_prior_year?.length);
   const fpl = data?.fpl || 0;
@@ -90,7 +105,8 @@ function PremiumChart({ data, measure = "net", title, lines: shown = ["prior", "
           {fpl > 0 && ` (${Math.round((100 * income) / fpl)}% FPL)`}
         </p>
         {payload.map((entry) => (
-          <p key={entry.dataKey} style={{ color: entry.color }}>
+          <p key={entry.dataKey}>
+            <span className="premium-chart-swatch" style={{ background: entry.color }} />
             {entry.name}: {formatCurrency(entry.value)}/month
           </p>
         ))}
@@ -99,45 +115,41 @@ function PremiumChart({ data, measure = "net", title, lines: shown = ["prior", "
   };
 
   const maxIncome = points.length ? points[points.length - 1].income : 0;
+  const step = maxIncome > 160000 ? 40000 : 20000;
   const xTicks = [];
-  for (let tick = 0; tick <= maxIncome; tick += 20000) xTicks.push(tick);
+  for (let tick = 0; tick <= maxIncome; tick += step) xTicks.push(tick);
 
   return (
     <div className="premium-chart">
       {title && <h3 className="premium-chart-title">{title}</h3>}
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={points} margin={{ top: 20, right: 30, left: 45, bottom: 60 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+      <ResponsiveContainer width="100%" height={height}>
+        <LineChart data={points} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+          <CartesianGrid {...GRID} vertical={false} />
           <XAxis
             dataKey="income"
             type="number"
             domain={[0, maxIncome]}
             ticks={xTicks}
             tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
-            stroke="#6b7280"
-            fontSize={12}
-            label={{ value: "Household income", position: "bottom", offset: 40, fill: "#6b7280" }}
+            {...AXIS}
+            height={44}
+            label={{ value: "Household income", position: "insideBottom", offset: 0, ...AXIS_LABEL }}
           />
-          <YAxis
-            tickFormatter={(v) => formatCurrency(v)}
-            stroke="#6b7280"
-            fontSize={12}
-            label={{
-              value: "Per month",
-              angle: -90,
-              position: "insideLeft",
-              offset: 10,
-              fill: "#6b7280",
-            }}
-          />
+          <YAxis tickFormatter={(v) => formatCurrency(v)} {...AXIS} width={64} />
           <Tooltip content={<CustomTooltip />} />
-          <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: "12px" }} />
+          <Legend
+            verticalAlign="top"
+            align="left"
+            height={36}
+            iconType="plainline"
+            wrapperStyle={{ fontSize: "13px", fontFamily: "var(--font-sans)" }}
+          />
           {fpl > 0 && (
             <ReferenceLine
               x={fpl * 4}
-              stroke="#d1d5db"
-              strokeDasharray="5 5"
-              label={{ value: "400% FPL", position: "top", fill: "#9ca3af", fontSize: 10 }}
+              stroke="var(--color-gray-400)"
+              strokeDasharray="4 4"
+              label={{ value: "400% FPL", position: "insideTopRight", ...AXIS_LABEL, fontSize: 11 }}
             />
           )}
           {lines.map(({ key, name }) => (

@@ -10,26 +10,28 @@ import {
   Cell,
   LabelList,
 } from "recharts";
+import { AXIS, AXIS_LABEL, GRID } from "./PremiumChart";
 import "./NationalImpactChart.css";
 
 // National figures from precompute_national.py (policyengine-us over its
 // default microdata).
 import national from "../data/national_impacts.json";
 
+// The same scenario colors as the premium charts (src/index.css).
 const COLORS = {
-  prior: "#9CA3AF", // gray-400
-  current: "#4B5563", // gray-600
-  revived: "#0284C7", // blue-600
-  deep: "#0c4a6e", // sky-900
+  prior: "var(--pe-prior)",
+  current: "var(--pe-current)",
+  revived: "var(--pe-reform)",
+  deep: "var(--chart-3)",
 };
 
 // policyengine.py's winners-and-losers bands.
 const WINNER_BANDS = [
-  { key: "gain_more_than_5pct", label: "Gain more than 5%", color: "#0284C7" },
-  { key: "gain_less_than_5pct", label: "Gain less than 5%", color: "#7dd3fc" },
-  { key: "no_change", label: "No change", color: "#e5e7eb" },
-  { key: "lose_less_than_5pct", label: "Lose less than 5%", color: "#fca5a5" },
-  { key: "lose_more_than_5pct", label: "Lose more than 5%", color: "#dc2626" },
+  { key: "gain_more_than_5pct", label: "Gain more than 5%", color: "var(--color-teal-700)" },
+  { key: "gain_less_than_5pct", label: "Gain less than 5%", color: "var(--color-teal-300)" },
+  { key: "no_change", label: "No change", color: "var(--color-gray-200)" },
+  { key: "lose_less_than_5pct", label: "Lose less than 5%", color: "var(--color-gray-400)" },
+  { key: "lose_more_than_5pct", label: "Lose more than 5%", color: "var(--color-gray-600)" },
 ];
 
 const POVERTY_GROUPS = [
@@ -47,18 +49,21 @@ const signedPercent = (value, digits = 1) => `${value > 0 ? "+" : value < 0 ? "â
 const relativeChange = (from, to) => (from === 0 ? 0 : (100 * (to - from)) / from);
 
 const tooltipStyle = {
-  backgroundColor: "white",
-  border: "1px solid #e5e7eb",
-  borderRadius: "8px",
+  backgroundColor: "var(--card)",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-container)",
   fontSize: "13px",
+  fontFamily: "var(--font-sans)",
 };
+const legendStyle = { fontSize: "13px", fontFamily: "var(--font-sans)" };
+const labelStyle = { fill: "var(--color-gray-700)", fontSize: 11, fontFamily: "var(--font-sans)" };
 
 function Header({ title, subtitle }) {
   return (
-    <div className="national-chart-header">
-      <h3>{title}</h3>
-      {subtitle && <p>{subtitle}</p>}
-    </div>
+    <>
+      <h3 className="chart-title">{title}</h3>
+      {subtitle && <p className="chart-subtitle">{subtitle}</p>}
+    </>
   );
 }
 
@@ -66,9 +71,9 @@ function SpendingChart() {
   const year = national.year;
   const priorYear = String(year - 1);
   const scenarios = [
-    { name: `${priorYear}, current law`, values: national.current_law[priorYear], color: COLORS.prior },
-    { name: `${year}, current law`, values: national.current_law[String(year)], color: COLORS.current },
-    { name: `${year}, H.R. 1834`, values: national.enhanced, color: COLORS.revived },
+    { name: `${priorYear} current law`, values: national.current_law[priorYear], color: COLORS.prior },
+    { name: `${year} current law`, values: national.current_law[String(year)], color: COLORS.current },
+    { name: `${year} H.R. 1834`, values: national.enhanced, color: COLORS.revived },
   ];
   const panels = [
     { title: "Federal spending on premium tax credits", key: "total_ptc", format: billions },
@@ -77,28 +82,30 @@ function SpendingChart() {
   return (
     <div className="national-chart">
       <Header title="Premium tax credits nationwide" subtitle="PolicyEngine estimates, static" />
-      {panels.map((panel) => (
+      <div className="national-chart-panels">
+        {panels.map((panel) => (
         <div key={panel.key} className="national-chart-panel">
           <h4>{panel.title}</h4>
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={240}>
             <BarChart
               data={scenarios.map((s) => ({ name: s.name, value: s.values[panel.key], color: s.color }))}
-              margin={{ top: 20, right: 20, left: 10, bottom: 5 }}
+              margin={{ top: 24, right: 8, left: 0, bottom: 0 }}
             >
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-              <YAxis tickFormatter={panel.format} tick={{ fontSize: 11 }} width={60} />
+              <CartesianGrid {...GRID} vertical={false} />
+              <XAxis dataKey="name" {...AXIS} tick={{ ...AXIS.tick, fontSize: 11 }} interval={0} />
+              <YAxis tickFormatter={panel.format} {...AXIS} width={56} />
               <Tooltip formatter={(value) => [panel.format(value), panel.title]} contentStyle={tooltipStyle} />
               <Bar dataKey="value" isAnimationActive={false}>
                 {scenarios.map((s) => (
                   <Cell key={s.name} fill={s.color} />
                 ))}
-                <LabelList dataKey="value" position="top" formatter={panel.format} fontSize={11} />
+                <LabelList dataKey="value" position="top" formatter={panel.format} {...labelStyle} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
@@ -115,16 +122,17 @@ function DecileChart() {
         title={`Average change in household net income, ${national.year}`}
         subtitle="H.R. 1834 against current law, by income decile (each decile holds a tenth of people)"
       />
-      <div className="national-chart-body">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 20, right: 20, left: 10, bottom: 30 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+      <div>
+        <ResponsiveContainer width="100%" height={320}>
+          <BarChart data={data} margin={{ top: 24, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid {...GRID} vertical={false} />
             <XAxis
               dataKey="decile"
-              tick={{ fontSize: 11 }}
-              label={{ value: "Income decile", position: "bottom", offset: 10, fill: "#6b7280", fontSize: 12 }}
+              {...AXIS}
+              height={44}
+              label={{ value: "Income decile", position: "insideBottom", offset: 0, ...AXIS_LABEL }}
             />
-            <YAxis tickFormatter={dollars} tick={{ fontSize: 11 }} width={60} />
+            <YAxis tickFormatter={dollars} {...AXIS} width={56} />
             <Tooltip
               formatter={(value, name, item) => [
                 `${dollars(value)} a year (${signedPercent(item.payload.relative, 2)} of net income)`,
@@ -134,7 +142,7 @@ function DecileChart() {
               contentStyle={tooltipStyle}
             />
             <Bar dataKey="change" fill={COLORS.revived} isAnimationActive={false}>
-              <LabelList dataKey="change" position="top" formatter={dollars} fontSize={10} />
+              <LabelList dataKey="change" position="top" formatter={dollars} {...labelStyle} fontSize={10} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
@@ -161,14 +169,14 @@ function WinnersChart() {
         title="Share of people by change in household net income"
         subtitle="H.R. 1834 against current law, overall and by income decile"
       />
-      <div className="national-chart-body">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} layout="vertical" margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
-            <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} />
-            <YAxis type="category" dataKey="label" tick={{ fontSize: 11 }} width={40} />
+      <div>
+        <ResponsiveContainer width="100%" height={320}>
+          <BarChart data={data} layout="vertical" margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+            <CartesianGrid {...GRID} horizontal={false} />
+            <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} {...AXIS} />
+            <YAxis type="category" dataKey="label" {...AXIS} width={36} />
             <Tooltip formatter={(value, name) => [`${value.toFixed(1)}%`, name]} contentStyle={tooltipStyle} />
-            <Legend verticalAlign="top" height={30} wrapperStyle={{ fontSize: "12px" }} />
+            <Legend verticalAlign="top" align="left" height={36} wrapperStyle={legendStyle} />
             {bands.map((band) => (
               <Bar
                 key={band.key}
@@ -205,12 +213,12 @@ function PovertyChart() {
         title="Change in poverty rates (Supplemental Poverty Measure)"
         subtitle="H.R. 1834 against current law, relative change in each group's rate"
       />
-      <div className="national-chart-body">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 20, right: 20, left: 10, bottom: 10 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-            <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-            <YAxis tickFormatter={(v) => signedPercent(v)} tick={{ fontSize: 11 }} width={60} />
+      <div>
+        <ResponsiveContainer width="100%" height={320}>
+          <BarChart data={data} margin={{ top: 16, right: 8, left: 0, bottom: 16 }}>
+            <CartesianGrid {...GRID} vertical={false} />
+            <XAxis dataKey="label" {...AXIS} interval={0} />
+            <YAxis tickFormatter={(v) => signedPercent(v)} {...AXIS} width={56} />
             <Tooltip
               formatter={(value, name, item) => [
                 `${signedPercent(value, 2)} (${rates(name === "Poverty" ? item.payload.spmRates : item.payload.deepRates)})`,
@@ -218,12 +226,12 @@ function PovertyChart() {
               ]}
               contentStyle={tooltipStyle}
             />
-            <Legend verticalAlign="top" height={30} wrapperStyle={{ fontSize: "12px" }} />
+            <Legend verticalAlign="top" align="left" height={36} wrapperStyle={legendStyle} />
             <Bar dataKey="spm" name="Poverty" fill={COLORS.revived} isAnimationActive={false}>
-              <LabelList dataKey="spm" position="bottom" formatter={(v) => signedPercent(v)} fontSize={10} />
+              <LabelList dataKey="spm" position="bottom" formatter={(v) => signedPercent(v)} {...labelStyle} fontSize={10} />
             </Bar>
             <Bar dataKey="deep" name="Deep poverty" fill={COLORS.deep} isAnimationActive={false}>
-              <LabelList dataKey="deep" position="bottom" formatter={(v) => signedPercent(v)} fontSize={10} />
+              <LabelList dataKey="deep" position="bottom" formatter={(v) => signedPercent(v)} {...labelStyle} fontSize={10} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
@@ -250,18 +258,18 @@ function InequalityChart() {
         title="Change in inequality of household net income"
         subtitle="H.R. 1834 against current law, relative change"
       />
-      <div className="national-chart-body">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 20, right: 20, left: 10, bottom: 10 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-            <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-            <YAxis tickFormatter={(v) => signedPercent(v, 2)} tick={{ fontSize: 11 }} width={60} />
+      <div>
+        <ResponsiveContainer width="100%" height={320}>
+          <BarChart data={data} margin={{ top: 16, right: 8, left: 0, bottom: 16 }}>
+            <CartesianGrid {...GRID} vertical={false} />
+            <XAxis dataKey="label" {...AXIS} interval={0} />
+            <YAxis tickFormatter={(v) => signedPercent(v, 2)} {...AXIS} width={64} />
             <Tooltip
               formatter={(value, name, item) => [`${signedPercent(value, 2)} (${item.payload.detail})`, "Change"]}
               contentStyle={tooltipStyle}
             />
             <Bar dataKey="change" fill={COLORS.revived} isAnimationActive={false}>
-              <LabelList dataKey="change" position="bottom" formatter={(v) => signedPercent(v, 2)} fontSize={10} />
+              <LabelList dataKey="change" position="bottom" formatter={(v) => signedPercent(v, 2)} {...labelStyle} fontSize={10} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>

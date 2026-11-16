@@ -1,57 +1,47 @@
 .examples-table {
-  overflow-y: auto;
+  width: 100%;
+  min-width: 0;
 }
 
-.examples-table-header {
-  margin-bottom: 1rem;
-}
-
-.examples-table-header h3 {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--pe-gray-800);
-  margin: 0 0 0.25rem 0;
-}
-
-.examples-table-header p {
-  font-size: 0.85rem;
-  color: var(--pe-gray-500);
-  margin: 0;
+/* On a narrow screen the table scrolls sideways inside its card. */
+.examples-table-scroll {
+  overflow-x: auto;
 }
 
 .examples-table table {
   width: 100%;
+  min-width: 480px;
   border-collapse: collapse;
-  font-size: 0.9rem;
+  font-size: 0.9375rem;
 }
 
 .examples-table th {
   text-align: right;
-  padding: 0.75rem 0.5rem;
-  border-bottom: 2px solid var(--pe-gray-200);
-  color: var(--pe-gray-600);
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted-foreground);
   font-weight: 600;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 0.8125rem;
+  white-space: nowrap;
 }
 
 .examples-table th:first-child {
   text-align: left;
+  padding-left: 0;
 }
 
 .examples-table td {
-  padding: 0.75rem 0.5rem;
-  border-bottom: 1px solid var(--pe-gray-100);
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--color-gray-100);
   text-align: right;
-  font-family: var(--pe-font-mono);
   white-space: nowrap;
+  color: var(--color-gray-700);
 }
 
 .examples-table td:first-child {
   text-align: left;
-  font-family: inherit;
   white-space: normal;
+  padding-left: 0;
 }
 
 .examples-table tbody tr:last-child td {
@@ -60,26 +50,20 @@
 
 .example-name {
   font-weight: 600;
-  color: var(--pe-gray-800);
+  color: var(--color-gray-900);
 }
 
 .example-detail {
-  font-size: 0.8rem;
-  color: var(--pe-gray-500);
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
 }
 
 .example-change {
   font-weight: 600;
-  color: var(--pe-gray-700);
+  color: var(--color-gray-900);
 }
 
 .example-revived {
   font-weight: 600;
-  color: #0284c7;
-}
-
-.examples-table-note {
-  margin: 0.75rem 0 0 0;
-  font-size: 0.8rem;
-  color: var(--pe-gray-500);
+  color: var(--primary);
 }

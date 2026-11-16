@@ -296,7 +296,7 @@
   display: block;
   height: 8px;
   min-height: 8px;
-  background: #319795;
+  background: var(--color-teal-500);
   border-radius: 4px;
   transition: width 0.3s ease-out;
 }
@@ -420,7 +420,42 @@
 }
 
 .results-chart {
-  height: 450px;
+  min-width: 0;
+}
+
+/* The checkbox that adds H.R. 1834 to the results. */
+.compare-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: var(--pe-space-md) var(--pe-space-lg) 0;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-container);
+  background: var(--color-teal-50);
+  cursor: pointer;
+  font-size: 0.9375rem;
+  color: var(--color-gray-900);
+}
+
+.compare-toggle input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.compare-toggle strong {
+  display: block;
+  font-weight: 600;
+}
+
+.compare-toggle-detail {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
 }
 
 /* Impact Tab */
@@ -483,7 +518,7 @@
 
 .impact-cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: var(--pe-space-md);
 }
 
@@ -503,8 +538,8 @@
 }
 
 .impact-card.ira {
-  background: rgba(2, 132, 199, 0.1);
-  border: 2px solid rgba(2, 132, 199, 0.3);
+  background: var(--color-teal-50);
+  border: 2px solid var(--color-teal-200);
 }
 
 .impact-card h4 {

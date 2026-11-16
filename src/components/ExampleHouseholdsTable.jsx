@@ -26,18 +26,17 @@ function ExampleHouseholdsTable({ view = "net" }) {
 
   return (
     <div className="examples-table">
-      <div className="examples-table-header">
-        <h3>
+      <h3 className="chart-title">
           {benchmark
             ? "Benchmark premiums, per month"
             : "What each household pays for its benchmark plan, per month"}
-        </h3>
-        <p>
-          {benchmark
+      </h3>
+      <p className="chart-subtitle">
+        {benchmark
             ? "The second-lowest-cost silver plan in each household's county, before any credit"
             : "The benchmark premium minus the premium tax credit"}
-        </p>
-      </div>
+      </p>
+      <div className="examples-table-scroll">
       <table>
         <thead>
           <tr>
@@ -80,7 +79,8 @@ function ExampleHouseholdsTable({ view = "net" }) {
           })}
         </tbody>
       </table>
-      <p className="examples-table-note">
+      </div>
+      <p className="chart-note">
         Current law in {priorYear} and {year}. Each household has the same income in both years.
       </p>
     </div>

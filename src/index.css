@@ -1,67 +1,68 @@
-/* PolicyEngine Design System - appv2 colors */
+/*
+ * The app's own variables, mapped onto @policyengine/ui-kit's theme
+ * (ui-kit/theme.css, imported first in app/globals.css), so every component
+ * stylesheet uses PolicyEngine's palette, fonts and radii. Prefer the ui-kit
+ * tokens (var(--primary), var(--chart-1), var(--color-teal-500), ...) in new
+ * code; these aliases keep the older stylesheets on the same values.
+ */
 :root {
-  /* Primary Colors - Teal (from PolicyEngine appv2 designTokens) */
-  --pe-teal-50: #E6FFFA;
-  --pe-teal-100: #B2F5EA;
-  --pe-teal-200: #81E6D9;
-  --pe-teal-300: #4FD1C5;
-  --pe-teal-400: #38B2AC;
-  --pe-teal-500: #319795;
-  --pe-teal-600: #2C7A7B;
-  --pe-teal-700: #285E61;
-  --pe-teal-800: #234E52;
-  --pe-teal-900: #1D4044;
+  --pe-teal-50: var(--color-teal-50);
+  --pe-teal-100: var(--color-teal-100);
+  --pe-teal-200: var(--color-teal-200);
+  --pe-teal-300: var(--color-teal-300);
+  --pe-teal-400: var(--color-teal-400);
+  --pe-teal-500: var(--color-teal-500);
+  --pe-teal-600: var(--color-teal-600);
+  --pe-teal-700: var(--color-teal-700);
+  --pe-teal-800: var(--color-teal-800);
+  --pe-teal-900: var(--color-teal-900);
 
-  /* Gray Palette (from PolicyEngine appv2 designTokens) */
-  --pe-gray-50: #F9FAFB;
-  --pe-gray-100: #F2F4F7;
-  --pe-gray-200: #E2E8F0;
-  --pe-gray-300: #D1D5DB;
-  --pe-gray-400: #9CA3AF;
-  --pe-gray-500: #6B7280;
-  --pe-gray-600: #4B5563;
-  --pe-gray-700: #344054;
-  --pe-gray-800: #1F2937;
-  --pe-gray-900: #101828;
+  --pe-gray-50: #F8FAFC;
+  --pe-gray-100: var(--color-gray-100);
+  --pe-gray-200: var(--color-gray-200);
+  --pe-gray-300: var(--color-gray-300);
+  --pe-gray-400: var(--color-gray-400);
+  --pe-gray-500: var(--color-gray-500);
+  --pe-gray-600: var(--color-gray-600);
+  --pe-gray-700: var(--color-gray-700);
+  --pe-gray-800: var(--color-gray-800);
+  --pe-gray-900: var(--color-gray-900);
 
-  /* Blue Colors (from PolicyEngine appv2 designTokens) */
-  --pe-blue-50: #F0F9FF;
-  --pe-blue-100: #E0F2FE;
-  --pe-blue-200: #BAE6FD;
-  --pe-blue-300: #7DD3FC;
-  --pe-blue-400: #38BDF8;
-  --pe-blue-500: #0EA5E9;
-  --pe-blue-600: #0284C7;
-  --pe-blue-700: #026AA2;
-  --pe-blue-800: #075985;
-  --pe-blue-900: #0C4A6E;
+  --pe-blue-50: var(--color-blue-50);
+  --pe-blue-100: var(--color-blue-100);
+  --pe-blue-200: var(--color-blue-200);
+  --pe-blue-300: var(--color-blue-300);
+  --pe-blue-400: var(--color-blue-400);
+  --pe-blue-500: var(--color-blue-500);
+  --pe-blue-600: var(--color-blue-600);
+  --pe-blue-700: var(--color-blue-700);
+  --pe-blue-800: var(--color-blue-800);
+  --pe-blue-900: var(--color-blue-900);
 
-  /* Chart Colors - updated to match appv2 */
-  --pe-baseline: #9CA3AF;
-  --pe-ira-reform: #0284C7;
-  --pe-bipartisan-reform: #7c3aed;
-  --pe-medicaid: #319795;
-  --pe-chip: #38B2AC;
+  /* Scenario colors, shared by every chart: 2026 current law, 2027 current
+     law, and 2027 under H.R. 1834. */
+  --pe-prior: var(--chart-5);
+  --pe-current: var(--chart-4);
+  --pe-reform: var(--chart-1);
+  --pe-baseline: var(--chart-5);
+  --pe-ira-reform: var(--chart-1);
+  --pe-medicaid: var(--chart-3);
+  --pe-chip: var(--chart-2);
 
-  /* Semantic Colors */
-  --pe-text-primary: #000000;
-  --pe-text-secondary: #5A5A5A;
-  --pe-text-muted: var(--pe-gray-400);
-  --pe-background: var(--pe-gray-50);
-  --pe-surface: #FFFFFF;
-  --pe-border: var(--pe-gray-200);
-  --pe-border-light: var(--pe-gray-100);
-  --pe-accent: var(--pe-teal-500);
-  --pe-accent-hover: var(--pe-teal-600);
-  --pe-accent-dark: var(--pe-teal-700);
+  --pe-text-primary: var(--foreground);
+  --pe-text-secondary: var(--muted-foreground);
+  --pe-text-muted: var(--color-gray-500);
+  --pe-background: var(--background);
+  --pe-surface: var(--card);
+  --pe-border: var(--border);
+  --pe-border-light: var(--color-gray-100);
+  --pe-accent: var(--primary);
+  --pe-accent-hover: var(--color-teal-700);
+  --pe-accent-dark: var(--color-teal-800);
 
-  /* Typography */
-  --pe-font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  --pe-font-mono: "SF Mono", "Monaco", "Inconsolata", "Fira Mono",
-    "Droid Sans Mono", monospace;
+  --pe-font-family: var(--font-sans);
+  --pe-font-mono: var(--font-sans);
 
-  /* Spacing */
   --pe-space-xs: 4px;
   --pe-space-sm: 8px;
   --pe-space-md: 16px;
@@ -69,20 +70,16 @@
   --pe-space-xl: 32px;
   --pe-space-2xl: 48px;
 
-  /* Border Radius */
   --pe-radius-sm: 4px;
-  --pe-radius-md: 8px;
-  --pe-radius-lg: 12px;
-  --pe-radius-xl: 16px;
+  --pe-radius-md: var(--radius-container);
+  --pe-radius-lg: var(--radius-container);
+  --pe-radius-xl: 12px;
 
-  /* Shadows (from PolicyEngine appv2 designTokens) */
   --pe-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
-  --pe-shadow-md: 0 4px 6px -1px rgba(16, 24, 40, 0.1),
-    0 2px 4px -1px rgba(16, 24, 40, 0.05);
+  --pe-shadow-md: 0 1px 3px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.04);
   --pe-shadow-lg: 0 10px 15px -3px rgba(16, 24, 40, 0.1),
     0 4px 6px -2px rgba(16, 24, 40, 0.05);
 
-  /* Transitions */
   --pe-transition-fast: 150ms ease;
   --pe-transition-base: 200ms ease;
   --pe-transition-slow: 300ms ease;
@@ -95,15 +92,17 @@
 }
 
 body {
-  font-family: var(--pe-font-family);
+  font-family: var(--font-sans);
   font-size: 16px;
   line-height: 1.5;
-  color: var(--pe-text-primary);
-  background-color: var(--pe-background);
+  color: var(--foreground);
+  background-color: var(--background);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#root {
-  min-height: 100vh;
+/* Figures align numbers in columns. */
+table,
+.recharts-wrapper {
+  font-variant-numeric: tabular-nums;
 }
