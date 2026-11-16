@@ -2,10 +2,13 @@
 #
 # Captured with `pip freeze` from the live aca-calc-api container on 2026-11-03,
 # minus the 14 packages that Modal's 2025.06 image builder installs at the same
-# versions. Since then policyengine-us has moved from 1.691.3 to 2.115.0
-# (2026-11-09), the first release with the published 2027 premiums
-# (policyengine-us #10682), with the policyengine-core and spm-calculator
-# versions it requires; every other pin is unchanged.
+# versions. Since then policyengine-us has moved from 1.691.3 to 2.138.2
+# (2026-11-16), with the policyengine-core and spm-calculator versions it
+# requires; every other pin is unchanged. 2.138.2 has the published 2027
+# premiums (policyengine-us #10682), counts the used premium tax credit in
+# household net income (#10773), keeps a claimable filer out of the credit's
+# tax family (#10041), and uses the Alaska and Hawaii guidelines when the
+# state is supplied only for the coverage year (#10860).
 #
 # To upgrade a package, change its pin here, run the tests against the new set,
 # and compare /api/calculate results before deploying.
@@ -60,8 +63,8 @@ parso==0.8.7
 pexpect==4.9.0
 plotly==5.24.1
 pluggy==1.6.0
-policyengine-core==3.34.9
-policyengine-us==2.115.0
+policyengine-core==3.36.0
+policyengine-us==2.138.2
 prompt_toolkit==3.0.52
 psutil==6.1.1
 ptyprocess==0.7.0

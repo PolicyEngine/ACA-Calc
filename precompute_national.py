@@ -7,14 +7,14 @@ for 2027, under current law and with the enhanced schedule, and writes
 src/data/national_impacts.json. The figures follow policyengine.py's
 definitions (income deciles, winners and losers, SPM poverty, inequality).
 
-PolicyEngine's household net income leaves out health coverage, including
-the premium tax credit (gov.simulation.include_health_benefits_in_net_income is
-off), so on its own the reform wouldn't change it. Here each household's change
-in the credit is added to its net income, as a cut in the premium it pays. SPM
-resources already count the credit that way: they subtract medical
-out-of-pocket spending, which includes the marketplace premium net of the
-credit (marketplace_net_premium), so poverty is the model's own. The baseline
-figures are the model's own too.
+Since policyengine-us #10773, household net income counts the premium tax
+credit a tax unit uses (used_aca_ptc, the credit capped at the premium of the
+plan it enrolls in) as a refundable credit, so every figure here is the
+model's own. The credits, cost and recipients use the used credit. SPM
+resources count the same credit through the marketplace premium net of it
+(marketplace_net_premium), so the change in SPM resources should match the
+federal cost, and the change in household net income should match each
+household's change in the used credit; the checks report both.
 
 Needs about 32 GB of memory: run it on Modal, not a laptop. Rerun after every
 policyengine-us pin.
@@ -74,8 +74,8 @@ def person_share(sim, tax_unit_values):
 
 
 def credits(sim, year):
-    """Credits, recipients and benchmark premiums in one year."""
-    ptc = values(sim, "assigned_aca_ptc", year)
+    """Used credits, recipients and benchmark premiums in one year."""
+    ptc = values(sim, "used_aca_ptc", year)
     weight = values(sim, "tax_unit_weight", year)
     slcsp = values(sim, "slcsp", year)
     receiving = ptc > 0
@@ -213,20 +213,20 @@ def main():
     gc.collect()
 
     reform = Microsimulation(reform=create_enhanced_ptc_reform(), dataset_end_year=YEAR)
-    # Anything else the reform changes in net income (expected none: the
-    # credit doesn't enter it).
-    other_income_change = values(reform, "household_net_income", YEAR) - net_income
+    reform_net_income = values(reform, "household_net_income", YEAR)
     # SPM resources count the credit through lower marketplace premiums.
     reform_resources = values(reform, "spm_unit_net_income", YEAR)
     revived = credits(reform, YEAR)
     print(f"  enhanced {YEAR}: {revived['summary']}")
     change = revived["ptc"] - current["ptc"]
     share = person_share(reform, change)
-    household_change = reform.populations["household"].sum(share)
+    credit_change = reform.populations["household"].sum(share)
     del reform
     gc.collect()
 
-    reform_net_income = net_income + other_income_change + household_change
+    household_change = reform_net_income - net_income
+    # Anything else the reform changes in net income (expected none).
+    other_income_change = household_change - credit_change
     measured = np.isfinite(resources) & np.isfinite(threshold)
     assert np.array_equal(
         (resources < threshold)[measured], model_poor[measured]
