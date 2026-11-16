@@ -9,7 +9,12 @@ benchmark premium in 2026 and in 2027, the increase included. The file has
 at the household's income, and across incomes for the charts.
 
 The income is the same in both years, so the changes are the law's and the
-premiums', not the household's. Writes src/data/households/cliff_demo.json,
+premiums', not the household's.
+
+It also has the household's marginal tax rate across incomes in 2027 under
+current law and under H.R. 1834: the share of each extra $1,000 of earnings it
+loses to taxes and to a smaller credit, from household net income, which counts
+the premium tax credit the household uses (policyengine-us #10773). Writes src/data/households/cliff_demo.json,
 which the Overview page reads. Rerun after every policyengine-us pin.
 """
 
@@ -37,11 +42,28 @@ def sweep(year, reform=None):
     fpl = sim.calculate("tax_unit_fpg", period=year - 1)
     result = {
         name: sim.calculate(name, map_to="household", period=year)
-        for name in ("employment_income", "aca_ptc", "slcsp", "medicaid", "chip")
+        for name in (
+            "employment_income",
+            "aca_ptc",
+            "slcsp",
+            "medicaid",
+            "chip",
+            "household_net_income",
+        )
     }
     # The credit measures income against the prior year's guideline.
     result["fpl"] = float(fpl[len(fpl) // 2])
     return result
+
+
+def marginal_rates(result):
+    """The marginal tax rate between each income on the axis and the next:
+    one minus the change in net income over the change in earnings. The last
+    point repeats the one before it."""
+    income = np.asarray(result["employment_income"], dtype=float)
+    net = np.asarray(result["household_net_income"], dtype=float)
+    rates = 1 - np.diff(net) / np.diff(income)
+    return np.append(rates, rates[-1])
 
 
 def point(result, index):
@@ -96,6 +118,12 @@ def main():
         "slcsp_by_income_prior_year": current[PRIOR_YEAR]["slcsp"].tolist(),
         "fpl": current[YEAR]["fpl"],
         "fpl_prior_year": current[PRIOR_YEAR]["fpl"],
+        # Household net income and the marginal tax rate from each income to
+        # the next, in 2027.
+        "net_income_baseline": current[YEAR]["household_net_income"].tolist(),
+        "net_income_ira": hr1834["household_net_income"].tolist(),
+        "mtr_baseline": [round(float(r), 4) for r in marginal_rates(current[YEAR])],
+        "mtr_ira": [round(float(r), 4) for r in marginal_rates(hr1834)],
     }
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(json.dumps(data, indent=2), encoding="utf-8")
@@ -108,6 +136,13 @@ def main():
     for label, v in rows:
         net = max(0, v["slcsp"] - v["ptc"]) / 12
         print(f"{label:<24} {v['fpl_percent']:>5}% {v['slcsp'] / 12:>10,.0f} {v['ptc'] / 12:>9,.0f} {net:>9,.0f}")
+    print(f"\nMarginal tax rate, {YEAR} (current law / H.R. 1834)")
+    for fpl_percent in (300, 380, 398, 402, 450, 600, 900):
+        i = int(np.argmin(np.abs(income - fpl_percent / 100 * current[YEAR]["fpl"])))
+        print(
+            f"  ${income[i]:>9,.0f} ({fpl_percent}% FPL): "
+            f"{100 * data['mtr_baseline'][i]:7.1f}% / {100 * data['mtr_ira'][i]:7.1f}%"
+        )
 
 
 if __name__ == "__main__":

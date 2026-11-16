@@ -3,6 +3,7 @@ import ContributionScheduleChart from "./components/ContributionScheduleChart";
 import ExampleHouseholdsTable from "./components/ExampleHouseholdsTable";
 import NationalImpactChart from "./components/NationalImpactChart";
 import PremiumChart from "./components/PremiumChart";
+import MarginalRateChart from "./components/MarginalRateChart";
 import Calculator from "./components/Calculator";
 import "./App.css";
 
@@ -65,6 +66,36 @@ function buildSections() {
   cliffDemoData.ptc_ira.forEach((credit, i) => {
     if (credit > 0) revivedEnd = cliffDemoData.income[i];
   });
+
+  // The Pennsylvania adult's marginal tax rates in 2027: the share of each
+  // extra $1,000 of earnings lost to taxes and a smaller credit.
+  const incomes = cliffDemoData.income;
+  const median = (values) => {
+    const sorted = [...values].sort((a, b) => a - b);
+    return sorted[Math.floor(sorted.length / 2)];
+  };
+  const typicalRate = (rates, lowPercent, highPercent) =>
+    100 *
+    median(
+      rates.filter(
+        (_, i) =>
+          incomes[i] >= (lowPercent / 100) * cliffDemoData.fpl &&
+          incomes[i] <= (highPercent / 100) * cliffDemoData.fpl
+      )
+    );
+  // The step on the income axis that crosses 400% FPL.
+  const cliffStep = incomes.findIndex((value) => value > cliffIncome) - 1;
+  const creditLost = cliffDemoData.ptc_baseline[cliffStep] - cliffDemoData.ptc_baseline[cliffStep + 1];
+  const netLost =
+    cliffDemoData.net_income_baseline[cliffStep] - cliffDemoData.net_income_baseline[cliffStep + 1];
+  const cliffRate = 100 * cliffDemoData.mtr_baseline[cliffStep];
+  // How much higher H.R. 1834's rate is than current law's between 400% FPL
+  // and the end of its credit.
+  const pointsHigher = typicalRate(
+    cliffDemoData.mtr_ira.map((rate, i) => rate - cliffDemoData.mtr_baseline[i]),
+    420,
+    (100 * (revivedEnd - 2000)) / cliffDemoData.fpl
+  );
 
   // National figures.
   const lawPrior = national.current_law[String(priorYear)];
@@ -155,6 +186,16 @@ The two households above 400% FPL would pay 8.5% of their income instead of the 
 
 Under current law the payment rises with income up to 400% FPL, then jumps to the full premium of ${monthly(pennsylvania.current.slcsp)}/month.`,
       chart: { type: "premium", lines: ["prior", "current", "revived"] },
+    },
+    {
+      id: "marginal_rates",
+      title: "No cliff at 400% FPL",
+      content: `A household's **marginal tax rate** is the share of an extra dollar of earnings it loses to taxes and to a smaller credit.
+
+Under current law, the Pennsylvania adult's credit ends at 400% FPL (${formatDollars(cliffIncome)}). Earning ${formatDollars(incomes[cliffStep + 1] - incomes[cliffStep])} more, from ${formatDollars(incomes[cliffStep])} to ${formatDollars(incomes[cliffStep + 1])}, costs it ${formatDollars(creditLost)} of credit, so its net income falls by **${formatDollars(netLost)}**: a marginal tax rate of ${cliffRate.toFixed(0)}% on that ${formatDollars(incomes[cliffStep + 1] - incomes[cliffStep])}.
+
+Under H.R. 1834 there is no cliff. Above 400% FPL the household pays at most 8.5% of its income for the benchmark plan, so each extra dollar lowers its credit by 8.5 cents. Its marginal tax rate is **${pointsHigher.toFixed(1)} points higher** than under current law at each income from 400% FPL until the credit ends at about ${formatDollars(revivedEnd)}; beyond that, the two are the same.`,
+      chart: { type: "mtr" },
     },
 
     // PART 3: National effects
@@ -287,6 +328,13 @@ function Chart({ chart }) {
           data={cliffDemoData}
           lines={chart.lines}
           title={`What a ${cliffDemoData.household_info.age}-year-old in ${cliffDemoData.household_info.location} pays for the benchmark plan, per month`}
+        />
+      );
+    case "mtr":
+      return (
+        <MarginalRateChart
+          data={cliffDemoData}
+          title={`Marginal tax rate of a ${cliffDemoData.household_info.age}-year-old in ${cliffDemoData.household_info.location}, ${cliffDemoData.year}`}
         />
       );
     case "national":
