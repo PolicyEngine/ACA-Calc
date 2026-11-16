@@ -186,6 +186,37 @@
   background: var(--color-teal-700);
 }
 
+.story-cta.secondary {
+  background: var(--card);
+  color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.story-cta.secondary:hover {
+  background: var(--color-teal-50);
+}
+
+/* The buttons that end the Overview and the Methodology page. */
+.story-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 40px;
+}
+
+.story-prose a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.story-prose code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  overflow-wrap: anywhere;
+}
+
 /* Calculator page */
 .calculator-page {
   max-width: var(--spacing-content, 976px);
@@ -240,5 +271,9 @@
 
   .story-figure {
     padding: 12px;
+  }
+
+  .page-tab {
+    padding: 10px 12px;
   }
 }

@@ -6,6 +6,7 @@ import PremiumChart from "./components/PremiumChart";
 import MarginalRateChart from "./components/MarginalRateChart";
 import Calculator from "./components/Calculator";
 import StoryRail from "./components/StoryRail";
+import Methodology from "./components/Methodology";
 import { CountUp, Reveal } from "./components/Motion";
 import "./App.css";
 
@@ -207,7 +208,7 @@ Under H.R. 1834 there is no cliff. Above 400% FPL the household pays at most 8.5
       title: "Cost and reach",
       content: `PolicyEngine estimates that H.R. 1834 would raise federal spending on premium tax credits by **${billions(national.budget.federal_cost)}** in ${year}. The estimate is static: it holds enrollment fixed, so it leaves out people who would start buying coverage when credits grow, and lower premiums as healthier people enroll.
 
-The Congressional Budget Office, whose estimate includes both, expects the bill to add **${billions(cbo.estimate.deficit_increase_fy2027)}** to the deficit in fiscal year ${year} and ${billions(cbo.estimate.deficit_increase_10_year)} over ${cbo.estimate.window}. In CBO's estimate, ${millions(cbo.estimate.insured_increase_2027)} more people would have health insurance in ${year}, and benchmark premiums would be ${share(-cbo.estimate.benchmark_premium_change_2027)} lower.
+The Congressional Budget Office, whose estimate includes both, expects the bill to add **${billions(cbo.estimate.deficit_increase_fy2027)}** to the deficit in fiscal year ${year} and ${billions(cbo.estimate.deficit_increase_10_year)} over ${cbo.estimate.window}. In CBO's estimate, ${millions(cbo.estimate.insured_increase_2027)} more people would have health insurance in ${year}, and benchmark premiums would be ${share(-cbo.estimate.benchmark_premium_change_2027)} lower. The Methodology tab compares the two estimates.
 
 The number of people receiving a credit would rise from ${millions(lawNow.people_receiving)} to **${millions(enhanced.people_receiving)}**, including ${millions(national.recipients.people_newly_receiving)} who get no credit under current law. Of the added spending, ${share(aboveCliff / national.budget.federal_cost, 0)} goes to tax units above 400% FPL.`,
       chart: { type: "national", mode: "spending" },
@@ -243,20 +244,6 @@ By age, poverty changes ${povertyChange(poverty.child)} for children, ${povertyC
 
 The top 10%'s share of net income moves from ${share(inequalityBefore.top_10_share, 2)} to ${share(inequalityAfter.top_10_share, 2)}, and the top 1%'s from ${share(inequalityBefore.top_1_share, 2)} to ${share(inequalityAfter.top_1_share, 2)}.`,
       chart: { type: "national", mode: "inequality" },
-    },
-    {
-      id: "methodology",
-      title: "How we estimated this",
-      content: `We ran PolicyEngine US ${national.model_version} over its 2024 microdata, projected to ${priorYear} and ${year}, under current law and with H.R. 1834's schedule. The household examples use the same model and each county's benchmark premiums.
-
-The credit figures are the credit each tax unit uses: the credit it is eligible for, capped at the premium of the plan it enrolls in. Household net income counts that credit as a refundable tax credit, and the poverty measure counts it through the lower premiums enrollees pay.
-
-Above 400% FPL, the survey's marketplace take-up flags would make far more people unsubsidized marketplace buyers than CBO projects (${millions(cbo.baseline.unsubsidized_enrollment_2027)} unsubsidized enrollees at all incomes), and H.R. 1834 would give each of them a credit. So above 400% FPL we count as enrollees only households in which someone reported marketplace or other individual coverage in the survey: ${millions(national.enrollment.current_law.people_enrolled_above_400)} people in ${year}.
-
-Our current-law credits, ${billions(lawNow.total_ptc)} in ${year}, are below CBO's baseline of ${billions(cbo.baseline.credits_fy2027)} for fiscal year ${year}, and the survey's marketplace enrollees don't match CBO's projections, so we report the change H.R. 1834 makes rather than spending levels.
-
-The estimates are static: the same people enroll under each policy, so they leave out people who would start or stop buying coverage as credits change. Marketplace enrollment comes from the 2024 data.`,
-      showCalculatorButton: true,
     },
   ];
 }
@@ -294,12 +281,20 @@ const PAGE_ROUTES = {
   "overview": "main",
   "households": "main",
   "calculator": "calculator",
+  "methodology": "methodology",
 };
 
 const ROUTE_PAGES = {
   "main": "",
   "calculator": "calculator",
+  "methodology": "methodology",
 };
+
+const ArrowIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+    <path d="M5 12h14M12 5l7 7-7 7" />
+  </svg>
+);
 
 function getPageFromHash() {
   if (typeof window === "undefined") {
@@ -444,16 +439,18 @@ function App() {
               <Chart chart={section.chart} />
             </Reveal>
           )}
-          {section.showCalculatorButton && (
-            <button onClick={() => navigateToPage("calculator")} className="story-cta">
-              Calculate your household
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </button>
-          )}
         </section>
       ))}
+      <div className="story-ctas">
+        <button type="button" onClick={() => navigateToPage("calculator")} className="story-cta">
+          Calculate your household
+          <ArrowIcon />
+        </button>
+        <button type="button" onClick={() => navigateToPage("methodology")} className="story-cta secondary">
+          How we estimated this
+          <ArrowIcon />
+        </button>
+      </div>
     </main>
     </div>
   );
@@ -487,6 +484,12 @@ function App() {
               >
                 Calculator
               </button>
+              <button
+                className={`page-tab ${currentPage === "methodology" ? "active" : ""}`}
+                onClick={() => navigateToPage("methodology")}
+              >
+                Methodology
+              </button>
             </div>
           </div>
         </header>
@@ -494,6 +497,7 @@ function App() {
 
       {currentPage === "main" && renderMainPage()}
       {currentPage === "calculator" && renderCalculatorPage()}
+      {currentPage === "methodology" && <Methodology onCalculator={() => navigateToPage("calculator")} />}
 
       {!embedded && (
         <footer className="footer">

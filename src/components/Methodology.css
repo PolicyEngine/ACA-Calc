@@ -1,0 +1,46 @@
+/* The Methodology page: the Overview's column and type (App.css), with a
+   comparison table and links. */
+
+.method-table-scroll {
+  overflow-x: auto;
+}
+
+.method-table table {
+  width: 100%;
+  min-width: 480px;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.method-table thead th {
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+.method-table thead th:first-child {
+  padding-left: 0;
+}
+
+.method-table tbody th {
+  padding: 12px 8px 12px 0;
+  border-bottom: 1px solid var(--color-gray-100);
+  text-align: left;
+  font-weight: 500;
+  color: var(--color-gray-900);
+}
+
+.method-table td {
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--color-gray-100);
+  text-align: right;
+  color: var(--color-gray-700);
+}
+
+.method-table tbody tr:last-child th,
+.method-table tbody tr:last-child td {
+  border-bottom: none;
+}
