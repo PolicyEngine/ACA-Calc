@@ -8,8 +8,10 @@ import {
   Legend,
   ResponsiveContainer,
   ReferenceLine,
+  Customized,
 } from "recharts";
-import { AXIS, AXIS_LABEL, GRID } from "./PremiumChart";
+import { ACTIVE_DOT, AXIS, AXIS_LABEL, CURSOR, GRID } from "./PremiumChart";
+import { DirectLabels, labelPlan } from "./DirectLabels";
 import "./ContributionScheduleChart.css";
 
 // The schedules as policyengine-us computes them: the percent of income a
@@ -42,13 +44,16 @@ const STYLES = {
 const LABELS = {
   current2026: "2026, current law",
   current2027: "2027, current law",
-  enhanced: "Enhanced credits (2021–2025; H.R. 1834)",
+  enhanced: "Enhanced credits (H.R. 1834)",
 };
 
 const CURRENT_LAW = ["current2026", "current2027"];
 
 function ContributionScheduleChart({ showPolicies = ["current2027", "enhanced"] }) {
   const showsCurrentLaw = showPolicies.some((policy) => CURRENT_LAW.includes(policy));
+  // Name each line beside it, or fall back to a legend when they run too
+  // close together (DirectLabels.jsx).
+  const plan = labelPlan(data, showPolicies, { yDomain: [0, 12], plotHeight: 340 - 52 });
 
   return (
     <div className="contribution-chart">
@@ -73,8 +78,9 @@ function ContributionScheduleChart({ showPolicies = ["current2027", "enhanced"] 
           <YAxis domain={[0, 12]} tickFormatter={(value) => `${value}%`} {...AXIS} width={44} />
           <Tooltip
             formatter={(value, name) =>
-              value === null ? ["No credit", LABELS[name]] : [`${value.toFixed(2)}%`, LABELS[name]]
+              value === null ? ["No credit", name] : [`${value.toFixed(2)}%`, name]
             }
+            cursor={CURSOR}
             labelFormatter={(fpl) => `Income at ${fpl}% of the poverty guideline`}
             contentStyle={{
               backgroundColor: "var(--card)",
@@ -84,14 +90,15 @@ function ContributionScheduleChart({ showPolicies = ["current2027", "enhanced"] 
               fontFamily: "var(--font-sans)",
             }}
           />
-          <Legend
-            verticalAlign="top"
-            align="left"
-            height={36}
-            iconType="plainline"
-            formatter={(name) => LABELS[name]}
-            wrapperStyle={{ fontSize: "13px", fontFamily: "var(--font-sans)" }}
-          />
+          {plan.crowded && (
+            <Legend
+              verticalAlign="top"
+              align="left"
+              height={36}
+              iconType="plainline"
+              wrapperStyle={{ fontSize: "13px", fontFamily: "var(--font-sans)" }}
+            />
+          )}
           {showsCurrentLaw && (
             <ReferenceLine
               x={400}
@@ -105,15 +112,19 @@ function ContributionScheduleChart({ showPolicies = ["current2027", "enhanced"] 
               key={policy}
               type="linear"
               dataKey={policy}
-              name={policy}
+              name={LABELS[policy]}
               stroke={STYLES[policy].color}
               strokeDasharray={STYLES[policy].dash}
               strokeWidth={2.5}
               dot={false}
+              activeDot={ACTIVE_DOT}
               connectNulls={false}
               isAnimationActive={false}
             />
           ))}
+          {!plan.crowded && (
+            <Customized component={(props) => <DirectLabels {...props} index={plan.index} />} />
+          )}
         </LineChart>
       </ResponsiveContainer>
 

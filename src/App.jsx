@@ -5,6 +5,8 @@ import NationalImpactChart from "./components/NationalImpactChart";
 import PremiumChart from "./components/PremiumChart";
 import MarginalRateChart from "./components/MarginalRateChart";
 import Calculator from "./components/Calculator";
+import StoryRail from "./components/StoryRail";
+import { CountUp, Reveal } from "./components/Motion";
 import "./App.css";
 
 // Precomputed with policyengine-us: the Pennsylvania example across incomes
@@ -256,6 +258,30 @@ The estimates are static: the same people enroll under each policy, so they leav
 
 const SECTIONS = buildSections();
 
+// The figures the Overview opens with, from the national estimates.
+function buildKeyFigures() {
+  const year = national.year;
+  const prior = national.current_law[String(year - 1)];
+  const now = national.current_law[String(year)];
+  const rise = (100 * (now.mean_benchmark_premium - prior.mean_benchmark_premium)) / prior.mean_benchmark_premium;
+  return [
+    {
+      value: `${rise.toFixed(1)}%`,
+      label: `average rise in benchmark premiums from ${year - 1} to ${year}, for tax units with a credit`,
+    },
+    {
+      value: billions(national.budget.federal_cost),
+      label: `added federal spending on credits in ${year} under H.R. 1834`,
+    },
+    {
+      value: millions(national.recipients.people_newly_receiving),
+      label: `more people with a credit in ${year} under H.R. 1834`,
+    },
+  ];
+}
+
+const KEY_FIGURES = buildKeyFigures();
+
 // URL routing helpers. The Explore Households page is gone; its old links
 // open the Overview.
 const PAGE_ROUTES = {
@@ -388,7 +414,19 @@ function App() {
 
   // The Overview: one column, each section's chart under its text.
   const renderMainPage = () => (
+    <div className="story-layout">
+    <StoryRail sections={SECTIONS} parts={PARTS} />
     <main className="story">
+      <section className="key-figures" aria-label="Key figures">
+        {KEY_FIGURES.map((figure) => (
+          <div key={figure.label} className="key-figure">
+            <p className="key-figure-value">
+              <CountUp value={figure.value} />
+            </p>
+            <p className="key-figure-label">{figure.label}</p>
+          </div>
+        ))}
+      </section>
       {SECTIONS.map((section) => (
         <section key={section.id} id={section.id} className="story-section">
           {PARTS[section.id] && <p className="story-part">{PARTS[section.id]}</p>}
@@ -397,9 +435,9 @@ function App() {
             <Prose content={section.content} />
           </div>
           {section.chart && (
-            <figure className="story-figure">
+            <Reveal as="figure" className="story-figure">
               <Chart chart={section.chart} />
-            </figure>
+            </Reveal>
           )}
           {section.showCalculatorButton && (
             <button onClick={() => navigateToPage("calculator")} className="story-cta">
@@ -412,6 +450,7 @@ function App() {
         </section>
       ))}
     </main>
+    </div>
   );
 
   // Render the calculator page

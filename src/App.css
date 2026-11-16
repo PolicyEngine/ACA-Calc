@@ -69,11 +69,46 @@
   outline-offset: 2px;
 }
 
-/* The Overview: a single column of text with each chart under its section. */
+/* The Overview: a single column of text with each chart under its section,
+   and on wide screens the section rail beside it (StoryRail.css). */
+.story-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 760px) minmax(0, 1fr);
+}
+
 .story {
-  max-width: 760px;
-  margin: 0 auto;
+  grid-column: 2;
+  width: 100%;
   padding: 16px 16px 64px;
+}
+
+/* The figures the story opens with. */
+.key-figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  padding-top: 32px;
+}
+
+.key-figure {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-container);
+  background: var(--color-teal-50);
+}
+
+.key-figure-value {
+  font-size: 1.75rem;
+  line-height: 1.2;
+  font-weight: 700;
+  color: var(--color-teal-800);
+}
+
+.key-figure-label {
+  margin-top: 4px;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--color-gray-700);
 }
 
 .story-section {

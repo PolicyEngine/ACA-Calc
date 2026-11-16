@@ -9,8 +9,10 @@ import {
   Legend,
   ResponsiveContainer,
   ReferenceLine,
+  Customized,
 } from "recharts";
-import { AXIS, AXIS_LABEL, GRID, SCENARIO_STYLES } from "./PremiumChart";
+import { ACTIVE_DOT, AXIS, AXIS_LABEL, CURSOR, GRID, SCENARIO_STYLES } from "./PremiumChart";
+import { DirectLabels, labelPlan } from "./DirectLabels";
 import "./PremiumChart.css";
 
 const formatCurrency = (value) =>
@@ -59,6 +61,7 @@ function MarginalRateChart({ data, title, height = 360 }) {
     { key: "current", name: `${year}, current law` },
     { key: "revived", name: `${year}, H.R. 1834` },
   ];
+  const plan = labelPlan(points, ["current", "revived"], { yDomain: [0, MAX_RATE], plotHeight: height - 52 });
 
   const CustomTooltip = ({ active, payload }) => {
     if (!active || !payload?.length) return null;
@@ -102,14 +105,16 @@ function MarginalRateChart({ data, title, height = 360 }) {
             {...AXIS}
             width={48}
           />
-          <Tooltip content={<CustomTooltip />} />
-          <Legend
-            verticalAlign="top"
-            align="left"
-            height={36}
-            iconType="plainline"
-            wrapperStyle={{ fontSize: "13px", fontFamily: "var(--font-sans)" }}
-          />
+          <Tooltip content={<CustomTooltip />} cursor={CURSOR} />
+          {plan.crowded && (
+            <Legend
+              verticalAlign="top"
+              align="left"
+              height={36}
+              iconType="plainline"
+              wrapperStyle={{ fontSize: "13px", fontFamily: "var(--font-sans)" }}
+            />
+          )}
           <ReferenceLine
             x={fpl * 4}
             stroke="var(--color-gray-400)"
@@ -125,9 +130,13 @@ function MarginalRateChart({ data, title, height = 360 }) {
               stroke={SCENARIO_STYLES[key].color}
               strokeWidth={2.5}
               dot={false}
+              activeDot={ACTIVE_DOT}
               isAnimationActive={false}
             />
           ))}
+          {!plan.crowded && (
+            <Customized component={(props) => <DirectLabels {...props} index={plan.index} />} />
+          )}
         </LineChart>
       </ResponsiveContainer>
     </div>

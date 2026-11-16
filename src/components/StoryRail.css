@@ -1,0 +1,71 @@
+/* Shown beside the story column only when there's room for it (App.css lays
+   out the columns). */
+.story-rail {
+  display: none;
+}
+
+@media (min-width: 1200px) {
+  .story-rail {
+    display: block;
+    position: sticky;
+    top: 88px;
+    align-self: start;
+    justify-self: end;
+    width: 220px;
+    margin: 56px 32px 0 0;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+  }
+}
+
+.story-rail ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-left: 1px solid var(--border);
+}
+
+.story-rail-part {
+  margin: 16px 0 4px 12px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.story-rail li:first-child .story-rail-part {
+  margin-top: 0;
+}
+
+.story-rail button {
+  display: block;
+  width: 100%;
+  margin-left: -1px;
+  padding: 4px 0 4px 12px;
+  border: none;
+  border-left: 2px solid transparent;
+  background: none;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  text-align: left;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: color var(--pe-transition-fast), border-color var(--pe-transition-fast);
+}
+
+.story-rail button:hover {
+  color: var(--color-gray-900);
+}
+
+.story-rail button.active {
+  border-left-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.story-rail button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}

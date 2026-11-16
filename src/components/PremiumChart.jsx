@@ -9,7 +9,9 @@ import {
   Legend,
   ResponsiveContainer,
   ReferenceLine,
+  Customized,
 } from "recharts";
+import { DirectLabels, labelPlan } from "./DirectLabels";
 import "./PremiumChart.css";
 
 // The three scenarios the calculator and the Overview compare, in
@@ -28,6 +30,9 @@ export const AXIS = {
 };
 export const AXIS_LABEL = { fill: "var(--muted-foreground)", fontSize: 12, fontFamily: "var(--font-sans)" };
 export const GRID = { stroke: "var(--border)", strokeDasharray: "3 3" };
+// The crosshair: a dashed line at the hovered income, and a dot on each line.
+export const CURSOR = { stroke: "var(--color-gray-400)", strokeDasharray: "3 3" };
+export const ACTIVE_DOT = { r: 4, stroke: "var(--card)", strokeWidth: 2 };
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat("en-US", {
@@ -95,6 +100,12 @@ function PremiumChart({
     { key: "revived", name: `${year}, H.R. 1834` },
   ].filter((line) => line && shown.includes(line.key));
 
+  // Name each line beside it, or fall back to a legend when they run too
+  // close together (DirectLabels.jsx).
+  const keys = lines.map((line) => line.key);
+  const yMax = Math.max(0, ...points.flatMap((point) => keys.map((key) => point[key] ?? 0)));
+  const plan = labelPlan(points, keys, { yDomain: [0, yMax * 1.1], plotHeight: height - 52 });
+
   const CustomTooltip = ({ active, payload }) => {
     if (!active || !payload?.length) return null;
     const income = payload[0]?.payload?.income || 0;
@@ -136,14 +147,16 @@ function PremiumChart({
             label={{ value: "Household income", position: "insideBottom", offset: 0, ...AXIS_LABEL }}
           />
           <YAxis tickFormatter={(v) => formatCurrency(v)} {...AXIS} width={64} />
-          <Tooltip content={<CustomTooltip />} />
-          <Legend
-            verticalAlign="top"
-            align="left"
-            height={36}
-            iconType="plainline"
-            wrapperStyle={{ fontSize: "13px", fontFamily: "var(--font-sans)" }}
-          />
+          <Tooltip content={<CustomTooltip />} cursor={CURSOR} />
+          {plan.crowded && (
+            <Legend
+              verticalAlign="top"
+              align="left"
+              height={36}
+              iconType="plainline"
+              wrapperStyle={{ fontSize: "13px", fontFamily: "var(--font-sans)" }}
+            />
+          )}
           {fpl > 0 && (
             <ReferenceLine
               x={fpl * 4}
@@ -162,9 +175,13 @@ function PremiumChart({
               strokeDasharray={SCENARIO_STYLES[key].dash}
               strokeWidth={2.5}
               dot={false}
+              activeDot={ACTIVE_DOT}
               isAnimationActive={false}
             />
           ))}
+          {!plan.crowded && (
+            <Customized component={(props) => <DirectLabels {...props} index={plan.index} />} />
+          )}
         </LineChart>
       </ResponsiveContainer>
     </div>
