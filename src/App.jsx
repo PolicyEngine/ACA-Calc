@@ -70,6 +70,9 @@ function buildSections() {
   const lawPrior = national.current_law[String(priorYear)];
   const lawNow = national.current_law[String(year)];
   const enhanced = national.enhanced;
+  const benchmarkRise =
+    (100 * (lawNow.mean_benchmark_premium - lawPrior.mean_benchmark_premium)) /
+    lawPrior.mean_benchmark_premium;
   const aboveCliff = national.by_fpl
     .filter((band) => band.band.startsWith("400%") || band.band.startsWith("Above"))
     .reduce((sum, band) => sum + band.reform_ptc - band.baseline_ptc, 0);
@@ -96,7 +99,7 @@ function buildSections() {
 
 For ${year}, benchmark premiums rise for each of these four households, by **${Math.min(...benchmarkChanges).toFixed(1)}%** to **${Math.max(...benchmarkChanges).toFixed(1)}%**.
 
-Across all tax units receiving a credit, PolicyEngine estimates the average benchmark premium at **${monthly(lawNow.mean_benchmark_premium)}/month** in ${year}, against ${monthly(lawPrior.mean_benchmark_premium)} in ${priorYear} (${percentChange(lawPrior.mean_benchmark_premium, lawNow.mean_benchmark_premium)}).`,
+Across all tax units receiving a credit, PolicyEngine estimates the average benchmark premium at ${monthly(lawNow.mean_benchmark_premium)}/month in ${year}, against ${monthly(lawPrior.mean_benchmark_premium)} in ${priorYear}, **an average ${benchmarkRise >= 0 ? "increase" : "decrease"} of ${Math.abs(benchmarkRise).toFixed(1)}%**.`,
       chart: { type: "examples", view: "benchmark" },
     },
     {
