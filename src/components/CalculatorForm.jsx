@@ -124,7 +124,7 @@ const getInitialFormData = () => {
   };
 };
 
-function CalculatorForm({ onCalculate, loading }) {
+function CalculatorForm({ onCalculate, loading, compareEnhanced = false, onCompareChange }) {
   const [formData, setFormData] = useState(getInitialFormData);
   const [availableCounties, setAvailableCounties] = useState([]);
   const [shareMessage, setShareMessage] = useState("");
@@ -249,7 +249,7 @@ function CalculatorForm({ onCalculate, loading }) {
     <form onSubmit={handleSubmit} className="calculator-form">
       {/* Household Composition */}
       <div className="form-section">
-        <h3 className="form-section-title">Household Composition</h3>
+        <h3 className="form-section-title">Household composition</h3>
 
         <div className="form-row">
           <label className="form-label">
@@ -260,13 +260,13 @@ function CalculatorForm({ onCalculate, loading }) {
               onChange={handleChange}
               disabled={loading}
             />
-            Married / Filing Jointly
+            Married, filing jointly
           </label>
         </div>
 
         <div className="form-row form-row-inline">
           <div className="form-field">
-            <label htmlFor="age_head">Your Age</label>
+            <label htmlFor="age_head">Your age</label>
             <input
               type="number"
               id="age_head"
@@ -284,7 +284,7 @@ function CalculatorForm({ onCalculate, loading }) {
 
           {formData.married && (
             <div className="form-field">
-              <label htmlFor="age_spouse">Spouse Age</label>
+              <label htmlFor="age_spouse">Spouse age</label>
               <input
                 type="number"
                 id="age_spouse"
@@ -304,7 +304,7 @@ function CalculatorForm({ onCalculate, loading }) {
 
         <div className="form-row">
           <div className="form-field">
-            <label htmlFor="num_dependents">Number of Dependents</label>
+            <label htmlFor="num_dependents">Number of dependents</label>
             <input
               type="number"
               id="num_dependents"
@@ -320,7 +320,7 @@ function CalculatorForm({ onCalculate, loading }) {
 
         {formData.num_dependents > 0 && (
           <div className="form-row dependent-ages">
-            <label>Dependent Ages</label>
+            <label>Dependent ages</label>
             <div className="dependent-ages-grid">
               {formData.dependent_ages.map((age, index) => (
                 <input
@@ -384,7 +384,7 @@ function CalculatorForm({ onCalculate, loading }) {
         {needsZipCode && (
           <div className="form-row">
             <div className="form-field">
-              <label htmlFor="zip_code">ZIP Code</label>
+              <label htmlFor="zip_code">ZIP code</label>
               <input
                 type="text"
                 id="zip_code"
@@ -401,13 +401,31 @@ function CalculatorForm({ onCalculate, loading }) {
         )}
       </div>
 
+      {/* Comparison: changes what the results show, not the calculation */}
+      <div className="form-section">
+        <h3 className="form-section-title">Comparison</h3>
+        <label className="compare-toggle">
+          <input
+            type="checkbox"
+            checked={compareEnhanced}
+            onChange={(event) => onCompareChange?.(event.target.checked)}
+          />
+          <span>
+            <strong>Compare with the enhanced credits</strong>
+            <span className="compare-toggle-detail">
+              Add 2027 under H.R. 1834, which would revive the 2021–2025 enhanced subsidies
+            </span>
+          </span>
+        </label>
+      </div>
+
       <div className="form-actions">
         <button
           type="submit"
           className="calculate-button"
           disabled={loading}
         >
-          {loading ? "Calculating..." : "Calculate Premium Tax Credits"}
+          {loading ? "Calculating…" : "Calculate premium tax credits"}
         </button>
 
         <button

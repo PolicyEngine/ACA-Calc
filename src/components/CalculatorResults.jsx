@@ -48,12 +48,9 @@ const closestIndex = (income, incomeArray) => {
   return closest;
 };
 
-function CalculatorResults({ data, formData }) {
+function CalculatorResults({ data, formData, compareEnhanced = false }) {
   const [activeTab, setActiveTab] = useState("net");
   const [userIncome, setUserIncome] = useState("");
-  // Current law in both years by default; the checkbox adds 2027 under H.R.
-  // 1834, which the API returns with every calculation.
-  const [compareEnhanced, setCompareEnhanced] = useState(false);
 
   // An answer from before the API took a year is for 2026.
   const year = data?.year || 2026;
@@ -182,20 +179,6 @@ function CalculatorResults({ data, formData }) {
           These results are for {year}: the calculator's server doesn't support {requestedYear} yet.
         </p>
       )}
-      <label className="compare-toggle">
-        <input
-          type="checkbox"
-          checked={compareEnhanced}
-          onChange={(event) => setCompareEnhanced(event.target.checked)}
-        />
-        <span>
-          <strong>Compare with the enhanced credits</strong>
-          <span className="compare-toggle-detail">
-            Add {year} under H.R. 1834, which would revive the 2021–2025 enhanced subsidies
-          </span>
-        </span>
-      </label>
-
       <div className="results-tabs">
         {TABS.map((tab) => (
           <button

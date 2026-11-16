@@ -112,6 +112,9 @@ function Calculator() {
   const [aiExplanation, setAiExplanation] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [pendingAiLoad, setPendingAiLoad] = useState(shouldAutoLoadAi());
+  // Current law in 2026 and 2027 by default; the form's checkbox adds 2027
+  // under H.R. 1834, which the API returns with every calculation.
+  const [compareEnhanced, setCompareEnhanced] = useState(false);
   const aiTriggeredRef = useRef(false);
 
   const handleCalculate = async (data) => {
@@ -329,7 +332,12 @@ function Calculator() {
           <p className="calculator-subtitle">
             Enter your household to see what it would pay for the benchmark plan in 2026 and 2027 under current law, and in 2027 if H.R. 1834 revived the enhanced credits.
           </p>
-          <CalculatorForm onCalculate={handleCalculate} loading={loading} />
+          <CalculatorForm
+            onCalculate={handleCalculate}
+            loading={loading}
+            compareEnhanced={compareEnhanced}
+            onCompareChange={setCompareEnhanced}
+          />
 
           {error && (
             <div className="calculator-error">
@@ -384,7 +392,7 @@ function Calculator() {
                   Get a personalized walkthrough of how these policies affect your household
                 </p>
               </div>
-              <CalculatorResults data={results} formData={formData} />
+              <CalculatorResults data={results} formData={formData} compareEnhanced={compareEnhanced} />
             </>
           )}
 

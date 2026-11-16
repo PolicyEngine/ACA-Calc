@@ -423,12 +423,11 @@
   min-width: 0;
 }
 
-/* The checkbox that adds H.R. 1834 to the results. */
+/* The form's checkbox that adds H.R. 1834 to the results. */
 .compare-toggle {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  margin: var(--pe-space-md) var(--pe-space-lg) 0;
   padding: 12px 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius-container);
