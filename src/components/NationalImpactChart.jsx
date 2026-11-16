@@ -16,6 +16,7 @@ import "./NationalImpactChart.css";
 // National figures from precompute_national.py (policyengine-us over its
 // default microdata).
 import national from "../data/national_impacts.json";
+import cbo from "../data/cbo_estimate.json";
 
 // The same scenario colors as the premium charts (src/index.css).
 const COLORS = {
@@ -89,43 +90,58 @@ function Header({ title, subtitle }) {
   );
 }
 
+// H.R. 1834's added cost, ours and CBO's, and the people receiving a credit.
+// Spending levels are left out: ours are below CBO's baseline (the
+// methodology section says why), so the change is what we report.
 function SpendingChart() {
   const year = national.year;
   const priorYear = String(year - 1);
-  const scenarios = [
-    { name: `${priorYear} current law`, values: national.current_law[priorYear], color: COLORS.prior },
-    { name: `${year} current law`, values: national.current_law[String(year)], color: COLORS.current },
-    { name: `${year} H.R. 1834`, values: national.enhanced, color: COLORS.revived },
-  ];
   const panels = [
-    { title: "Federal spending on premium tax credits", key: "total_ptc", format: billions },
-    { title: "People receiving a credit", key: "people_receiving", format: millions },
+    {
+      key: "cost",
+      title: `Added federal cost of H.R. 1834, ${year}`,
+      format: billions,
+      data: [
+        { name: "PolicyEngine, static", value: national.budget.federal_cost, color: COLORS.revived },
+        { name: `CBO, fiscal ${year}`, value: cbo.estimate.deficit_increase_fy2027, color: COLORS.current },
+      ],
+    },
+    {
+      key: "people",
+      title: "People receiving a credit",
+      format: millions,
+      data: [
+        { name: `${priorYear} current law`, value: national.current_law[priorYear].people_receiving, color: COLORS.prior },
+        { name: `${year} current law`, value: national.current_law[String(year)].people_receiving, color: COLORS.current },
+        { name: `${year} H.R. 1834`, value: national.enhanced.people_receiving, color: COLORS.revived },
+      ],
+    },
   ];
   return (
     <div className="national-chart">
-      <Header title="Premium tax credits nationwide" subtitle="PolicyEngine estimates, static" />
+      <Header
+        title="H.R. 1834 nationwide"
+        subtitle={`CBO's estimate includes people who would enroll in response and lower premiums; ours holds enrollment fixed`}
+      />
       <div className="national-chart-panels">
         {panels.map((panel) => (
-        <div key={panel.key} className="national-chart-panel">
-          <h4>{panel.title}</h4>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart
-              data={scenarios.map((s) => ({ name: s.name, value: s.values[panel.key], color: s.color }))}
-              margin={{ top: 24, right: 8, left: 0, bottom: 0 }}
-            >
-              <CartesianGrid {...GRID} vertical={false} />
-              <XAxis dataKey="name" {...AXIS} tick={{ ...AXIS.tick, fontSize: 11 }} interval={0} />
-              <YAxis tickFormatter={panel.format} {...AXIS} width={56} />
-              <Tooltip formatter={(value) => [panel.format(value), panel.title]} contentStyle={tooltipStyle} />
-              <Bar dataKey="value" isAnimationActive={false}>
-                {scenarios.map((s) => (
-                  <Cell key={s.name} fill={s.color} />
-                ))}
-                <LabelList dataKey="value" position="top" formatter={panel.format} {...labelStyle} />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+          <div key={panel.key} className="national-chart-panel">
+            <h4>{panel.title}</h4>
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={panel.data} margin={{ top: 24, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid {...GRID} vertical={false} />
+                <XAxis dataKey="name" {...AXIS} tick={{ ...AXIS.tick, fontSize: 11 }} interval={0} />
+                <YAxis tickFormatter={panel.format} {...AXIS} width={56} />
+                <Tooltip formatter={(value) => [panel.format(value), panel.title]} contentStyle={tooltipStyle} />
+                <Bar dataKey="value" isAnimationActive={false}>
+                  {panel.data.map((bar) => (
+                    <Cell key={bar.name} fill={bar.color} />
+                  ))}
+                  <LabelList dataKey="value" position="top" formatter={panel.format} {...labelStyle} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         ))}
       </div>
     </div>

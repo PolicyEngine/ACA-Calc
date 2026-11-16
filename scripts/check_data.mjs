@@ -46,6 +46,13 @@ check(
   `national cost ${national.budget.federal_cost} differs from H.R. 1834's credits less current law's (${cost})`
 );
 check(national.checks.spm_units_not_measured === 0, "some SPM units are not measured");
+// The national run limits Marketplace take-up above 400% FPL to tax units that
+// report individual coverage (precompute_national.py); a file without that
+// rule is from an older run.
+check(
+  Boolean(national.enrollment?.takeup_above_400 && national.enrollment?.current_law),
+  "national_impacts.json lacks the enrollment rule above 400% FPL: rerun precompute_national.py"
+);
 
 // 4. The calculator's stored examples match the Overview's table, at each
 // household's income, to the dollar a month.

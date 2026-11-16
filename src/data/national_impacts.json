@@ -23,25 +23,25 @@
   }
  },
  "enhanced": {
-  "total_ptc": 97487863808.0,
-  "tax_units_receiving": 8076385.0,
-  "people_receiving": 17735212.0,
-  "mean_benchmark_premium": 18843.123046875,
-  "mean_credit": 12070.73046875,
-  "mean_net_benchmark_premium": 6772.3935546875
+  "total_ptc": 78995259392.0,
+  "tax_units_receiving": 6691401.5,
+  "people_receiving": 13724165.0,
+  "mean_benchmark_premium": 16995.091796875,
+  "mean_credit": 11805.48828125,
+  "mean_net_benchmark_premium": 5189.6044921875
  },
  "budget": {
-  "federal_cost": 43493285888.0
+  "federal_cost": 25000675328.0
  },
  "recipients": {
-  "people_newly_receiving": 6720490.0
+  "people_newly_receiving": 2709442.0
  },
  "households": {
-  "gaining": 7669623.0,
-  "people_gaining": 28021108.24528867,
+  "gaining": 6338721.0,
+  "people_gaining": 23141578.59203452,
   "total": 125264040.0,
   "people": 347645433.4287665,
-  "mean_gain_among_gaining": 5670.21337890625
+  "mean_gain_among_gaining": 3944.11962890625
  },
  "by_fpl": [
   {
@@ -68,16 +68,16 @@
   {
    "band": "400% to 600%",
    "baseline_ptc": 0.0,
-   "reform_ptc": 19483113472.0,
+   "reform_ptc": 7360709632.0,
    "tax_units_baseline": 0.0,
-   "tax_units_reform": 1509365.75
+   "tax_units_reform": 577573.625
   },
   {
    "band": "Above 600%",
    "baseline_ptc": 0.0,
-   "reform_ptc": 11870474240.0,
+   "reform_ptc": 5500268544.0,
    "tax_units_baseline": 0.0,
-   "tax_units_reform": 854578.375
+   "tax_units_reform": 401387.0625
   }
  ],
  "deciles": [
@@ -105,60 +105,60 @@
   {
    "decile": 4,
    "baseline_mean": 79386.625,
-   "reform_mean": 79662.015625,
-   "absolute_change": 275.390625,
-   "relative_change": 0.3468980133618226
+   "reform_mean": 79646.46875,
+   "absolute_change": 259.84375,
+   "relative_change": 0.32731426735926866
   },
   {
    "decile": 5,
    "baseline_mean": 97305.671875,
-   "reform_mean": 97675.984375,
-   "absolute_change": 370.3125,
-   "relative_change": 0.38056620222067605
+   "reform_mean": 97567.3671875,
+   "absolute_change": 261.6953125,
+   "relative_change": 0.2689414783921094
   },
   {
    "decile": 6,
    "baseline_mean": 119508.953125,
-   "reform_mean": 120298.515625,
-   "absolute_change": 789.5625,
-   "relative_change": 0.6606722587337533
+   "reform_mean": 119932.890625,
+   "absolute_change": 423.9375,
+   "relative_change": 0.35473283709261844
   },
   {
    "decile": 7,
    "baseline_mean": 147391.5,
-   "reform_mean": 148193.78125,
-   "absolute_change": 802.28125,
-   "relative_change": 0.5443198895458693
+   "reform_mean": 147815.515625,
+   "absolute_change": 424.015625,
+   "relative_change": 0.28767983567573435
   },
   {
    "decile": 8,
    "baseline_mean": 182806.5625,
-   "reform_mean": 183553.53125,
-   "absolute_change": 746.96875,
-   "relative_change": 0.408611561743031
+   "reform_mean": 183155.734375,
+   "absolute_change": 349.171875,
+   "relative_change": 0.19100620362028853
   },
   {
    "decile": 9,
    "baseline_mean": 242757.28125,
-   "reform_mean": 243272.1875,
-   "absolute_change": 514.90625,
-   "relative_change": 0.2121074380750423
+   "reform_mean": 242950.75,
+   "absolute_change": 193.46875,
+   "relative_change": 0.07969637367983169
   },
   {
    "decile": 10,
    "baseline_mean": 540462.8125,
-   "reform_mean": 540564.5,
-   "absolute_change": 101.6875,
-   "relative_change": 0.01881489302282014
+   "reform_mean": 540517.9375,
+   "absolute_change": 55.125,
+   "relative_change": 0.010199591669408337
   }
  ],
  "winners_losers": {
   "all": {
    "lose_more_than_5pct": 0.0,
    "lose_less_than_5pct": 0.0,
-   "no_change": 0.9199181443200546,
-   "gain_less_than_5pct": 0.06009905629501063,
-   "gain_more_than_5pct": 0.019982799384934843
+   "no_change": 0.9338263356835644,
+   "gain_less_than_5pct": 0.058445103594285376,
+   "gain_more_than_5pct": 0.007728560722150285
   },
   "deciles": [
    {
@@ -173,73 +173,73 @@
     "decile": 2,
     "lose_more_than_5pct": 0.0,
     "lose_less_than_5pct": 0.0,
-    "no_change": 0.9772525514882854,
+    "no_change": 0.9772525518451234,
     "gain_less_than_5pct": 0.022747448109999263,
-    "gain_more_than_5pct": 4.017152242074928e-10
+    "gain_more_than_5pct": 4.4877479813736216e-11
    },
    {
     "decile": 3,
     "lose_more_than_5pct": 0.0,
     "lose_less_than_5pct": 0.0,
-    "no_change": 0.9442568949057577,
+    "no_change": 0.9442568980980265,
     "gain_less_than_5pct": 0.0554372894198411,
-    "gain_more_than_5pct": 0.0003058156744011801
+    "gain_more_than_5pct": 0.0003058124821322488
    },
    {
     "decile": 4,
     "lose_more_than_5pct": 0.0,
     "lose_less_than_5pct": 0.0,
-    "no_change": 0.8746240157933488,
-    "gain_less_than_5pct": 0.1201422422617057,
-    "gain_more_than_5pct": 0.005233741944945596
+    "no_change": 0.8763372126101185,
+    "gain_less_than_5pct": 0.1201422368863492,
+    "gain_more_than_5pct": 0.0035205505035323372
    },
    {
     "decile": 5,
     "lose_more_than_5pct": 0.0,
     "lose_less_than_5pct": 0.0,
-    "no_change": 0.8724966319057955,
-    "gain_less_than_5pct": 0.11486857692288324,
-    "gain_more_than_5pct": 0.0126347911713213
+    "no_change": 0.8802781537657526,
+    "gain_less_than_5pct": 0.11486857706747686,
+    "gain_more_than_5pct": 0.004853269166770569
    },
    {
     "decile": 6,
     "lose_more_than_5pct": 0.0,
     "lose_less_than_5pct": 0.0,
-    "no_change": 0.8647187133123577,
-    "gain_less_than_5pct": 0.08334842768108644,
-    "gain_more_than_5pct": 0.05193285900655581
+    "no_change": 0.8984689524868004,
+    "gain_less_than_5pct": 0.08132101109589941,
+    "gain_more_than_5pct": 0.02021003641730022
    },
    {
     "decile": 7,
     "lose_more_than_5pct": 0.0,
     "lose_less_than_5pct": 0.0,
-    "no_change": 0.8767357468240465,
-    "gain_less_than_5pct": 0.06599133340324094,
-    "gain_more_than_5pct": 0.05727291977271254
+    "no_change": 0.9126727112643274,
+    "gain_less_than_5pct": 0.06404815987137792,
+    "gain_more_than_5pct": 0.02327912886429477
    },
    {
     "decile": 8,
     "lose_more_than_5pct": 0.0,
     "lose_less_than_5pct": 0.0,
-    "no_change": 0.8907457109750014,
-    "gain_less_than_5pct": 0.06719122598957745,
-    "gain_more_than_5pct": 0.04206306303542121
+    "no_change": 0.9233150129710933,
+    "gain_less_than_5pct": 0.06128690675519979,
+    "gain_more_than_5pct": 0.015398080273706911
    },
    {
     "decile": 9,
     "lose_more_than_5pct": 0.0,
     "lose_less_than_5pct": 0.0,
-    "no_change": 0.9314749463798218,
-    "gain_less_than_5pct": 0.042495870429243764,
-    "gain_more_than_5pct": 0.0260291831909346
+    "no_change": 0.9535810412825725,
+    "gain_less_than_5pct": 0.039705616148826006,
+    "gain_more_than_5pct": 0.006713342568601443
    },
    {
     "decile": 10,
     "lose_more_than_5pct": 0.0,
     "lose_less_than_5pct": 0.0,
-    "no_change": 0.9714329585769867,
-    "gain_less_than_5pct": 0.024199235705532358,
-    "gain_more_than_5pct": 0.004367805717481055
+    "no_change": 0.9766625050960369,
+    "gain_less_than_5pct": 0.020324075357144054,
+    "gain_more_than_5pct": 0.0030134195468189185
    }
   ]
  },
@@ -247,9 +247,9 @@
   "spm": {
    "all": {
     "baseline_rate": 0.13666598498821259,
-    "reform_rate": 0.13466723263263702,
+    "reform_rate": 0.13466724753379822,
     "baseline_headcount": 47511308.0,
-    "reform_headcount": 46816448.0
+    "reform_headcount": 46816452.0
    },
    "child": {
     "baseline_rate": 0.17472374439239502,
@@ -270,21 +270,21 @@
     "reform_headcount": 6674871.0
    },
    "male": {
-    "baseline_rate": 0.13392029702663422,
+    "baseline_rate": 0.13392028212547302,
     "reform_rate": 0.13170772790908813,
-    "baseline_headcount": 22954986.0,
+    "baseline_headcount": 22954984.0,
     "reform_headcount": 22575736.0
    },
    "female": {
     "baseline_rate": 0.13933643698692322,
-    "reform_rate": 0.137545645236969,
+    "reform_rate": 0.1375456303358078,
     "baseline_headcount": 24556320.0,
-    "reform_headcount": 24240714.0
+    "reform_headcount": 24240712.0
    },
    "white": {
-    "baseline_rate": 0.10065335780382156,
+    "baseline_rate": 0.10065335035324097,
     "reform_rate": 0.10000480711460114,
-    "baseline_headcount": 21026152.0,
+    "baseline_headcount": 21026150.0,
     "reform_headcount": 20890672.0
    },
    "black": {
@@ -377,15 +377,34 @@
    "bottom_50_share": 0.1936855912208557
   },
   "reform": {
-   "gini": 0.46998709440231323,
-   "top_10_share": 0.3592710494995117,
-   "top_1_share": 0.09291694313287735,
-   "bottom_50_share": 0.19361525774002075
+   "gini": 0.4699997901916504,
+   "top_10_share": 0.35966089367866516,
+   "top_1_share": 0.09301207214593887,
+   "bottom_50_share": 0.19378840923309326
   }
  },
+ "enrollment": {
+  "current_law": {
+   "people_enrolled": 13724165.0,
+   "people_subsidized": 11014723.0,
+   "people_unsubsidized": 2709442.0,
+   "people_enrolled_above_400": 2621007.5
+  },
+  "takeup_above_400": {
+   "2026": {
+    "tax_units_switched_off": 1372327.0,
+    "tax_units_above_400_kept": 947394.6875
+   },
+   "2027": {
+    "tax_units_switched_off": 1405616.75,
+    "tax_units_above_400_kept": 987990.75
+   }
+  },
+  "rule": "Above 400% FPL, only tax units in which someone reported Marketplace or other individual coverage in the survey take up Marketplace coverage."
+ },
  "checks": {
-  "max_other_net_income_change": 542.9697265625,
-  "spm_resource_change": 43488403456.0,
+  "max_other_net_income_change": 83.6669921875,
+  "spm_resource_change": 25000675328.0,
   "spm_units_not_measured": 0
  }
 }

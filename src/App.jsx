@@ -18,6 +18,7 @@ import cliffDemoData from "./data/households/cliff_demo.json";
 import examples from "./data/households/examples.json";
 import schedules from "./data/contribution_schedules.json";
 import national from "./data/national_impacts.json";
+import cbo from "./data/cbo_estimate.json";
 
 const formatDollars = (value) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
@@ -204,11 +205,11 @@ Under H.R. 1834 there is no cliff. Above 400% FPL the household pays at most 8.5
     {
       id: "national_cost",
       title: "Cost and reach",
-      content: `PolicyEngine estimates that H.R. 1834 would raise federal spending on premium tax credits by **${billions(national.budget.federal_cost)}** in ${year}, from ${billions(lawNow.total_ptc)} under current law to ${billions(enhanced.total_ptc)}. Under current law, spending is ${billions(lawPrior.total_ptc)} in ${priorYear}.
+      content: `PolicyEngine estimates that H.R. 1834 would raise federal spending on premium tax credits by **${billions(national.budget.federal_cost)}** in ${year}. The estimate is static: it holds enrollment fixed, so it leaves out people who would start buying coverage when credits grow, and lower premiums as healthier people enroll.
 
-The number of people receiving a credit would rise from ${millions(lawNow.people_receiving)} to **${millions(enhanced.people_receiving)}**, including ${millions(national.recipients.people_newly_receiving)} who get no credit under current law.
+The Congressional Budget Office, whose estimate includes both, expects the bill to add **${billions(cbo.estimate.deficit_increase_fy2027)}** to the deficit in fiscal year ${year} and ${billions(cbo.estimate.deficit_increase_10_year)} over ${cbo.estimate.window}. In CBO's estimate, ${millions(cbo.estimate.insured_increase_2027)} more people would have health insurance in ${year}, and benchmark premiums would be ${share(-cbo.estimate.benchmark_premium_change_2027)} lower.
 
-Of the added spending, ${share(aboveCliff / national.budget.federal_cost, 0)} goes to tax units above 400% FPL.`,
+The number of people receiving a credit would rise from ${millions(lawNow.people_receiving)} to **${millions(enhanced.people_receiving)}**, including ${millions(national.recipients.people_newly_receiving)} who get no credit under current law. Of the added spending, ${share(aboveCliff / national.budget.federal_cost, 0)} goes to tax units above 400% FPL.`,
       chart: { type: "national", mode: "spending" },
     },
     {
@@ -250,6 +251,10 @@ The top 10%'s share of net income moves from ${share(inequalityBefore.top_10_sha
 
 The credit figures are the credit each tax unit uses: the credit it is eligible for, capped at the premium of the plan it enrolls in. Household net income counts that credit as a refundable tax credit, and the poverty measure counts it through the lower premiums enrollees pay.
 
+Above 400% FPL, the survey's marketplace take-up flags would make far more people unsubsidized marketplace buyers than CBO projects (${millions(cbo.baseline.unsubsidized_enrollment_2027)} unsubsidized enrollees at all incomes), and H.R. 1834 would give each of them a credit. So above 400% FPL we count as enrollees only households in which someone reported marketplace or other individual coverage in the survey: ${millions(national.enrollment.current_law.people_enrolled_above_400)} people in ${year}.
+
+Our current-law credits, ${billions(lawNow.total_ptc)} in ${year}, are below CBO's baseline of ${billions(cbo.baseline.credits_fy2027)} for fiscal year ${year}, and the survey's marketplace enrollees don't match CBO's projections, so we report the change H.R. 1834 makes rather than spending levels.
+
 The estimates are static: the same people enroll under each policy, so they leave out people who would start or stop buying coverage as credits change. Marketplace enrollment comes from the 2024 data.`,
       showCalculatorButton: true,
     },
@@ -271,7 +276,7 @@ function buildKeyFigures() {
     },
     {
       value: billions(national.budget.federal_cost),
-      label: `added federal spending on credits in ${year} under H.R. 1834`,
+      label: `added federal spending on credits in ${year} under H.R. 1834, PolicyEngine's static estimate`,
     },
     {
       value: millions(national.recipients.people_newly_receiving),

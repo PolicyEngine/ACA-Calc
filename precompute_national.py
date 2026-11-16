@@ -16,6 +16,15 @@ resources count the same credit through the marketplace premium net of it
 federal cost, and the change in household net income should match each
 household's change in the used credit; the checks report both.
 
+Enrollment above 400% FPL. The microdata's Marketplace take-up flags make
+about 6.7 million people above 400% FPL unsubsidized Marketplace buyers in
+2027, against CBO's 2.8 million unsubsidized enrollees at all incomes and
+KFF's 1.6 million 2025 sign-ups with income above 400% FPL; H.R. 1834 would
+give each of them a credit. So above 400% FPL only tax units in which someone
+reported Marketplace or other individual coverage in the survey take up
+(restrict_takeup below), in both simulations. Take-up at or below 400% FPL is
+the data's.
+
 Needs about 32 GB of memory: run it on Modal, not a laptop. Rerun after every
 policyengine-us pin.
 """
@@ -184,13 +193,72 @@ def poverty(groups, person_weight, baseline_poor, reform_poor):
     return result
 
 
+def takeup_mask():
+    """Take-up flags for each year, with tax units above 400% FPL that report
+    no Marketplace or other individual coverage switched off, and the counts
+    behind them. Computed in a simulation of its own, so the two simulations
+    that are compared calculate in their usual order."""
+    sim = Microsimulation(dataset_end_year=YEAR)
+    masks, counts = {}, {}
+    for year in (PRIOR_YEAR, YEAR):
+        takes_up = values(sim, "takes_up_aca_if_eligible", year).astype(bool)
+        above = values(sim, "aca_magi_fraction", year) > 4
+        reported = (
+            np.asarray(sim.calculate("has_marketplace_health_coverage_at_interview", year, map_to="tax_unit").values) > 0
+        ) | (
+            np.asarray(
+                sim.calculate(
+                    "has_non_marketplace_direct_purchase_health_coverage_at_interview", year, map_to="tax_unit"
+                ).values
+            )
+            > 0
+        )
+        masks[year] = takes_up & ~(above & ~reported)
+        weight = values(sim, "tax_unit_weight", year)
+        counts[str(year)] = {
+            "tax_units_switched_off": float(np.sum(weight[takes_up & above & ~reported])),
+            "tax_units_above_400_kept": float(np.sum(weight[takes_up & above & reported])),
+        }
+    del sim
+    gc.collect()
+    return masks, counts
+
+
+def restrict_takeup(sim, masks):
+    """Set the restricted take-up flags before anything is calculated."""
+    for year, mask in masks.items():
+        sim.set_input("takes_up_aca_if_eligible", year, mask)
+
+
+def enrollment(sim, year):
+    """People the simulation has buying Marketplace coverage: they pay an
+    age-rated premium and their tax unit takes up, with a premium above zero."""
+    tax_unit = sim.populations["tax_unit"]
+    pays = values(sim, "pays_aca_premium", year).astype(bool)
+    premium = tax_unit.project(values(sim, "selected_marketplace_plan_premium_proxy", year))
+    takes_up = tax_unit.project(values(sim, "takes_up_aca_if_eligible", year)).astype(bool)
+    credit = tax_unit.project(values(sim, "used_aca_ptc", year))
+    fpl = tax_unit.project(values(sim, "aca_magi_fraction", year))
+    weight = values(sim, "person_weight", year)
+    enrolled = pays & takes_up & (premium > 0)
+    return {
+        "people_enrolled": float(np.sum(weight[enrolled])),
+        "people_subsidized": float(np.sum(weight[enrolled & (credit > 0)])),
+        "people_unsubsidized": float(np.sum(weight[enrolled & (credit <= 0)])),
+        "people_enrolled_above_400": float(np.sum(weight[enrolled & (fpl > 4)])),
+    }
+
+
 def main():
     print(f"Running policyengine-us {version('policyengine-us')} over {DEFAULT_DATASET}")
+    masks, takeup_counts = takeup_mask()
+    print(f"  take-up above 400% FPL: {takeup_counts}")
 
     # Current law: everything the comparison needs, then free the simulation.
     # Net income first in each simulation, since some results depend on the
     # order variables are calculated in (policyengine-us #9740).
     baseline = Microsimulation(dataset_end_year=YEAR)
+    restrict_takeup(baseline, masks)
     net_income = values(baseline, "household_net_income", YEAR)
     current = credits(baseline, YEAR)
     print(f"  current law {YEAR}: {current['summary']}")
@@ -207,12 +275,15 @@ def main():
     is_male = values(baseline, "is_male", YEAR)
     race = values(baseline, "race", YEAR).astype(str)
     person_spm_unit = baseline.populations["spm_unit"].members_entity_id
+    baseline_enrollment = enrollment(baseline, YEAR)
+    print(f"  enrollment, current law {YEAR}: {baseline_enrollment}")
     prior = credits(baseline, PRIOR_YEAR)
     print(f"  current law {PRIOR_YEAR}: {prior['summary']}")
     del baseline
     gc.collect()
 
     reform = Microsimulation(reform=create_enhanced_ptc_reform(), dataset_end_year=YEAR)
+    restrict_takeup(reform, masks)
     reform_net_income = values(reform, "household_net_income", YEAR)
     # SPM resources count the credit through lower marketplace premiums.
     reform_resources = values(reform, "spm_unit_net_income", YEAR)
@@ -307,6 +378,14 @@ def main():
         "inequality": {
             "baseline": inequality(net_income, household_weight),
             "reform": inequality(reform_net_income, household_weight),
+        },
+        "enrollment": {
+            "current_law": baseline_enrollment,
+            "takeup_above_400": takeup_counts,
+            "rule": (
+                "Above 400% FPL, only tax units in which someone reported Marketplace or "
+                "other individual coverage in the survey take up Marketplace coverage."
+            ),
         },
         "checks": {
             "max_other_net_income_change": float(np.max(np.abs(other_income_change))),
