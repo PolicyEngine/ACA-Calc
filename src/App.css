@@ -11,7 +11,7 @@
    bar, so this header scrolls with the page. */
 .header {
   border-bottom: 1px solid var(--border);
-  padding: 40px 16px 0;
+  padding: 40px 16px 24px;
 }
 
 .header-content {
@@ -34,33 +34,38 @@
   color: var(--muted-foreground);
 }
 
+/* Pill tabs, as on the earlier version of the app. */
 .page-tabs {
   display: flex;
-  gap: 4px;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: 24px;
 }
 
 .page-tab {
-  padding: 10px 16px;
-  border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  background: none;
+  padding: 12px 28px;
+  border: 2px solid var(--border);
+  border-radius: 9999px;
+  background: var(--card);
   font-family: var(--font-sans);
   font-size: 1rem;
   font-weight: 600;
   color: var(--muted-foreground);
+  white-space: nowrap;
   cursor: pointer;
-  transition: color var(--pe-transition-fast), border-color var(--pe-transition-fast);
+  transition: color var(--pe-transition-fast), border-color var(--pe-transition-fast),
+    background-color var(--pe-transition-fast);
 }
 
 .page-tab:hover {
+  border-color: var(--primary);
   color: var(--primary);
 }
 
 .page-tab.active {
-  color: var(--primary);
-  border-bottom-color: var(--primary);
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-foreground, #fff);
 }
 
 .page-tab:focus-visible,
@@ -250,6 +255,7 @@
 @media (max-width: 640px) {
   .header {
     padding-top: 24px;
+    padding-bottom: 20px;
   }
 
   .header h1 {
@@ -273,7 +279,13 @@
     padding: 12px;
   }
 
+  .page-tabs {
+    gap: 6px;
+    margin-top: 20px;
+  }
+
   .page-tab {
-    padding: 10px 12px;
+    padding: 8px 14px;
+    font-size: 0.875rem;
   }
 }
