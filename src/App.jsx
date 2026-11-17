@@ -377,11 +377,12 @@ function Chart({ chart }) {
 // enhancements and their expiry, as the earlier version of the app explained
 // them.
 const LEDE =
-  "The Affordable Care Act's **premium tax credits** lower premiums for health insurance bought through the marketplace. " +
-  "They cap what a household pays for a **benchmark plan**, the second-lowest-cost silver plan where it lives, at a share of its income, and pay the difference when the plan costs more. " +
-  "From 2021 through 2025, the American Rescue Plan Act and the Inflation Reduction Act enhanced the credits, lowering that share at every income, capping it at 8.5%, and extending the credits above 400% of the federal poverty line (FPL). " +
+  "The Affordable Care Act's **premium tax credits** (PTCs) reduce premiums for enrollees who purchase health insurance through the marketplace. " +
+  "The PTCs cap how much of their income enrollees are required to pay for a **benchmark health plan**—the second-lowest-cost silver plan (SLCSP) in their area. " +
+  "If the benchmark plan costs more than the required contribution, the government pays the difference as a tax credit. " +
+  "The American Rescue Plan Act (ARPA) of 2021 and the Inflation Reduction Act (IRA) of 2022 enhanced the subsidies from 2021 through 2025. " +
   "The enhancements expired at the end of 2025. " +
-  "Under the original rules, which returned in 2026, households pay a larger share of their income for the benchmark plan, and those above 400% FPL get no credit.";
+  "Under the original rules, which returned in 2026, enrollees pay a larger share of their income for the benchmark plan, and those above 400% of the federal poverty line (FPL) get no credit.";
 
 // The story's parts, each opening with a heading.
 const PARTS = {
