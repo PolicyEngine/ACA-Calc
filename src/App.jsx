@@ -4,9 +4,9 @@ import ExampleHouseholdsTable from "./components/ExampleHouseholdsTable";
 import PremiumChart from "./components/PremiumChart";
 import MarginalRateChart from "./components/MarginalRateChart";
 import Calculator from "./components/Calculator";
-import StoryRail from "./components/StoryRail";
-import useActiveSection from "./components/useActiveSection";
 import Methodology from "./components/Methodology";
+import useActiveSection from "./components/useActiveSection";
+import useMediaQuery from "./components/useMediaQuery";
 import { Reveal } from "./components/Motion";
 import "./App.css";
 
@@ -282,7 +282,10 @@ const PARTS = {
 function App() {
   const [currentPage, setCurrentPage] = useState(() => getPageFromHash());
   const [embedded] = useState(() => isEmbedded());
-  const activeSection = useActiveSection(SECTIONS, currentPage === "main");
+  // The split layout's breakpoint (App.css): wide screens pin the chart.
+  const wide = useMediaQuery("(min-width: 1025px)");
+  const activeId = useActiveSection(SECTIONS, currentPage === "main" && wide);
+  const activeSection = SECTIONS.find((section) => section.id === activeId) || SECTIONS[0];
 
   // Sync URL hash with page state
   useEffect(() => {
@@ -316,38 +319,56 @@ function App() {
   }, [currentPage]);
 
   // The Overview: one column, each section's chart under its text.
+  // The Overview, as the earlier version of the app laid it out: on wide
+  // screens the active section's chart stays pinned on the left while the
+  // text scrolls past in cards on the right; on narrower screens, one column
+  // with each chart under its text.
   const renderMainPage = () => (
-    <div className="story-layout">
-    <StoryRail sections={SECTIONS} parts={PARTS} active={activeSection} />
-    <main className="story">
+    <div className="overview">
       <p className="story-lede">
         <Inline text={LEDE} />
       </p>
-      {SECTIONS.map((section) => (
-        <section key={section.id} id={section.id} className="story-section">
-          {PARTS[section.id] && <p className="story-part">{PARTS[section.id]}</p>}
-          <h2>{section.title}</h2>
-          <div className="story-prose">
-            <Prose content={section.content} />
+      <div className="scrolly">
+        {wide && (
+          <div className="scrolly-chart">
+            <figure className="scrolly-sticky" aria-label={activeSection.title}>
+              <div key={activeSection.id} className="scrolly-swap">
+                <Chart chart={activeSection.chart} />
+              </div>
+            </figure>
           </div>
-          {section.chart && (
-            <Reveal as="figure" className="story-figure">
-              <Chart chart={section.chart} />
-            </Reveal>
-          )}
-        </section>
-      ))}
-      <div className="story-ctas">
-        <button type="button" onClick={() => navigateToPage("calculator")} className="story-cta">
-          Calculate your household
-          <ArrowIcon />
-        </button>
-        <button type="button" onClick={() => navigateToPage("methodology")} className="story-cta secondary">
-          How we estimated this
-          <ArrowIcon />
-        </button>
+        )}
+        <main className="scrolly-text">
+          {SECTIONS.map((section) => (
+            <section
+              key={section.id}
+              id={section.id}
+              className={`story-section scroll-card${wide && section.id === activeSection.id ? " active" : ""}`}
+            >
+              {PARTS[section.id] && <p className="story-part">{PARTS[section.id]}</p>}
+              <h2>{section.title}</h2>
+              <div className="story-prose">
+                <Prose content={section.content} />
+              </div>
+              {!wide && section.chart && (
+                <Reveal as="figure" className="story-figure">
+                  <Chart chart={section.chart} />
+                </Reveal>
+              )}
+            </section>
+          ))}
+          <div className="story-ctas">
+            <button type="button" onClick={() => navigateToPage("calculator")} className="story-cta">
+              Calculate your household
+              <ArrowIcon />
+            </button>
+            <button type="button" onClick={() => navigateToPage("methodology")} className="story-cta secondary">
+              How we estimated this
+              <ArrowIcon />
+            </button>
+          </div>
+        </main>
       </div>
-    </main>
     </div>
   );
 

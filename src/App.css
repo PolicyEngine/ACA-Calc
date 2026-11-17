@@ -78,7 +78,8 @@
 }
 
 /* The Overview: a single column of text with each chart under its section,
-   and on wide screens the section rail beside it (StoryRail.css). */
+   and on the Methodology tab, on wide screens, the section rail beside it
+   (StoryRail.css). */
 .story-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 760px) minmax(0, 1fr);
@@ -238,6 +239,130 @@
   font-family: var(--font-mono);
   font-size: 0.875em;
   overflow-wrap: anywhere;
+}
+
+/* The Overview's split layout, as on the earlier version of the app: on wide
+   screens the active section's chart is pinned on the left (55%) and the text
+   scrolls past in cards on the right (45%). The opening paragraph sits above,
+   at reading width. Below 1025px (useMediaQuery in App.jsx) it is one column,
+   each chart under its text. */
+.overview {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px 64px;
+}
+
+.overview .story-lede {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.scrolly {
+  display: grid;
+  grid-template-columns: minmax(0, 55fr) minmax(0, 45fr);
+  gap: 32px;
+  padding-top: 32px;
+}
+
+.scrolly-chart {
+  position: relative;
+}
+
+/* Below the PolicyEngine shell's sticky bar. */
+.scrolly-sticky {
+  position: sticky;
+  top: calc(var(--spacing-header, 58px) + 24px);
+  max-height: calc(100vh - var(--spacing-header, 58px) - 48px);
+  overflow: auto;
+  margin: 0;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--pe-radius-xl);
+  background: var(--card);
+  box-shadow: var(--pe-shadow-lg);
+}
+
+/* Each new chart fades in. */
+.scrolly-swap {
+  animation: scrolly-fade var(--pe-transition-slow);
+}
+
+@keyframes scrolly-fade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Room below the last card, so it can reach the line that makes a section
+   active (40% down the screen, useActiveSection). */
+.scrolly-text {
+  padding-bottom: 40vh;
+}
+
+/* A section as a card. Cards other than the active one are dimmed, but kept
+   readable. */
+.story-section.scroll-card {
+  min-height: 60vh;
+  margin-bottom: 24px;
+  padding: 28px;
+  border: 2px solid transparent;
+  border-radius: var(--pe-radius-xl);
+  background: var(--card);
+  box-shadow: var(--pe-shadow-md);
+  opacity: 0.7;
+  transition: opacity var(--pe-transition-base), border-color var(--pe-transition-base),
+    box-shadow var(--pe-transition-base);
+}
+
+.story-section.scroll-card.active {
+  opacity: 1;
+  border-color: var(--primary);
+  box-shadow: var(--pe-shadow-md), 0 0 0 4px var(--pe-teal-50);
+}
+
+.scroll-card .story-prose p:last-child,
+.scroll-card .story-prose ul:last-child {
+  margin-bottom: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrolly-swap {
+    animation: none;
+  }
+
+  .story-section.scroll-card {
+    transition: none;
+  }
+}
+
+@media (max-width: 1024px) {
+  .scrolly {
+    display: block;
+    padding-top: 24px;
+  }
+
+  .scrolly-text {
+    padding-bottom: 0;
+  }
+
+  .story-section.scroll-card {
+    min-height: 0;
+    padding: 20px;
+    opacity: 1;
+  }
+
+  /* The chart under the text, inside the card. */
+  .scroll-card .story-figure {
+    margin-top: 16px;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+  }
 }
 
 /* Calculator page */
