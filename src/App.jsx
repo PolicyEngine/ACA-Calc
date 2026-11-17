@@ -1,41 +1,29 @@
 import { useState, useEffect } from "react";
 import ContributionScheduleChart from "./components/ContributionScheduleChart";
 import ExampleHouseholdsTable from "./components/ExampleHouseholdsTable";
-import NationalImpactChart from "./components/NationalImpactChart";
 import PremiumChart from "./components/PremiumChart";
 import MarginalRateChart from "./components/MarginalRateChart";
 import Calculator from "./components/Calculator";
 import StoryRail from "./components/StoryRail";
 import useActiveSection from "./components/useActiveSection";
 import Methodology from "./components/Methodology";
-import { CountUp, Reveal } from "./components/Motion";
+import { Reveal } from "./components/Motion";
 import "./App.css";
 
 // Precomputed with policyengine-us: the Pennsylvania example across incomes
 // (precompute_cliff_household.py), four example households
-// (precompute_households.py), the contribution schedules
-// (precompute_contribution_schedules.py) and the national figures
-// (precompute_national.py).
+// (precompute_households.py) and the contribution schedules
+// (precompute_contribution_schedules.py). The national estimates
+// (precompute_national.py, national_impacts.json) are held off the page until
+// they are validated.
 import cliffDemoData from "./data/households/cliff_demo.json";
 import examples from "./data/households/examples.json";
 import schedules from "./data/contribution_schedules.json";
-import national from "./data/national_impacts.json";
-import cbo from "./data/cbo_estimate.json";
 
 const formatDollars = (value) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
 const monthly = (annual) => formatDollars(annual / 12);
-const percentChange = (from, to, digits = 1) => {
-  const change = (100 * (to - from)) / from;
-  return `${change >= 0 ? "+" : "−"}${Math.abs(change).toFixed(digits)}%`;
-};
-const billions = (value) => `$${(value / 1e9).toFixed(1)} billion`;
-const millions = (value) => `${(value / 1e6).toFixed(1)} million`;
-// A count of people: millions from a million up, else to the nearest thousand.
-const people = (value) =>
-  value >= 1e6 ? millions(value) : (Math.round(value / 1000) * 1000).toLocaleString("en-US");
 const share = (value, digits = 1) => `${(100 * value).toFixed(digits)}%`;
-const ordinal = (n) => `${n}${{ 1: "st", 2: "nd", 3: "rd" }[n] || "th"}`;
 
 // The lowest and highest share of income a schedule charges where it gives a credit.
 const rateRange = (key) => {
@@ -101,38 +89,12 @@ function buildSections() {
     (100 * (revivedEnd - 2000)) / cliffDemoData.fpl
   );
 
-  // National figures.
-  const lawPrior = national.current_law[String(priorYear)];
-  const lawNow = national.current_law[String(year)];
-  const enhanced = national.enhanced;
-  const benchmarkRise =
-    (100 * (lawNow.mean_benchmark_premium - lawPrior.mean_benchmark_premium)) /
-    lawPrior.mean_benchmark_premium;
-  const aboveCliff = national.by_fpl
-    .filter((band) => band.band.startsWith("400%") || band.band.startsWith("Above"))
-    .reduce((sum, band) => sum + band.reform_ptc - band.baseline_ptc, 0);
-  const deciles = national.deciles;
-  const largestGain = deciles.reduce((a, b) => (b.absolute_change > a.absolute_change ? b : a));
-  const largestShare = deciles.reduce((a, b) => (b.relative_change > a.relative_change ? b : a));
-  const decilesGaining = deciles.filter((row) => row.absolute_change > 0).length;
-  const winners = national.winners_losers.all;
-  const gaining = winners.gain_more_than_5pct + winners.gain_less_than_5pct;
-  const losing = winners.lose_more_than_5pct + winners.lose_less_than_5pct;
-  const poverty = national.poverty.spm;
-  const deep = national.poverty.deep;
-  const povertyChange = (group) =>
-    percentChange(group.baseline_rate, group.reform_rate);
-  const lifted = poverty.all.baseline_headcount - poverty.all.reform_headcount;
-  const { baseline: inequalityBefore, reform: inequalityAfter } = national.inequality;
-
   return [
     // PART 1: 2027 premiums under current law
     {
       id: "premiums",
       title: `Benchmark premiums rise in ${year}`,
-      content: `For ${year}, benchmark premiums rise for each of these four households, by **${Math.min(...benchmarkChanges).toFixed(1)}%** to **${Math.max(...benchmarkChanges).toFixed(1)}%**. The model's benchmark premiums for ${priorYear} and ${year} come from KFF's premium data for each rating area.
-
-Across all tax units receiving a credit, PolicyEngine estimates the average benchmark premium at ${monthly(lawNow.mean_benchmark_premium)}/month in ${year}, against ${monthly(lawPrior.mean_benchmark_premium)} in ${priorYear}, **an average ${benchmarkRise >= 0 ? "increase" : "decrease"} of ${Math.abs(benchmarkRise).toFixed(1)}%**.`,
+      content: `For ${year}, benchmark premiums rise for each of these four households, by **${Math.min(...benchmarkChanges).toFixed(1)}%** to **${Math.max(...benchmarkChanges).toFixed(1)}%**. The model's benchmark premiums for ${priorYear} and ${year} come from KFF's premium data for each rating area.`,
       chart: { type: "examples", view: "benchmark" },
     },
     {
@@ -201,82 +163,10 @@ Under current law, the Pennsylvania adult's credit ends at 400% FPL (${formatDol
 Under H.R. 1834 there is no cliff. Above 400% FPL the household pays at most 8.5% of its income for the benchmark plan, so each extra dollar lowers its credit by 8.5 cents. Its marginal tax rate is **${pointsHigher.toFixed(1)} points higher** than under current law at each income from 400% FPL until the credit ends at about ${formatDollars(revivedEnd)}; beyond that, the two are the same.`,
       chart: { type: "mtr" },
     },
-
-    // PART 3: National effects
-    {
-      id: "national_cost",
-      title: "Cost and reach",
-      content: `PolicyEngine estimates that H.R. 1834 would raise federal spending on premium tax credits by **${billions(national.budget.federal_cost)}** in ${year}. The estimate is static: it holds enrollment fixed, so it leaves out people who would start buying coverage when credits grow, and lower premiums as healthier people enroll.
-
-The Congressional Budget Office, whose estimate includes both, expects the bill to add **${billions(cbo.estimate.deficit_increase_fy2027)}** to the deficit in fiscal year ${year} and ${billions(cbo.estimate.deficit_increase_10_year)} over ${cbo.estimate.window}. In CBO's estimate, ${millions(cbo.estimate.insured_increase_2027)} more people would have health insurance in ${year}, and benchmark premiums would be ${share(-cbo.estimate.benchmark_premium_change_2027)} lower. The Methodology tab compares the two estimates.
-
-The number of people receiving a credit would rise from ${millions(lawNow.people_receiving)} to **${millions(enhanced.people_receiving)}**, including ${millions(national.recipients.people_newly_receiving)} who get no credit under current law. Of the added spending, ${share(aboveCliff / national.budget.federal_cost, 0)} goes to tax units above 400% FPL.`,
-      chart: { type: "national", mode: "spending" },
-    },
-    {
-      id: "national_deciles",
-      title: "Gains by income decile",
-      content: `Ranking households by net income into deciles of equal population, average net income rises in ${decilesGaining} of 10 deciles.
-
-The average gain is largest in the **${ordinal(largestGain.decile)} decile**, at ${formatDollars(largestGain.absolute_change)} a year. Relative to net income, it is largest in the ${ordinal(largestShare.decile)} decile, at ${largestShare.relative_change.toFixed(2)}%.`,
-      chart: { type: "national", mode: "deciles" },
-    },
-    {
-      id: "national_winners",
-      title: "Who gains",
-      content: `**${share(gaining)}** of people live in households whose net income rises under H.R. 1834; ${share(winners.gain_more_than_5pct)} gain more than 5%.
-
-${losing > 0 ? `${share(losing)} of people live in households whose net income falls.` : "No household's net income falls: the bill only raises credits."} The rest see no change: no one in their household gets a credit under either policy.`,
-      chart: { type: "national", mode: "winners" },
-    },
-    {
-      id: "national_poverty",
-      title: "Poverty",
-      content: `The Supplemental Poverty Measure subtracts what households pay for health coverage, so a larger credit, which lowers the premiums enrollees pay, raises their resources. H.R. 1834 changes the poverty rate from ${share(poverty.all.baseline_rate, 2)} to **${share(poverty.all.reform_rate, 2)}** (${povertyChange(poverty.all)}): ${people(Math.abs(lifted))} ${lifted >= 0 ? "fewer" : "more"} people in poverty.
-
-By age, poverty changes ${povertyChange(poverty.child)} for children, ${povertyChange(poverty.adult)} for adults 18 to 64 and ${povertyChange(poverty.senior)} for seniors. Deep poverty, below half the poverty line, changes ${povertyChange(deep.all)}.`,
-      chart: { type: "national", mode: "poverty" },
-    },
-    {
-      id: "national_inequality",
-      title: "Inequality",
-      content: `The Gini index of household net income moves from ${inequalityBefore.gini.toFixed(4)} to **${inequalityAfter.gini.toFixed(4)}** (${percentChange(inequalityBefore.gini, inequalityAfter.gini, 2)}).
-
-The top 10%'s share of net income moves from ${share(inequalityBefore.top_10_share, 2)} to ${share(inequalityAfter.top_10_share, 2)}, and the top 1%'s from ${share(inequalityBefore.top_1_share, 2)} to ${share(inequalityAfter.top_1_share, 2)}.`,
-      chart: { type: "national", mode: "inequality" },
-    },
   ];
 }
 
 const SECTIONS = buildSections();
-
-// The figures the Overview opens with, from the national estimates. Each
-// tile's accent is its scenario's chart color: 2027 current law or H.R. 1834.
-function buildKeyFigures() {
-  const year = national.year;
-  const prior = national.current_law[String(year - 1)];
-  const now = national.current_law[String(year)];
-  const rise = (100 * (now.mean_benchmark_premium - prior.mean_benchmark_premium)) / prior.mean_benchmark_premium;
-  return [
-    {
-      value: `${rise.toFixed(1)}%`,
-      label: `average rise in benchmark premiums from ${year - 1} to ${year}, for tax units with a credit`,
-      scenario: "current",
-    },
-    {
-      value: billions(national.budget.federal_cost),
-      label: `added federal spending on credits in ${year} under H.R. 1834, PolicyEngine's static estimate`,
-      scenario: "reform",
-    },
-    {
-      value: millions(national.recipients.people_newly_receiving),
-      label: `more people with a credit in ${year} under H.R. 1834`,
-      scenario: "reform",
-    },
-  ];
-}
-
-const KEY_FIGURES = buildKeyFigures();
 
 // URL routing helpers. The Explore Households page is gone; its old links
 // open the Overview.
@@ -367,8 +257,6 @@ function Chart({ chart }) {
           title={`Marginal tax rate of a ${cliffDemoData.household_info.age}-year-old in ${cliffDemoData.household_info.location}, ${cliffDemoData.year}`}
         />
       );
-    case "national":
-      return <NationalImpactChart mode={chart.mode} />;
     default:
       return null;
   }
@@ -389,7 +277,6 @@ const LEDE =
 const PARTS = {
   premiums: `Premiums in ${examples.year} under current law`,
   enhanced: "Reviving the enhanced credits",
-  national_cost: "National effects",
 };
 
 function App() {
@@ -436,16 +323,6 @@ function App() {
       <p className="story-lede">
         <Inline text={LEDE} />
       </p>
-      <section className="key-figures" aria-label="Key figures">
-        {KEY_FIGURES.map((figure) => (
-          <div key={figure.label} className={`key-figure ${figure.scenario}`}>
-            <p className="key-figure-value">
-              <CountUp value={figure.value} />
-            </p>
-            <p className="key-figure-label">{figure.label}</p>
-          </div>
-        ))}
-      </section>
       {SECTIONS.map((section) => (
         <section key={section.id} id={section.id} className="story-section">
           {PARTS[section.id] && <p className="story-part">{PARTS[section.id]}</p>}

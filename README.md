@@ -9,7 +9,7 @@ How ACA marketplace premiums change from 2026 to 2027 under current law, and wha
 The American Rescue Plan Act enhanced ACA premium tax credits for 2021 and 2022, and the Inflation Reduction Act extended them through 2025. They expired after 2025, so 2026 and 2027 coverage follows the original ACA schedule. H.R. 1834, which passed the House on January 8, 2026 and has not been enacted, would revive them for 2026 through 2028.
 
 The app has two pages:
-- **Overview**: how benchmark premiums rise in 2027, who pays the increase under current law, what H.R. 1834 would mean for four example households, and its national effects in 2027 (cost, people receiving credits, gains by income decile, winners, poverty and inequality).
+- **Overview**: how benchmark premiums rise in 2027, who pays the increase under current law, and what H.R. 1834 would mean for four example households.
 - **Calculator**: what a household would pay for its benchmark plan, and its credit, in 2026 and 2027 under current law and in 2027 under H.R. 1834.
 
 **Key Differences:**
@@ -104,7 +104,8 @@ policyengine-us. Rerun the scripts after every pin:
 - `precompute_households.py`: four example households at one income each
 - `precompute_national.py`: the national effects of H.R. 1834 in 2027, over
   policyengine-us's default microdata. It needs about 32 GB of memory, so run
-  it on Modal or another large machine.
+  it on Modal or another large machine. The Overview doesn't show these
+  figures until they are validated against administrative data.
 
 ## Deploying the API
 

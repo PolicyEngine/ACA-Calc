@@ -103,56 +103,6 @@
   color: var(--color-gray-900);
 }
 
-/* The figures the story opens with. */
-.key-figures {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-  padding-top: 24px;
-}
-
-/* White tiles with a top edge in the scenario's chart color. */
-.key-figure {
-  position: relative;
-  overflow: hidden;
-  padding: 20px 16px 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--pe-radius-xl);
-  background: var(--card);
-  box-shadow: var(--pe-shadow-md);
-}
-
-.key-figure::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto;
-  height: 4px;
-  background: var(--figure-accent, var(--primary));
-}
-
-.key-figure.current {
-  --figure-accent: var(--pe-current);
-}
-
-.key-figure.reform {
-  --figure-accent: var(--pe-reform);
-}
-
-.key-figure-value {
-  font-size: 2rem;
-  line-height: 1.2;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--color-gray-900);
-}
-
-.key-figure-label {
-  margin-top: 4px;
-  font-size: 0.875rem;
-  line-height: 1.4;
-  color: var(--color-gray-700);
-}
-
 .story-section {
   padding-top: 40px;
   scroll-margin-top: 72px;
