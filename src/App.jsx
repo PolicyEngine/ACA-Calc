@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import ContributionScheduleChart from "./components/ContributionScheduleChart";
 import ExampleHouseholdsTable from "./components/ExampleHouseholdsTable";
-import HouseholdYearTable, { householdAt } from "./components/HouseholdYearTable";
+import HouseholdYearTable from "./components/HouseholdYearTable";
 import PremiumChart from "./components/PremiumChart";
 import MarginalRateChart from "./components/MarginalRateChart";
 import Calculator from "./components/Calculator";
@@ -53,12 +53,13 @@ function buildSections() {
   const [min2026, max2026] = rateRange(`current_${priorYear}`);
   const [minNow, maxNow] = rateRange(`current_${year}`);
 
-  // The same Pennsylvania adult at two incomes, below and above 400% FPL
+  // The two examples the story follows, below and above 400% FPL
   // (HouseholdYearTable shows the same two).
-  const below = householdAt(50000);
-  const above = householdAt(household.pennsylvania_single.income);
-  const aboutFpl = (income, step) => Math.round((100 * income) / cliffDemoData.fpl / step) * step;
+  const below = { ...texas, income: household.texas_single.income };
+  const above = { ...pennsylvania, income: household.pennsylvania_single.income };
+  const aboutFpl = (scenario, step) => Math.round(scenario.fpl_percent / step) * step;
   const shareOfIncome = (value, income) => `${((100 * value) / income).toFixed(2)}%`;
+  const rise = (from, to) => `${monthly(to - from)} (${((100 * (to - from)) / from).toFixed(1)}%)`;
 
   // The Pennsylvania example across incomes: where current law's credit ends,
   // and where H.R. 1834's would: the income at which the enhanced schedule's
@@ -132,20 +133,22 @@ The IRS sets the shares each year: **${min2026}%** to **${max2026}%** of income 
     // PART 2: A household facing the 2027 increase
     {
       id: "household_prior",
-      title: "Example: two middle-income households",
-      content: `Consider two ${cliffDemoData.household_info.age}-year-old single adults in Lebanon County, Pennsylvania: one earning **${formatDollars(below.income)}** a year, about ${aboutFpl(below.income, 5)}% of the federal poverty line, and one earning **${formatDollars(above.income)}**, about ${aboutFpl(above.income, 50)}%.
+      title: "Example: two households",
+      content: `Consider two single adults: a 40-year-old in Harris County, Texas, earning **${formatDollars(below.income)}** a year, about ${aboutFpl(below.current, 10)}% of the federal poverty line, and a ${cliffDemoData.household_info.age}-year-old in Lebanon County, Pennsylvania, earning **${formatDollars(above.income)}**, about ${aboutFpl(above.current, 50)}%.
 
-In ${priorYear} the benchmark plan costs both **${monthly(below.prior.slcsp)}/month**. The ${formatDollars(below.income)} household gets a credit of ${monthly(below.prior.ptc)}/month and pays ${monthly(below.prior.net)}/month, ${shareOfIncome(below.prior.net, below.income)} of its income. The ${formatDollars(above.income)} household, above 400% FPL, gets no credit and pays the whole premium.`,
+In ${priorYear} the Texas adult's benchmark plan costs ${monthly(below.prior.slcsp)}/month. Its credit of ${monthly(below.prior.ptc)}/month leaves it paying **${monthly(below.prior.net_premium)}/month**, ${shareOfIncome(below.prior.net_premium, below.income)} of its income.
+
+The Pennsylvania adult's benchmark plan costs ${monthly(above.prior.slcsp)}/month. Above 400% FPL, it gets no credit and pays the whole premium.`,
       chart: { type: "household", columns: ["prior"] },
     },
     {
       id: "household_current",
-      title: `${year}: the premium rises again`,
-      content: `For ${year}, the benchmark premium rises by ${monthly(above.current.slcsp - above.prior.slcsp)} (${((100 * (above.current.slcsp - above.prior.slcsp)) / above.prior.slcsp).toFixed(1)}%), to **${monthly(above.current.slcsp)}/month**.
+      title: `${year}: premiums rise again`,
+      content: `For ${year}, both benchmark premiums rise: the Texas adult's by ${rise(below.prior.slcsp, below.current.slcsp)}, to ${monthly(below.current.slcsp)}/month, and the Pennsylvania adult's by ${rise(above.prior.slcsp, above.current.slcsp)}, to ${monthly(above.current.slcsp)}/month.
 
-Below 400% FPL, the credit absorbs the increase. The ${formatDollars(below.income)} household's credit rises by ${monthly(below.current.ptc - below.prior.ptc)} to ${monthly(below.current.ptc)}/month, so what it pays rises only ${monthly(below.current.net - below.prior.net)}, to **${monthly(below.current.net)}/month**, because its share of income rises from ${shareOfIncome(below.prior.net, below.income)} to ${shareOfIncome(below.current.net, below.income)}.
+Below 400% FPL, the credit absorbs the increase. The Texas adult's credit rises to ${monthly(below.current.ptc)}/month, so what it pays rises only ${monthly(below.current.net_premium - below.prior.net_premium)}, to **${monthly(below.current.net_premium)}/month**, as its share of income moves from ${shareOfIncome(below.prior.net_premium, below.income)} to ${shareOfIncome(below.current.net_premium, below.income)}.
 
-Above 400% FPL, the ${formatDollars(above.income)} household still gets no credit, so it pays the whole increase: **${monthly(above.current.net)}/month**, ${share(above.current.net / above.income, 0)} of its income.
+Above 400% FPL, the Pennsylvania adult still gets no credit, so it pays the whole increase: **${monthly(above.current.net_premium)}/month**, ${share(above.current.net_premium / above.income, 0)} of its income.
 
 Lebanon County is in Pennsylvania's highest-cost rating area in the model's ${year} premium data. The model's benchmark premiums for ${priorYear} and ${year} come from KFF's premium data for each rating area.`,
       chart: { type: "household", columns: ["prior", "current"] },
@@ -157,7 +160,7 @@ Lebanon County is in Pennsylvania's highest-cost rating area in the model's ${ye
       title: "What a clean extension would do",
       content: `A clean extension of the enhanced credits would bring back the 2021–2025 schedule unchanged. H.R. 1834 would do this for 2026 through 2028. It passed the House on January 8, 2026; it has not been enacted.
 
-Under the extension, neither household would pay more than 8.5% of its income for the benchmark plan in ${year}. The ${formatDollars(below.income)} household would pay **${monthly(below.revived.net)}/month**, against ${monthly(below.current.net)} under current law. The ${formatDollars(above.income)} household would pay **${monthly(above.revived.net)}/month**, with a credit of ${monthly(above.revived.ptc)}/month, against ${monthly(above.current.net)}/month and no credit under current law.`,
+Under the extension, neither household would pay more than 8.5% of its income for the benchmark plan in ${year}. The Texas adult would pay **${monthly(below.revived.net_premium)}/month**, against ${monthly(below.current.net_premium)} under current law. The Pennsylvania adult would pay **${monthly(above.revived.net_premium)}/month**, with a credit of ${monthly(above.revived.ptc)}/month, against ${monthly(above.current.net_premium)}/month and no credit under current law.`,
       chart: { type: "household", columns: ["prior", "current", "revived"] },
     },
     {
@@ -185,9 +188,9 @@ Under the extension there is no cliff. Above 400% FPL the household pays at most
       title: "Four example households",
       content: `Benchmark premiums rise in ${year} for each of four example households, by **${Math.min(...benchmarkChanges).toFixed(1)}%** to **${Math.max(...benchmarkChanges).toFixed(1)}%**.
 
-Below 400% FPL, the credit grows with the premium, so what households pay barely changes: the Texas adult earning ${formatDollars(household.texas_single.income)} pays ${monthly(texas.current.net_premium)}/month for the benchmark plan in ${year}, against ${monthly(texas.prior.net_premium)} in ${priorYear}, and the Florida family earning ${formatDollars(household.florida_family.income)} pays ${monthly(florida.current.net_premium)}, against ${monthly(florida.prior.net_premium)}.
+Besides the Texas and Pennsylvania adults, the Florida family of four earning ${formatDollars(household.florida_family.income)}, below 400% FPL, pays ${monthly(florida.current.net_premium)}/month for the benchmark plan in ${year}, against ${monthly(florida.prior.net_premium)} in ${priorYear}: its credit grows with the premium.
 
-Above 400% FPL, the California couple in their 60s earning ${formatDollars(household.california_couple.income)} pays the whole premium, **${monthly(california.current.net_premium)}/month**: ${share(california.current.net_premium / household.california_couple.income, 0)} of its income. Like the Pennsylvania adult, it lives in its state's highest-cost rating area in the model's ${year} premium data.
+The California couple in their 60s earning ${formatDollars(household.california_couple.income)}, just above 400% FPL, pays the whole premium, **${monthly(california.current.net_premium)}/month**: ${share(california.current.net_premium / household.california_couple.income, 0)} of its income. Like the Pennsylvania adult, it lives in its state's highest-cost rating area in the model's ${year} premium data.
 
 The table shows what each would pay under current law and under the extension.`,
       chart: { type: "examples", view: "net" },
