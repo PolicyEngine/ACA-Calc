@@ -114,7 +114,10 @@ function buildSections() {
             The national estimates run the model over PolicyEngine's microdata for 2024, built from the Census
             Bureau's Current Population Survey (build <code>{build}</code>) and projected to {priorYear} and{" "}
             {year}. The example households and the calculator run the same model for one household at a time,
-            with the benchmark premium (the second-lowest-cost silver plan) in the household's county.
+            with the benchmark premium (the second-lowest-cost silver plan) in the household's county, which
+            the model takes from{" "}
+            <Link href="https://www.kff.org/interactive/subsidy-calculator/">KFF's premium data</Link> for{" "}
+            {priorYear} and {year}.
           </p>
           <p>
             The scripts that produce the figures are in the app's{" "}

@@ -64,13 +64,12 @@ function buildSections() {
   const [min2026, max2026] = rateRange(`current_${priorYear}`);
   const [minNow, maxNow] = rateRange(`current_${year}`);
 
-  // The Pennsylvania example across incomes: where current law's credit ends
-  // and where H.R. 1834's would.
+  // The Pennsylvania example across incomes: where current law's credit ends,
+  // and where H.R. 1834's would: the income at which the enhanced schedule's
+  // top share (8.5%) reaches the benchmark premium, to the nearest $50.
   const cliffIncome = 4 * cliffDemoData.fpl;
-  let revivedEnd = 0;
-  cliffDemoData.ptc_ira.forEach((credit, i) => {
-    if (credit > 0) revivedEnd = cliffDemoData.income[i];
-  });
+  const enhancedCap = Math.max(...schedules.schedules.enhanced.filter((rate) => rate !== null));
+  const revivedEnd = Math.round(pennsylvania.current.slcsp / (enhancedCap / 100) / 50) * 50;
 
   // The Pennsylvania adult's marginal tax rates in 2027: the share of each
   // extra $1,000 of earnings lost to taxes and a smaller credit.
@@ -131,7 +130,7 @@ function buildSections() {
     {
       id: "premiums",
       title: `Benchmark premiums rise in ${year}`,
-      content: `For ${year}, benchmark premiums rise for each of these four households, by **${Math.min(...benchmarkChanges).toFixed(1)}%** to **${Math.max(...benchmarkChanges).toFixed(1)}%**.
+      content: `For ${year}, benchmark premiums rise for each of these four households, by **${Math.min(...benchmarkChanges).toFixed(1)}%** to **${Math.max(...benchmarkChanges).toFixed(1)}%**. The model's benchmark premiums for ${priorYear} and ${year} come from KFF's premium data for each rating area.
 
 Across all tax units receiving a credit, PolicyEngine estimates the average benchmark premium at ${monthly(lawNow.mean_benchmark_premium)}/month in ${year}, against ${monthly(lawPrior.mean_benchmark_premium)} in ${priorYear}, **an average ${benchmarkRise >= 0 ? "increase" : "decrease"} of ${Math.abs(benchmarkRise).toFixed(1)}%**.`,
       chart: { type: "examples", view: "benchmark" },
@@ -154,6 +153,8 @@ The Florida family earning ${formatDollars(household.florida_family.income)} pay
 The Pennsylvania adult earning ${formatDollars(household.pennsylvania_single.income)} pays **${monthly(pennsylvania.current.net_premium)}/month** in ${year}, ${monthly(pennsylvania.current.net_premium - pennsylvania.prior.net_premium)} more than in ${priorYear}.
 
 The California couple in their 60s earning ${formatDollars(household.california_couple.income)} pays **${monthly(california.current.net_premium)}/month**, ${monthly(california.current.net_premium - california.prior.net_premium)} more than in ${priorYear}: ${share(california.current.net_premium / household.california_couple.income, 0)} of its income.
+
+Both households live in their state's highest-cost rating area in the model's ${year} premium data.
 
 The chart shows the Pennsylvania adult at every income: the payment jumps to the full premium above 400% FPL (${formatDollars(cliffIncome)}).`,
       chart: { type: "premium", lines: ["prior", "current"] },
@@ -185,7 +186,7 @@ The two households above 400% FPL would pay 8.5% of their income instead of the 
     {
       id: "enhanced_by_income",
       title: "Across incomes",
-      content: `For the Pennsylvania adult, H.R. 1834 would lower the payment at every income above Pennsylvania's Medicaid limit (138% FPL) up to about **${formatDollars(revivedEnd)}**, where 8.5% of income reaches the full benchmark premium.
+      content: `For the Pennsylvania adult, H.R. 1834 would lower the payment at every income above Pennsylvania's Medicaid limit (138% FPL) up to about **${formatDollars(revivedEnd)}**, where 8.5% of its income reaches the benchmark premium of ${formatDollars(pennsylvania.current.slcsp)} a year.
 
 Under current law the payment rises with income up to 400% FPL, then jumps to the full premium of ${monthly(pennsylvania.current.slcsp)}/month.`,
       chart: { type: "premium", lines: ["prior", "current", "revived"] },
