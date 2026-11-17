@@ -256,11 +256,7 @@ function Methodology({ onCalculator }) {
       <StoryRail sections={SECTIONS} parts={{}} active={active} />
       <main className="story">
         {SECTIONS.map((section) => (
-          <section
-            key={section.id}
-            id={section.id}
-            className={`story-section${section.id === active ? " is-active" : ""}`}
-          >
+          <section key={section.id} id={section.id} className="story-section">
             <h2>{section.title}</h2>
             <div className="story-prose">{section.body}</div>
           </section>

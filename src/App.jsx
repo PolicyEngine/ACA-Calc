@@ -445,11 +445,7 @@ function App() {
         ))}
       </section>
       {SECTIONS.map((section) => (
-        <section
-          key={section.id}
-          id={section.id}
-          className={`story-section${section.id === activeSection ? " is-active" : ""}`}
-        >
+        <section key={section.id} id={section.id} className="story-section">
           {PARTS[section.id] && <p className="story-part">{PARTS[section.id]}</p>}
           <h2>{section.title}</h2>
           <div className="story-prose">

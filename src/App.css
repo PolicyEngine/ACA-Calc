@@ -154,30 +154,8 @@
 }
 
 .story-section {
-  position: relative;
   padding-top: 40px;
   scroll-margin-top: 72px;
-}
-
-/* A teal bar beside the section being read (useActiveSection). */
-.story-section::before {
-  content: "";
-  position: absolute;
-  top: 40px;
-  bottom: 0;
-  left: -12px;
-  width: 3px;
-  border-radius: 3px;
-  background: var(--primary);
-  opacity: 0;
-  transform: scaleY(0.6);
-  transform-origin: top;
-  transition: opacity var(--pe-transition-slow), transform var(--pe-transition-slow);
-}
-
-.story-section.is-active::before {
-  opacity: 1;
-  transform: none;
 }
 
 /* The heading that opens each part of the story, as a pill. */
@@ -280,13 +258,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .story-section::before,
   .story-cta,
   .story-cta svg {
     transition: none;
   }
 
-  .story-section::before,
   .story-cta:hover,
   .story-cta:hover svg {
     transform: none;

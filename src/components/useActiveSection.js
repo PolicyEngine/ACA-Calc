@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 
 /**
  * The id of the section being read: the one crossing a line 40% down the
- * screen. Null until a section reaches that line. The section rail and the
- * Overview's and Methodology's accent bars both use it.
+ * screen. Null until a section reaches that line. The section rail
+ * highlights it.
  */
 export default function useActiveSection(sections, enabled = true) {
   const [active, setActive] = useState(null);
