@@ -91,19 +91,6 @@
   padding: 16px 16px 64px;
 }
 
-/* The opening paragraph: the background, a size up from the body text. */
-.story-lede {
-  padding-top: 32px;
-  font-size: 1.1875rem;
-  line-height: 1.65;
-  color: var(--color-gray-700);
-}
-
-.story-lede strong {
-  font-weight: 600;
-  color: var(--color-gray-900);
-}
-
 .story-section {
   padding-top: 40px;
   scroll-margin-top: 72px;
@@ -250,11 +237,6 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 16px 64px;
-}
-
-.overview .story-lede {
-  max-width: 760px;
-  margin: 0 auto;
 }
 
 .scrolly {
@@ -416,11 +398,6 @@
   .story-prose p,
   .story-prose ul {
     font-size: 1rem;
-  }
-
-  .story-lede {
-    padding-top: 24px;
-    font-size: 1.0625rem;
   }
 
   .story-figure {

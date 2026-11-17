@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import ContributionScheduleChart from "./components/ContributionScheduleChart";
 import ExampleHouseholdsTable from "./components/ExampleHouseholdsTable";
+import HouseholdYearTable from "./components/HouseholdYearTable";
 import PremiumChart from "./components/PremiumChart";
 import MarginalRateChart from "./components/MarginalRateChart";
 import Calculator from "./components/Calculator";
@@ -90,67 +91,72 @@ function buildSections() {
   );
 
   return [
-    // PART 1: 2027 premiums under current law
+    // PART 1: How the credits work
     {
-      id: "premiums",
-      title: `Benchmark premiums rise in ${year}`,
-      content: `For ${year}, benchmark premiums rise for each of these four households, by **${Math.min(...benchmarkChanges).toFixed(1)}%** to **${Math.max(...benchmarkChanges).toFixed(1)}%**. The model's benchmark premiums for ${priorYear} and ${year} come from KFF's premium data for each rating area.`,
-      chart: { type: "examples", view: "benchmark" },
+      id: "how_credits_work",
+      title: "How premium tax credits work",
+      content: `The Affordable Care Act's **premium tax credits** (PTCs) reduce premiums for enrollees who purchase health insurance through the marketplace.
+
+The PTCs cap how much of their income enrollees are required to pay for a **benchmark health plan**—the second-lowest-cost silver plan (SLCSP) in their area. If the benchmark plan costs more than the required contribution, the government pays the difference as a tax credit.
+
+The chart shows the share of income a household pays for the benchmark plan under current law in ${year}: from **${minNow}%** to **${maxNow}%**, with no credit above 400% of the federal poverty line (FPL).`,
+      chart: { type: "schedule", policies: [`current${year}`] },
     },
     {
-      id: "below_cliff",
-      title: "Below 400% FPL, the credit absorbs the increase",
-      content: `Current law limits what a household pays for the benchmark plan to a share of its income, from **${minNow}%** to **${maxNow}%** in ${year} (${min2026}% to ${max2026}% in ${priorYear}). The credit pays the rest of the premium, so it grows when premiums do.
-
-The Texas adult earning ${formatDollars(household.texas_single.income)} pays **${monthly(texas.current.net_premium)}/month** for the benchmark plan in ${year}, against ${monthly(texas.prior.net_premium)} in ${priorYear}, while the premium rises from ${monthly(texas.prior.slcsp)} to ${monthly(texas.current.slcsp)}.
-
-The Florida family earning ${formatDollars(household.florida_family.income)} pays ${monthly(florida.current.net_premium)}/month in ${year}, against ${monthly(florida.prior.net_premium)} in ${priorYear}.`,
-      chart: { type: "schedule", policies: [`current${priorYear}`, `current${year}`] },
-    },
-    {
-      id: "above_cliff",
-      title: "Above 400% FPL, households pay all of it",
-      content: `The enhanced credits that reached incomes above 400% FPL expired at the end of 2025. Under current law, households there get no credit and pay the whole benchmark premium, the increase included.
-
-The Pennsylvania adult earning ${formatDollars(household.pennsylvania_single.income)} pays **${monthly(pennsylvania.current.net_premium)}/month** in ${year}, ${monthly(pennsylvania.current.net_premium - pennsylvania.prior.net_premium)} more than in ${priorYear}.
-
-The California couple in their 60s earning ${formatDollars(household.california_couple.income)} pays **${monthly(california.current.net_premium)}/month**, ${monthly(california.current.net_premium - california.prior.net_premium)} more than in ${priorYear}: ${share(california.current.net_premium / household.california_couple.income, 0)} of its income.
-
-Both households live in their state's highest-cost rating area in the model's ${year} premium data.
-
-The chart shows the Pennsylvania adult at every income: the payment jumps to the full premium above 400% FPL (${formatDollars(cliffIncome)}).`,
-      chart: { type: "premium", lines: ["prior", "current"] },
-    },
-
-    // PART 2: Reviving the enhanced credits
-    {
-      id: "enhanced",
-      title: "H.R. 1834 would revive the enhanced credits",
-      content: `From 2021 through 2025, the American Rescue Plan Act and the Inflation Reduction Act enhanced the credits: households paid **0%** of income for the benchmark plan up to 150% FPL, and at most **8.5%** at any income, with no income limit.
-
-H.R. 1834 would revive that schedule for 2026 through 2028. It passed the House on January 8, 2026; it has not been enacted.
+      id: "enhancements",
+      title: "The 2021–2025 enhancements",
+      content: `The American Rescue Plan Act (ARPA) of 2021 and the Inflation Reduction Act (IRA) of 2022 enhanced the subsidies from 2021 through 2025:
+• Households paid **0%** of income for the benchmark plan up to 150% FPL
+• No household paid more than **8.5%** of its income
+• Credits reached incomes above 400% FPL, with no income limit
 
 The chart compares the enhanced schedule with current law for ${year}.`,
       chart: { type: "schedule", policies: [`current${year}`, "enhanced"] },
     },
     {
-      id: "enhanced_households",
-      title: "What it would mean for these households",
-      content: `Under H.R. 1834, each household would pay less for its benchmark plan in ${year}:
-• Texas adult: **${monthly(texas.revived.net_premium)}/month**, against ${monthly(texas.current.net_premium)} under current law
-• Florida family: **${monthly(florida.revived.net_premium)}/month**, against ${monthly(florida.current.net_premium)}
-• Pennsylvania adult: **${monthly(pennsylvania.revived.net_premium)}/month**, against ${monthly(pennsylvania.current.net_premium)}
-• California couple: **${monthly(california.revived.net_premium)}/month**, against ${monthly(california.current.net_premium)}
+      id: "expiration",
+      title: "The enhancements expired",
+      content: `The enhancements expired at the end of 2025. Under the original rules, which returned in 2026, enrollees pay a larger share of their income for the benchmark plan, and those above 400% FPL get no credit.
 
-The two households above 400% FPL would pay 8.5% of their income instead of the full premium.`,
-      chart: { type: "examples", view: "net" },
+The IRS sets the shares each year: **${min2026}%** to **${max2026}%** of income in ${priorYear}, and **${minNow}%** to **${maxNow}%** in ${year}.`,
+      chart: { type: "schedule", policies: [`current${priorYear}`, `current${year}`] },
+    },
+
+    // PART 2: A household facing the 2027 increase
+    {
+      id: "household_prior",
+      title: "Example: a middle-income household",
+      content: `Consider a ${cliffDemoData.household_info.age}-year-old single adult in Lebanon County, Pennsylvania, earning **${formatDollars(household.pennsylvania_single.income)}** a year, about ${Math.round(pennsylvania.current.fpl_percent / 50) * 50}% of the federal poverty line.
+
+In ${priorYear}, with no credit above 400% FPL, the household pays the whole benchmark premium: **${monthly(pennsylvania.prior.net_premium)}/month**.`,
+      chart: { type: "household", columns: ["prior"] },
     },
     {
-      id: "enhanced_by_income",
-      title: "Across incomes",
-      content: `For the Pennsylvania adult, H.R. 1834 would lower the payment at every income above Pennsylvania's Medicaid limit (138% FPL) up to about **${formatDollars(revivedEnd)}**, where 8.5% of its income reaches the benchmark premium of ${formatDollars(pennsylvania.current.slcsp)} a year.
+      id: "household_current",
+      title: `${year}: the premium rises again`,
+      content: `For ${year}, the household's benchmark premium rises to **${monthly(pennsylvania.current.slcsp)}/month**, up ${monthly(pennsylvania.current.slcsp - pennsylvania.prior.slcsp)} (${((100 * (pennsylvania.current.slcsp - pennsylvania.prior.slcsp)) / pennsylvania.prior.slcsp).toFixed(1)}%).
 
-Under current law the payment rises with income up to 400% FPL, then jumps to the full premium of ${monthly(pennsylvania.current.slcsp)}/month.`,
+It still gets no credit, so it pays the whole increase: ${formatDollars(pennsylvania.current.net_premium)} a year, ${share(pennsylvania.current.net_premium / household.pennsylvania_single.income, 0)} of its income.
+
+Lebanon County is in Pennsylvania's highest-cost rating area in the model's ${year} premium data. The model's benchmark premiums for ${priorYear} and ${year} come from KFF's premium data for each rating area.`,
+      chart: { type: "household", columns: ["prior", "current"] },
+    },
+
+    // PART 3: A clean extension of the enhanced credits
+    {
+      id: "extension",
+      title: "What a clean extension would do",
+      content: `A clean extension of the enhanced credits would bring back the 2021–2025 schedule unchanged. H.R. 1834 would do this for 2026 through 2028. It passed the House on January 8, 2026; it has not been enacted.
+
+Under the extension, the household would pay no more than 8.5% of its income for the benchmark plan in ${year}: **${monthly(pennsylvania.revived.net_premium)}/month**, with a credit of ${monthly(pennsylvania.revived.ptc)}/month, against ${monthly(pennsylvania.current.net_premium)}/month and no credit under current law.`,
+      chart: { type: "household", columns: ["prior", "current", "revived"] },
+    },
+    {
+      id: "across_incomes",
+      title: "Across incomes",
+      content: `For the Pennsylvania adult, the extension would lower the payment at every income above Pennsylvania's Medicaid limit (138% FPL) up to about **${formatDollars(revivedEnd)}**, where 8.5% of its income reaches the benchmark premium of ${formatDollars(pennsylvania.current.slcsp)} a year.
+
+Under current law the payment rises with income up to 400% FPL (${formatDollars(cliffIncome)}), then jumps to the full premium of ${monthly(pennsylvania.current.slcsp)}/month.`,
       chart: { type: "premium", lines: ["prior", "current", "revived"] },
     },
     {
@@ -160,8 +166,22 @@ Under current law the payment rises with income up to 400% FPL, then jumps to th
 
 Under current law, the Pennsylvania adult's credit ends at 400% FPL (${formatDollars(cliffIncome)}). Earning ${formatDollars(incomes[cliffStep + 1] - incomes[cliffStep])} more, from ${formatDollars(incomes[cliffStep])} to ${formatDollars(incomes[cliffStep + 1])}, costs it ${formatDollars(creditLost)} of credit, so its net income falls by **${formatDollars(netLost)}**: a marginal tax rate of ${cliffRate.toFixed(0)}% on that ${formatDollars(incomes[cliffStep + 1] - incomes[cliffStep])}.
 
-Under H.R. 1834 there is no cliff. Above 400% FPL the household pays at most 8.5% of its income for the benchmark plan, so each extra dollar lowers its credit by 8.5 cents. Its marginal tax rate is **${pointsHigher.toFixed(1)} points higher** than under current law at each income from 400% FPL until the credit ends at about ${formatDollars(revivedEnd)}; beyond that, the two are the same.`,
+Under the extension there is no cliff. Above 400% FPL the household pays at most 8.5% of its income for the benchmark plan, so each extra dollar lowers its credit by 8.5 cents. Its marginal tax rate is **${pointsHigher.toFixed(1)} points higher** than under current law at each income from 400% FPL until the credit ends at about ${formatDollars(revivedEnd)}; beyond that, the two are the same.`,
       chart: { type: "mtr" },
+    },
+
+    // PART 4: Other households
+    {
+      id: "other_households",
+      title: "Four example households",
+      content: `Benchmark premiums rise in ${year} for each of four example households, by **${Math.min(...benchmarkChanges).toFixed(1)}%** to **${Math.max(...benchmarkChanges).toFixed(1)}%**.
+
+Below 400% FPL, the credit grows with the premium, so what households pay barely changes: the Texas adult earning ${formatDollars(household.texas_single.income)} pays ${monthly(texas.current.net_premium)}/month for the benchmark plan in ${year}, against ${monthly(texas.prior.net_premium)} in ${priorYear}, and the Florida family earning ${formatDollars(household.florida_family.income)} pays ${monthly(florida.current.net_premium)}, against ${monthly(florida.prior.net_premium)}.
+
+Above 400% FPL, the California couple in their 60s earning ${formatDollars(household.california_couple.income)} pays the whole premium, **${monthly(california.current.net_premium)}/month**: ${share(california.current.net_premium / household.california_couple.income, 0)} of its income. Like the Pennsylvania adult, it lives in its state's highest-cost rating area in the model's ${year} premium data.
+
+The table shows what each would pay under current law and under the extension.`,
+      chart: { type: "examples", view: "net" },
     },
   ];
 }
@@ -240,6 +260,8 @@ function Chart({ chart }) {
   switch (chart.type) {
     case "examples":
       return <ExampleHouseholdsTable view={chart.view} />;
+    case "household":
+      return <HouseholdYearTable columns={chart.columns} />;
     case "schedule":
       return <ContributionScheduleChart showPolicies={chart.policies} />;
     case "premium":
@@ -262,21 +284,14 @@ function Chart({ chart }) {
   }
 }
 
-// The Overview's opening paragraph: how the credit works, the 2021–2025
-// enhancements and their expiry, as the earlier version of the app explained
-// them.
-const LEDE =
-  "The Affordable Care Act's **premium tax credits** (PTCs) reduce premiums for enrollees who purchase health insurance through the marketplace. " +
-  "The PTCs cap how much of their income enrollees are required to pay for a **benchmark health plan**—the second-lowest-cost silver plan (SLCSP) in their area. " +
-  "If the benchmark plan costs more than the required contribution, the government pays the difference as a tax credit. " +
-  "The American Rescue Plan Act (ARPA) of 2021 and the Inflation Reduction Act (IRA) of 2022 enhanced the subsidies from 2021 through 2025. " +
-  "The enhancements expired at the end of 2025. " +
-  "Under the original rules, which returned in 2026, enrollees pay a larger share of their income for the benchmark plan, and those above 400% of the federal poverty line (FPL) get no credit.";
-
-// The story's parts, each opening with a heading.
+// The story's parts, each opening with a heading, in the order the earlier
+// version of the app told it: how the credits work, one household, a policy
+// option, other households.
 const PARTS = {
-  premiums: `Premiums in ${examples.year} under current law`,
-  enhanced: "Reviving the enhanced credits",
+  how_credits_work: "How the credits work",
+  household_prior: `A household facing the ${examples.year} increase`,
+  extension: "A clean extension of the enhanced credits",
+  other_households: "Other households",
 };
 
 function App() {
@@ -318,16 +333,12 @@ function App() {
     window.scrollTo(0, 0);
   }, [currentPage]);
 
-  // The Overview: one column, each section's chart under its text.
   // The Overview, as the earlier version of the app laid it out: on wide
   // screens the active section's chart stays pinned on the left while the
   // text scrolls past in cards on the right; on narrower screens, one column
   // with each chart under its text.
   const renderMainPage = () => (
     <div className="overview">
-      <p className="story-lede">
-        <Inline text={LEDE} />
-      </p>
       <div className="scrolly">
         {wide && (
           <div className="scrolly-chart">
@@ -386,7 +397,7 @@ function App() {
           <div className="header-content">
             <h1>ACA Premium Tax Credits</h1>
             <p className="subtitle">
-              How 2027 premiums change under current law, and what reviving the enhanced credits would do
+              How 2027 premiums change under current law, and what a clean extension of the enhanced credits would do
             </p>
             <div className="page-tabs">
               <button
