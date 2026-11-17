@@ -60,7 +60,8 @@
 .calculator-form-container {
   background: var(--pe-surface);
   border: 1px solid var(--border);
-  border-radius: var(--pe-radius-lg);
+  border-radius: var(--pe-radius-xl);
+  box-shadow: var(--pe-shadow-md);
   padding: var(--pe-space-xl);
 }
 
@@ -410,7 +411,7 @@
 /* Results Tabs */
 .calculator-results {
   background: var(--pe-surface);
-  border-radius: var(--pe-radius-lg);
+  border-radius: var(--pe-radius-xl);
   box-shadow: var(--pe-shadow-md);
   overflow: hidden;
 }

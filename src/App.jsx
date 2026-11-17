@@ -6,6 +6,7 @@ import PremiumChart from "./components/PremiumChart";
 import MarginalRateChart from "./components/MarginalRateChart";
 import Calculator from "./components/Calculator";
 import StoryRail from "./components/StoryRail";
+import useActiveSection from "./components/useActiveSection";
 import Methodology from "./components/Methodology";
 import { CountUp, Reveal } from "./components/Motion";
 import "./App.css";
@@ -130,9 +131,7 @@ function buildSections() {
     {
       id: "premiums",
       title: `Benchmark premiums rise in ${year}`,
-      content: `The premium tax credit is pegged to a **benchmark plan**: the second-lowest-cost silver plan where a household lives.
-
-For ${year}, benchmark premiums rise for each of these four households, by **${Math.min(...benchmarkChanges).toFixed(1)}%** to **${Math.max(...benchmarkChanges).toFixed(1)}%**.
+      content: `For ${year}, benchmark premiums rise for each of these four households, by **${Math.min(...benchmarkChanges).toFixed(1)}%** to **${Math.max(...benchmarkChanges).toFixed(1)}%**.
 
 Across all tax units receiving a credit, PolicyEngine estimates the average benchmark premium at ${monthly(lawNow.mean_benchmark_premium)}/month in ${year}, against ${monthly(lawPrior.mean_benchmark_premium)} in ${priorYear}, **an average ${benchmarkRise >= 0 ? "increase" : "decrease"} of ${Math.abs(benchmarkRise).toFixed(1)}%**.`,
       chart: { type: "examples", view: "benchmark" },
@@ -250,7 +249,8 @@ The top 10%'s share of net income moves from ${share(inequalityBefore.top_10_sha
 
 const SECTIONS = buildSections();
 
-// The figures the Overview opens with, from the national estimates.
+// The figures the Overview opens with, from the national estimates. Each
+// tile's accent is its scenario's chart color: 2027 current law or H.R. 1834.
 function buildKeyFigures() {
   const year = national.year;
   const prior = national.current_law[String(year - 1)];
@@ -260,14 +260,17 @@ function buildKeyFigures() {
     {
       value: `${rise.toFixed(1)}%`,
       label: `average rise in benchmark premiums from ${year - 1} to ${year}, for tax units with a credit`,
+      scenario: "current",
     },
     {
       value: billions(national.budget.federal_cost),
       label: `added federal spending on credits in ${year} under H.R. 1834, PolicyEngine's static estimate`,
+      scenario: "reform",
     },
     {
       value: millions(national.recipients.people_newly_receiving),
       label: `more people with a credit in ${year} under H.R. 1834`,
+      scenario: "reform",
     },
   ];
 }
@@ -370,6 +373,15 @@ function Chart({ chart }) {
   }
 }
 
+// The Overview's opening paragraph: how the credit works, the 2021–2025
+// enhancements and their expiry, as the earlier version of the app explained
+// them.
+const LEDE =
+  "The Affordable Care Act's **premium tax credit** helps people afford health insurance bought through the marketplace. " +
+  "It caps what a household pays for a **benchmark plan**, the second-lowest-cost silver plan where it lives, at a share of its income, and the credit pays the difference when the plan costs more. " +
+  "The American Rescue Plan Act and the Inflation Reduction Act enhanced the credit from 2021 through 2025: they lowered that share at every income and extended the credit above 400% of the federal poverty line (FPL), with payments capped at 8.5% of income. " +
+  "The enhancements expired at the end of 2025, so in 2026 the original rules returned: higher shares of income, and no credit above 400% FPL.";
+
 // The story's parts, each opening with a heading.
 const PARTS = {
   premiums: `Premiums in ${examples.year} under current law`,
@@ -380,6 +392,7 @@ const PARTS = {
 function App() {
   const [currentPage, setCurrentPage] = useState(() => getPageFromHash());
   const [embedded] = useState(() => isEmbedded());
+  const activeSection = useActiveSection(SECTIONS, currentPage === "main");
 
   // Sync URL hash with page state
   useEffect(() => {
@@ -415,11 +428,14 @@ function App() {
   // The Overview: one column, each section's chart under its text.
   const renderMainPage = () => (
     <div className="story-layout">
-    <StoryRail sections={SECTIONS} parts={PARTS} />
+    <StoryRail sections={SECTIONS} parts={PARTS} active={activeSection} />
     <main className="story">
+      <p className="story-lede">
+        <Inline text={LEDE} />
+      </p>
       <section className="key-figures" aria-label="Key figures">
         {KEY_FIGURES.map((figure) => (
-          <div key={figure.label} className="key-figure">
+          <div key={figure.label} className={`key-figure ${figure.scenario}`}>
             <p className="key-figure-value">
               <CountUp value={figure.value} />
             </p>
@@ -428,7 +444,11 @@ function App() {
         ))}
       </section>
       {SECTIONS.map((section) => (
-        <section key={section.id} id={section.id} className="story-section">
+        <section
+          key={section.id}
+          id={section.id}
+          className={`story-section${section.id === activeSection ? " is-active" : ""}`}
+        >
           {PARTS[section.id] && <p className="story-part">{PARTS[section.id]}</p>}
           <h2>{section.title}</h2>
           <div className="story-prose">

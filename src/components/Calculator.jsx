@@ -389,6 +389,7 @@ function Calculator() {
           selectedKey={selectedExample?.key}
           onSelect={handleSelectExample}
           compareEnhanced={compareEnhanced}
+          expansionStates={EXPANSION_STATES}
         />
 
         <div className="calculator-form-container">

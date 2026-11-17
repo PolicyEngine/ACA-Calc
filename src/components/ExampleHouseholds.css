@@ -59,6 +59,23 @@
   color: var(--muted-foreground);
 }
 
+/* Whether the household's state expanded Medicaid, which sets where Medicaid
+   ends in its results chart. */
+.example-card-badge {
+  margin-top: 6px;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  background: var(--pe-gray-100);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--pe-gray-700);
+}
+
+.example-card-badge.expansion {
+  background: var(--pe-teal-100);
+  color: var(--pe-teal-800);
+}
+
 .example-card-value {
   margin-top: 8px;
   font-size: 1.25rem;

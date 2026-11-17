@@ -23,7 +23,7 @@ function monthlyPayments(example) {
  * shows its stored result (precompute_calculator_examples.py) without a
  * request.
  */
-function ExampleHouseholds({ examples, selectedKey, onSelect, compareEnhanced }) {
+function ExampleHouseholds({ examples, selectedKey, onSelect, compareEnhanced, expansionStates = [] }) {
   if (!examples?.length) return null;
   return (
     <section className="example-households" aria-labelledby="example-households-heading">
@@ -36,6 +36,7 @@ function ExampleHouseholds({ examples, selectedKey, onSelect, compareEnhanced })
         {examples.map((example) => {
           const pays = monthlyPayments(example);
           const selected = selectedKey === example.key;
+          const expansion = expansionStates.includes(example.request?.state);
           return (
             <button
               key={example.key}
@@ -48,6 +49,11 @@ function ExampleHouseholds({ examples, selectedKey, onSelect, compareEnhanced })
               <span className="example-card-detail">
                 {example.description} · {formatCurrency(example.income)}
               </span>
+              {example.request?.state && (
+                <span className={`example-card-badge${expansion ? " expansion" : ""}`}>
+                  {expansion ? "Medicaid expansion state" : "No Medicaid expansion"}
+                </span>
+              )}
               <span className="example-card-value">
                 {formatCurrency(pays.current)}
                 <span className="example-card-unit">/month in 2027</span>

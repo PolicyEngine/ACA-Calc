@@ -1,6 +1,7 @@
 "use client";
 
 import StoryRail from "./StoryRail";
+import useActiveSection from "./useActiveSection";
 import national from "../data/national_impacts.json";
 import cbo from "../data/cbo_estimate.json";
 import schedules from "../data/contribution_schedules.json";
@@ -249,12 +250,17 @@ function buildSections() {
 const SECTIONS = buildSections();
 
 function Methodology({ onCalculator }) {
+  const active = useActiveSection(SECTIONS);
   return (
     <div className="story-layout">
-      <StoryRail sections={SECTIONS} parts={{}} />
+      <StoryRail sections={SECTIONS} parts={{}} active={active} />
       <main className="story">
         {SECTIONS.map((section) => (
-          <section key={section.id} id={section.id} className="story-section">
+          <section
+            key={section.id}
+            id={section.id}
+            className={`story-section${section.id === active ? " is-active" : ""}`}
+          >
             <h2>{section.title}</h2>
             <div className="story-prose">{section.body}</div>
           </section>
