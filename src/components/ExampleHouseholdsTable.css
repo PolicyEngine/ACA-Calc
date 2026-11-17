@@ -92,3 +92,23 @@
 .examples-table .household-total td.example-revived {
   color: var(--primary);
 }
+
+/* HouseholdYearTable: a heading row for each income. */
+.examples-table .household-group th {
+  padding: 16px 0 4px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--pe-teal-800);
+}
+
+.examples-table tbody:first-of-type .household-group th {
+  padding-top: 4px;
+}
+
+.examples-table tbody:not(:last-of-type) tr:last-child td,
+.examples-table tbody:not(:last-of-type) tr:last-child th {
+  border-bottom: none;
+}

@@ -89,6 +89,28 @@ for (const key of ["mtr_baseline", "mtr_ira", "net_income_baseline", "net_income
   check(cliff[key]?.length === cliff.income.length, `cliff_demo.json's ${key} doesn't match its incomes`);
 }
 
+// 6. The Overview's two-income table (HouseholdYearTable) reads the
+// Pennsylvania sweep; at the example's income it must match the household
+// table, to the dollar a month.
+const sweepAt = cliff.income.indexOf(cliff.example_income);
+const pennsylvania = overview.pennsylvania_single;
+check(sweepAt >= 0, `cliff_demo.json has no row at its example income ${cliff.example_income}`);
+check(pennsylvania?.income === cliff.example_income, "the Pennsylvania example's income differs from the sweep's");
+if (sweepAt >= 0 && pennsylvania) {
+  const sweep = {
+    [`current_${year - 1}`]: net(cliff.slcsp_by_income_prior_year[sweepAt], cliff.ptc_prior_year[sweepAt]),
+    [`current_${year}`]: net(cliff.slcsp_by_income[sweepAt], cliff.ptc_baseline[sweepAt]),
+    [`hr1834_${year}`]: net(cliff.slcsp_by_income[sweepAt], cliff.ptc_ira[sweepAt]),
+  };
+  for (const [scenario, value] of Object.entries(sweep)) {
+    const expected = pennsylvania.scenarios[scenario].net_premium / 12;
+    check(
+      Math.abs(value - expected) < 1,
+      `Pennsylvania sweep, ${scenario}: $${value.toFixed(2)}/month, the household table $${expected.toFixed(2)}`
+    );
+  }
+}
+
 if (problems.length) {
   console.error(`Data check failed (${problems.length}):\n- ${problems.join("\n- ")}`);
   process.exit(1);

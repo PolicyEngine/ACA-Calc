@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import ContributionScheduleChart from "./components/ContributionScheduleChart";
 import ExampleHouseholdsTable from "./components/ExampleHouseholdsTable";
-import HouseholdYearTable from "./components/HouseholdYearTable";
+import HouseholdYearTable, { householdAt } from "./components/HouseholdYearTable";
 import PremiumChart from "./components/PremiumChart";
 import MarginalRateChart from "./components/MarginalRateChart";
 import Calculator from "./components/Calculator";
@@ -52,6 +52,13 @@ function buildSections() {
   });
   const [min2026, max2026] = rateRange(`current_${priorYear}`);
   const [minNow, maxNow] = rateRange(`current_${year}`);
+
+  // The same Pennsylvania adult at two incomes, below and above 400% FPL
+  // (HouseholdYearTable shows the same two).
+  const below = householdAt(50000);
+  const above = householdAt(household.pennsylvania_single.income);
+  const aboutFpl = (income, step) => Math.round((100 * income) / cliffDemoData.fpl / step) * step;
+  const shareOfIncome = (value, income) => `${((100 * value) / income).toFixed(2)}%`;
 
   // The Pennsylvania example across incomes: where current law's credit ends,
   // and where H.R. 1834's would: the income at which the enhanced schedule's
@@ -125,18 +132,20 @@ The IRS sets the shares each year: **${min2026}%** to **${max2026}%** of income 
     // PART 2: A household facing the 2027 increase
     {
       id: "household_prior",
-      title: "Example: a middle-income household",
-      content: `Consider a ${cliffDemoData.household_info.age}-year-old single adult in Lebanon County, Pennsylvania, earning **${formatDollars(household.pennsylvania_single.income)}** a year, about ${Math.round(pennsylvania.current.fpl_percent / 50) * 50}% of the federal poverty line.
+      title: "Example: two middle-income households",
+      content: `Consider two ${cliffDemoData.household_info.age}-year-old single adults in Lebanon County, Pennsylvania: one earning **${formatDollars(below.income)}** a year, about ${aboutFpl(below.income, 5)}% of the federal poverty line, and one earning **${formatDollars(above.income)}**, about ${aboutFpl(above.income, 50)}%.
 
-In ${priorYear}, with no credit above 400% FPL, the household pays the whole benchmark premium: **${monthly(pennsylvania.prior.net_premium)}/month**.`,
+In ${priorYear} the benchmark plan costs both **${monthly(below.prior.slcsp)}/month**. The ${formatDollars(below.income)} household gets a credit of ${monthly(below.prior.ptc)}/month and pays ${monthly(below.prior.net)}/month, ${shareOfIncome(below.prior.net, below.income)} of its income. The ${formatDollars(above.income)} household, above 400% FPL, gets no credit and pays the whole premium.`,
       chart: { type: "household", columns: ["prior"] },
     },
     {
       id: "household_current",
       title: `${year}: the premium rises again`,
-      content: `For ${year}, the household's benchmark premium rises to **${monthly(pennsylvania.current.slcsp)}/month**, up ${monthly(pennsylvania.current.slcsp - pennsylvania.prior.slcsp)} (${((100 * (pennsylvania.current.slcsp - pennsylvania.prior.slcsp)) / pennsylvania.prior.slcsp).toFixed(1)}%).
+      content: `For ${year}, the benchmark premium rises by ${monthly(above.current.slcsp - above.prior.slcsp)} (${((100 * (above.current.slcsp - above.prior.slcsp)) / above.prior.slcsp).toFixed(1)}%), to **${monthly(above.current.slcsp)}/month**.
 
-It still gets no credit, so it pays the whole increase: ${formatDollars(pennsylvania.current.net_premium)} a year, ${share(pennsylvania.current.net_premium / household.pennsylvania_single.income, 0)} of its income.
+Below 400% FPL, the credit absorbs the increase. The ${formatDollars(below.income)} household's credit rises by ${monthly(below.current.ptc - below.prior.ptc)} to ${monthly(below.current.ptc)}/month, so what it pays rises only ${monthly(below.current.net - below.prior.net)}, to **${monthly(below.current.net)}/month**, because its share of income rises from ${shareOfIncome(below.prior.net, below.income)} to ${shareOfIncome(below.current.net, below.income)}.
+
+Above 400% FPL, the ${formatDollars(above.income)} household still gets no credit, so it pays the whole increase: **${monthly(above.current.net)}/month**, ${share(above.current.net / above.income, 0)} of its income.
 
 Lebanon County is in Pennsylvania's highest-cost rating area in the model's ${year} premium data. The model's benchmark premiums for ${priorYear} and ${year} come from KFF's premium data for each rating area.`,
       chart: { type: "household", columns: ["prior", "current"] },
@@ -148,13 +157,13 @@ Lebanon County is in Pennsylvania's highest-cost rating area in the model's ${ye
       title: "What a clean extension would do",
       content: `A clean extension of the enhanced credits would bring back the 2021–2025 schedule unchanged. H.R. 1834 would do this for 2026 through 2028. It passed the House on January 8, 2026; it has not been enacted.
 
-Under the extension, the household would pay no more than 8.5% of its income for the benchmark plan in ${year}: **${monthly(pennsylvania.revived.net_premium)}/month**, with a credit of ${monthly(pennsylvania.revived.ptc)}/month, against ${monthly(pennsylvania.current.net_premium)}/month and no credit under current law.`,
+Under the extension, neither household would pay more than 8.5% of its income for the benchmark plan in ${year}. The ${formatDollars(below.income)} household would pay **${monthly(below.revived.net)}/month**, against ${monthly(below.current.net)} under current law. The ${formatDollars(above.income)} household would pay **${monthly(above.revived.net)}/month**, with a credit of ${monthly(above.revived.ptc)}/month, against ${monthly(above.current.net)}/month and no credit under current law.`,
       chart: { type: "household", columns: ["prior", "current", "revived"] },
     },
     {
       id: "across_incomes",
       title: "Across incomes",
-      content: `For the Pennsylvania adult, the extension would lower the payment at every income above Pennsylvania's Medicaid limit (138% FPL) up to about **${formatDollars(revivedEnd)}**, where 8.5% of its income reaches the benchmark premium of ${formatDollars(pennsylvania.current.slcsp)} a year.
+      content: `For a ${cliffDemoData.household_info.age}-year-old in Lebanon County, the extension would lower the payment at every income above Pennsylvania's Medicaid limit (138% FPL) up to about **${formatDollars(revivedEnd)}**, where 8.5% of its income reaches the benchmark premium of ${formatDollars(pennsylvania.current.slcsp)} a year.
 
 Under current law the payment rises with income up to 400% FPL (${formatDollars(cliffIncome)}), then jumps to the full premium of ${monthly(pennsylvania.current.slcsp)}/month.`,
       chart: { type: "premium", lines: ["prior", "current", "revived"] },
@@ -289,7 +298,7 @@ function Chart({ chart }) {
 // option, other households.
 const PARTS = {
   how_credits_work: "How the credits work",
-  household_prior: `A household facing the ${examples.year} increase`,
+  household_prior: `Two households facing the ${examples.year} increase`,
   extension: "A clean extension of the enhanced credits",
   other_households: "Other households",
 };
