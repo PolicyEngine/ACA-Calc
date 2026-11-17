@@ -24,6 +24,9 @@ import schedules from "./data/contribution_schedules.json";
 const formatDollars = (value) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
 const monthly = (annual) => formatDollars(annual / 12);
+// The change between two annual amounts, per month, taken between the rounded
+// monthly figures the page shows, so the text agrees with the table.
+const monthlyChange = (from, to) => formatDollars(Math.round(to / 12) - Math.round(from / 12));
 const share = (value, digits = 1) => `${(100 * value).toFixed(digits)}%`;
 
 // The lowest and highest share of income a schedule charges where it gives a credit.
@@ -59,7 +62,7 @@ function buildSections() {
   const above = { ...pennsylvania, income: household.pennsylvania_single.income };
   const aboutFpl = (scenario, step) => Math.round(scenario.fpl_percent / step) * step;
   const shareOfIncome = (value, income) => `${((100 * value) / income).toFixed(2)}%`;
-  const rise = (from, to) => `${monthly(to - from)} (${((100 * (to - from)) / from).toFixed(1)}%)`;
+  const rise = (from, to) => `${monthlyChange(from, to)} (${((100 * (to - from)) / from).toFixed(1)}%)`;
 
   // The Pennsylvania example across incomes: where current law's credit ends,
   // and where H.R. 1834's would: the income at which the enhanced schedule's
@@ -124,7 +127,7 @@ The chart compares the enhanced schedule with current law for ${year}.`,
     {
       id: "expiration",
       title: "The enhancements expired",
-      content: `The enhancements expired at the end of 2025. Under the original rules, which returned in 2026, enrollees pay a larger share of their income for the benchmark plan, and those above 400% FPL get no credit.
+      content: `The enhancements expired at the end of 2025. Under the original rules, which returned in 2026, enrollees pay a larger share of their income for the benchmark plan, and those above 400% FPL receive no credit.
 
 The IRS sets the shares each year: **${min2026}%** to **${max2026}%** of income in ${priorYear}, and **${minNow}%** to **${maxNow}%** in ${year}.`,
       chart: { type: "schedule", policies: [`current${priorYear}`, `current${year}`] },
@@ -138,7 +141,7 @@ The IRS sets the shares each year: **${min2026}%** to **${max2026}%** of income 
 
 In ${priorYear} the Texas adult's benchmark plan costs ${monthly(below.prior.slcsp)}/month. Its credit of ${monthly(below.prior.ptc)}/month leaves it paying **${monthly(below.prior.net_premium)}/month**, ${shareOfIncome(below.prior.net_premium, below.income)} of its income.
 
-The Pennsylvania adult's benchmark plan costs ${monthly(above.prior.slcsp)}/month. Above 400% FPL, it gets no credit and pays the whole premium.`,
+The Pennsylvania adult's benchmark plan costs ${monthly(above.prior.slcsp)}/month. Above 400% FPL, it receives no credit and pays the whole premium.`,
       chart: { type: "household", columns: ["prior"] },
     },
     {
@@ -146,9 +149,9 @@ The Pennsylvania adult's benchmark plan costs ${monthly(above.prior.slcsp)}/mont
       title: `${year}: premiums rise again`,
       content: `For ${year}, both benchmark premiums rise: the Texas adult's by ${rise(below.prior.slcsp, below.current.slcsp)}, to ${monthly(below.current.slcsp)}/month, and the Pennsylvania adult's by ${rise(above.prior.slcsp, above.current.slcsp)}, to ${monthly(above.current.slcsp)}/month.
 
-Below 400% FPL, the credit absorbs the increase. The Texas adult's credit rises to ${monthly(below.current.ptc)}/month, so what it pays rises only ${monthly(below.current.net_premium - below.prior.net_premium)}, to **${monthly(below.current.net_premium)}/month**, as its share of income moves from ${shareOfIncome(below.prior.net_premium, below.income)} to ${shareOfIncome(below.current.net_premium, below.income)}.
+Below 400% FPL, the credit absorbs the increase. The Texas adult's credit rises to ${monthly(below.current.ptc)}/month, so what it pays rises only ${monthlyChange(below.prior.net_premium, below.current.net_premium)}, to **${monthly(below.current.net_premium)}/month**, as its share of income moves from ${shareOfIncome(below.prior.net_premium, below.income)} to ${shareOfIncome(below.current.net_premium, below.income)}.
 
-Above 400% FPL, the Pennsylvania adult still gets no credit, so it pays the whole increase: **${monthly(above.current.net_premium)}/month**, ${share(above.current.net_premium / above.income, 0)} of its income.
+Above 400% FPL, the Pennsylvania adult still receives no credit, so it pays the whole increase: **${monthly(above.current.net_premium)}/month**, ${share(above.current.net_premium / above.income, 0)} of its income.
 
 Lebanon County is in Pennsylvania's highest-cost rating area in the model's ${year} premium data. The model's benchmark premiums for ${priorYear} and ${year} come from KFF's premium data for each rating area.`,
       chart: { type: "household", columns: ["prior", "current"] },

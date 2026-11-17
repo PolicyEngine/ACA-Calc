@@ -139,12 +139,12 @@ function CalculatorResults({ data, formData, compareEnhanced = false, initialInc
       return (
         <p>
           At {fpl}% FPL, your household is <strong>above current law's 400% FPL limit</strong>, so
-          it gets no credit and pays the whole benchmark premium: {monthly(current.benchmark)} in {year}
+          it receives no credit and pays the whole benchmark premium: {monthly(current.benchmark)} in {year}
           {prior && <>, against {monthly(prior.benchmark)} in {year - 1}</>}.{" "}
           {compareEnhanced &&
             (revived.credit > 0
               ? `H.R. 1834 would limit what it pays for the benchmark plan to 8.5% of income, a credit of ${monthly(revived.credit)}.`
-              : "Under H.R. 1834 it would get no credit either: the benchmark plan costs less than 8.5% of its income.")}
+              : "Under H.R. 1834 it would receive no credit either: the benchmark plan costs less than 8.5% of its income.")}
         </p>
       );
     }
@@ -164,7 +164,7 @@ function CalculatorResults({ data, formData, compareEnhanced = false, initialInc
     return (
       <p>
         At {fpl}% FPL, the benchmark plan costs less than the share of income current law asks your
-        household to pay, so it gets no credit.{" "}
+        household to pay, so it receives no credit.{" "}
         {compareEnhanced &&
           (revived.credit > 0
             ? `H.R. 1834 would lower that share, giving a credit of ${monthly(revived.credit)}.`

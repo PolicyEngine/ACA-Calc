@@ -70,7 +70,7 @@ function buildSections() {
           <ul>
             <li>
               <strong>{priorYear} current law.</strong> Tax units between 100% and 400% of the federal poverty
-              line can get a credit, and pay {min2026}% to {max2026}% of their income for the benchmark plan.
+              line can receive a credit, and pay {min2026}% to {max2026}% of their income for the benchmark plan.
             </li>
             <li>
               <strong>{year} current law.</strong> The same rules, with the IRS's {year} contribution
