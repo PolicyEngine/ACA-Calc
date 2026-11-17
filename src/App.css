@@ -9,16 +9,18 @@
   color: var(--foreground);
 }
 
-/* Title and page tabs, on a teal-to-blue wash. The PolicyEngine shell above
-   already has a sticky bar, so this header scrolls with the page. */
+/* Title and page tabs on white, left-aligned with the Overview's split layout
+   (.overview, 1200px), as on the earlier version of the app. The
+   PolicyEngine shell above already has a sticky bar, so this header scrolls
+   with the page. */
 .header {
   border-bottom: 1px solid var(--border);
   padding: 40px 16px 24px;
-  background: linear-gradient(120deg, var(--pe-teal-50) 0%, var(--card) 55%, var(--pe-blue-50) 100%);
+  background: var(--card);
 }
 
 .header-content {
-  max-width: 760px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
