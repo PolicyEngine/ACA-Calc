@@ -8,7 +8,6 @@ const formatCurrency = (value) =>
     currency: "USD",
     maximumFractionDigits: 0,
   }).format(value);
-const monthly = (annual) => formatCurrency(annual / 12);
 
 /**
  * Example households, one below and one above 400% FPL: each one's monthly
@@ -29,10 +28,13 @@ function HouseholdYearTable({ householdKeys = ["texas_single", "pennsylvania_sin
     current: `current_${year}`,
     revived: `hr1834_${year}`,
   };
+  // Monthly dollars. What the household pays is rounded from its exact value
+  // and the credit is the rounded premium less it, so each column adds up
+  // (the credit can differ from its own rounding by $1).
   const rows = [
-    { label: "Benchmark premium", value: (v) => v.slcsp },
-    { label: "Premium tax credit", value: (v) => v.ptc },
-    { label: "Paid for the benchmark plan", value: (v) => v.net_premium, total: true },
+    { label: "Benchmark premium", value: (v) => Math.round(v.slcsp / 12) },
+    { label: "Premium tax credit", value: (v) => Math.round(v.slcsp / 12) - Math.round(v.net_premium / 12) },
+    { label: "Paid for the benchmark plan", value: (v) => Math.round(v.net_premium / 12), total: true },
   ];
   return (
     <div className="examples-table">
@@ -66,7 +68,7 @@ function HouseholdYearTable({ householdKeys = ["texas_single", "pennsylvania_sin
                     <th scope="row">{row.label}</th>
                     {columns.map((column) => (
                       <td key={column} className={column === "revived" ? "example-revived" : undefined}>
-                        {monthly(row.value(household.scenarios[scenarioKey[column]]))}
+                        {formatCurrency(row.value(household.scenarios[scenarioKey[column]]))}
                       </td>
                     ))}
                   </tr>

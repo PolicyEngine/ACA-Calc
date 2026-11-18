@@ -114,6 +114,9 @@ function CalculatorResults({ data, formData, compareEnhanced = false, initialInc
     const { fplPct, onMedicaid, onChip, prior, current, revived } = userResults;
     const fpl = fplPct.toFixed(0);
     const monthly = (annual) => `${formatCurrency(annual / 12)}/month`;
+    // The credit as the cards show it: the rounded premium less the rounded payment.
+    const monthlyCredit = (values) =>
+      `${formatCurrency(Math.round(values.benchmark / 12) - Math.round(values.net / 12))}/month`;
 
     if (onMedicaid || onChip) {
       const programs = [onMedicaid && "Medicaid", onChip && "CHIP"].filter(Boolean).join(" and ");
@@ -143,7 +146,7 @@ function CalculatorResults({ data, formData, compareEnhanced = false, initialInc
           {prior && <>, against {monthly(prior.benchmark)} in {year - 1}</>}.{" "}
           {compareEnhanced &&
             (revived.credit > 0
-              ? `H.R. 1834 would limit what it pays for the benchmark plan to 8.5% of income, a credit of ${monthly(revived.credit)}.`
+              ? `H.R. 1834 would limit what it pays for the benchmark plan to 8.5% of income, a credit of ${monthlyCredit(revived)}.`
               : "Under H.R. 1834 it would receive no credit either: the benchmark plan costs less than 8.5% of its income.")}
         </p>
       );
@@ -167,7 +170,7 @@ function CalculatorResults({ data, formData, compareEnhanced = false, initialInc
         household to pay, so it receives no credit.{" "}
         {compareEnhanced &&
           (revived.credit > 0
-            ? `H.R. 1834 would lower that share, giving a credit of ${monthly(revived.credit)}.`
+            ? `H.R. 1834 would lower that share, giving a credit of ${monthlyCredit(revived)}.`
             : "H.R. 1834 wouldn't give it a credit either.")}
       </p>
     );
@@ -256,7 +259,10 @@ function CalculatorResults({ data, formData, compareEnhanced = false, initialInc
                         </div>
                         <div>
                           <dt>Premium tax credit</dt>
-                          <dd>{formatCurrency(card.values.credit / 12)}</dd>
+                          {/* The rounded premium less the rounded payment, so the card adds up. */}
+                          <dd>
+                            {formatCurrency(Math.round(card.values.benchmark / 12) - Math.round(card.values.net / 12))}
+                          </dd>
                         </div>
                       </dl>
                       {card.change && (

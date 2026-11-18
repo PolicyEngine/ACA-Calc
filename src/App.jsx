@@ -27,6 +27,10 @@ const monthly = (annual) => formatDollars(annual / 12);
 // The change between two annual amounts, per month, taken between the rounded
 // monthly figures the page shows, so the text agrees with the table.
 const monthlyChange = (from, to) => formatDollars(Math.round(to / 12) - Math.round(from / 12));
+// A scenario's monthly credit as the tables show it: the rounded premium less
+// the rounded payment, so the premium, credit and payment in a sentence add up.
+const monthlyCredit = (scenario) =>
+  formatDollars(Math.round(scenario.slcsp / 12) - Math.round(scenario.net_premium / 12));
 const share = (value, digits = 1) => `${(100 * value).toFixed(digits)}%`;
 
 // The lowest and highest share of income a schedule charges where it gives a credit.
@@ -139,7 +143,7 @@ The IRS sets the shares each year: **${min2026}%** to **${max2026}%** of income 
       title: "Example: two households",
       content: `Consider two single adults: a 40-year-old in Harris County, Texas, earning **${formatDollars(below.income)}** a year, about ${aboutFpl(below.current, 10)}% of the federal poverty line, and a ${cliffDemoData.household_info.age}-year-old in Lebanon County, Pennsylvania, earning **${formatDollars(above.income)}**, about ${aboutFpl(above.current, 50)}%.
 
-In ${priorYear} the Texas adult's benchmark plan costs ${monthly(below.prior.slcsp)}/month. Its credit of ${monthly(below.prior.ptc)}/month leaves it paying **${monthly(below.prior.net_premium)}/month**, ${shareOfIncome(below.prior.net_premium, below.income)} of its income.
+In ${priorYear} the Texas adult's benchmark plan costs ${monthly(below.prior.slcsp)}/month. Its credit of ${monthlyCredit(below.prior)}/month leaves it paying **${monthly(below.prior.net_premium)}/month**, ${shareOfIncome(below.prior.net_premium, below.income)} of its income.
 
 The Pennsylvania adult's benchmark plan costs ${monthly(above.prior.slcsp)}/month. Above 400% FPL, it receives no credit and pays the whole premium.`,
       chart: { type: "household", columns: ["prior"] },
@@ -149,7 +153,7 @@ The Pennsylvania adult's benchmark plan costs ${monthly(above.prior.slcsp)}/mont
       title: `${year}: premiums rise again`,
       content: `For ${year}, both benchmark premiums rise: the Texas adult's by ${rise(below.prior.slcsp, below.current.slcsp)}, to ${monthly(below.current.slcsp)}/month, and the Pennsylvania adult's by ${rise(above.prior.slcsp, above.current.slcsp)}, to ${monthly(above.current.slcsp)}/month.
 
-Below 400% FPL, the credit absorbs the increase. The Texas adult's credit rises to ${monthly(below.current.ptc)}/month, so what it pays rises only ${monthlyChange(below.prior.net_premium, below.current.net_premium)}, to **${monthly(below.current.net_premium)}/month**, as its share of income moves from ${shareOfIncome(below.prior.net_premium, below.income)} to ${shareOfIncome(below.current.net_premium, below.income)}.
+Below 400% FPL, the credit absorbs the increase. The Texas adult's credit rises to ${monthlyCredit(below.current)}/month, so what it pays rises only ${monthlyChange(below.prior.net_premium, below.current.net_premium)}, to **${monthly(below.current.net_premium)}/month**, as its share of income moves from ${shareOfIncome(below.prior.net_premium, below.income)} to ${shareOfIncome(below.current.net_premium, below.income)}.
 
 Above 400% FPL, the Pennsylvania adult still receives no credit, so it pays the whole increase: **${monthly(above.current.net_premium)}/month**, ${share(above.current.net_premium / above.income, 0)} of its income.
 
@@ -163,7 +167,7 @@ Lebanon County is in Pennsylvania's highest-cost rating area in the model's ${ye
       title: "What a clean extension would do",
       content: `A clean extension of the enhanced credits would bring back the 2021–2025 schedule unchanged. H.R. 1834 would do this for 2026 through 2028. It passed the House on January 8, 2026; it has not been enacted.
 
-Under the extension, neither household would pay more than 8.5% of its income for the benchmark plan in ${year}. The Texas adult would pay **${monthly(below.revived.net_premium)}/month**, against ${monthly(below.current.net_premium)} under current law. The Pennsylvania adult would pay **${monthly(above.revived.net_premium)}/month**, with a credit of ${monthly(above.revived.ptc)}/month, against ${monthly(above.current.net_premium)}/month and no credit under current law.`,
+Under the extension, neither household would pay more than 8.5% of its income for the benchmark plan in ${year}. The Texas adult would pay **${monthly(below.revived.net_premium)}/month**, against ${monthly(below.current.net_premium)} under current law. The Pennsylvania adult would pay **${monthly(above.revived.net_premium)}/month**, with a credit of ${monthlyCredit(above.revived)}/month, against ${monthly(above.current.net_premium)}/month and no credit under current law.`,
       chart: { type: "household", columns: ["prior", "current", "revived"] },
     },
     {

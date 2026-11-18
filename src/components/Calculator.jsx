@@ -96,6 +96,14 @@ function getFromCache(key) {
   }
 }
 
+// Store an answer only if it is for the year asked. Right after a relaunch,
+// Vercel serves this page before the new API is deployed, and the previous
+// API answers every request for 2026 without naming a year; caching that
+// would show the 2026 answer for a day.
+function cacheIfForYear(key, request, result) {
+  if (result?.year === request.year) setInCache(key, result);
+}
+
 function setInCache(key, data) {
   try {
     localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
@@ -237,7 +245,7 @@ function Calculator() {
           if (event.step === "complete" && event.result) {
             gotResult = true;
             setResults(event.result);
-            setInCache(cacheKey, event.result);
+            cacheIfForYear(cacheKey, data, event.result);
           }
         }
       }
@@ -265,7 +273,7 @@ function Calculator() {
 
         const result = await response.json();
         setResults(result);
-        setInCache(cacheKey, result);
+        cacheIfForYear(cacheKey, data, result);
       } catch (fallbackErr) {
         setError(fallbackErr.message || "An error occurred. Please try again.");
       }
