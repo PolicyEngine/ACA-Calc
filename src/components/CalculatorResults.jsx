@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import PremiumChart from "./PremiumChart";
+import { closestIndex, scenarioAtIncome } from "./householdAtIncome";
 import "./Calculator.css";
 
 const TABS = [
@@ -22,31 +23,8 @@ const formatChange = (monthly) => {
   return `${rounded > 0 ? "+" : "−"}${formatCurrency(Math.abs(rounded))}/month`;
 };
 
-// Linear interpolation of an array along the income axis.
-const interpolate = (income, incomeArray, values) => {
-  if (!incomeArray || !values || income <= 0) return 0;
-  let i = 0;
-  while (i < incomeArray.length - 1 && incomeArray[i + 1] < income) {
-    i++;
-  }
-  if (i >= incomeArray.length - 1) {
-    return values[values.length - 1];
-  }
-  const x0 = incomeArray[i];
-  const x1 = incomeArray[i + 1];
-  if (x1 === x0) return values[i];
-  return values[i] + ((values[i + 1] - values[i]) * (income - x0)) / (x1 - x0);
-};
-
-const closestIndex = (income, incomeArray) => {
-  let closest = 0;
-  for (let i = 0; i < incomeArray.length; i++) {
-    if (Math.abs(incomeArray[i] - income) < Math.abs(incomeArray[closest] - income)) {
-      closest = i;
-    }
-  }
-  return closest;
-};
+// What the household pays each month, as its card shows it.
+const monthlyNet = (values) => Math.round(values.net / 12);
 
 function CalculatorResults({ data, formData, compareEnhanced = false, initialIncome = null }) {
   const [activeTab, setActiveTab] = useState("net");
@@ -64,21 +42,29 @@ function CalculatorResults({ data, formData, compareEnhanced = false, initialInc
   const userResults = useMemo(() => {
     const income = parseFloat(userIncome) || 0;
     if (!data || income <= 0) return null;
-    const at = (values) => interpolate(income, data.income, values);
-    const scenario = (benchmark, credit) => ({
-      benchmark,
-      credit,
-      net: Math.max(0, benchmark - credit),
-    });
+    const at = (benchmark, credit, fpl, creditEndsAt400 = true) =>
+      scenarioAtIncome(income, data.income, {
+        benchmark,
+        credit,
+        lowerLimit: fpl,
+        upperLimit: creditEndsAt400 ? 4 * fpl : undefined,
+      });
     const index = closestIndex(income, data.income);
+    const prior = hasPrior
+      ? at(data.slcsp_by_income_prior_year, data.ptc_prior_year, data.fpl_prior_year)
+      : null;
+    const current = at(data.slcsp_by_income, data.ptc_baseline, data.fpl);
+    // H.R. 1834 has no limit at 400% FPL.
+    const revived = at(data.slcsp_by_income, data.ptc_ira, data.fpl, false);
     return {
       income,
       fplPct: (income / data.fpl) * 100,
       onMedicaid: data.medicaid?.[index] > 0,
       onChip: data.chip?.[index] > 0,
-      prior: hasPrior ? scenario(at(data.slcsp_by_income_prior_year), at(data.ptc_prior_year)) : null,
-      current: scenario(at(data.slcsp_by_income), at(data.ptc_baseline)),
-      revived: scenario(at(data.slcsp_by_income), at(data.ptc_ira)),
+      prior,
+      current,
+      revived,
+      edge: [current, revived, prior].find((scenario) => scenario?.edge)?.edge ?? null,
     };
   }, [userIncome, data, hasPrior]);
 
@@ -94,7 +80,7 @@ function CalculatorResults({ data, formData, compareEnhanced = false, initialInc
           title: `${year}, current law`,
           values: userResults.current,
           change: userResults.prior && {
-            monthly: (userResults.current.net - userResults.prior.net) / 12,
+            monthly: monthlyNet(userResults.current) - monthlyNet(userResults.prior),
             from: `from ${year - 1}`,
           },
         },
@@ -103,7 +89,7 @@ function CalculatorResults({ data, formData, compareEnhanced = false, initialInc
           title: `${year}, H.R. 1834`,
           values: userResults.revived,
           change: {
-            monthly: (userResults.revived.net - userResults.current.net) / 12,
+            monthly: monthlyNet(userResults.revived) - monthlyNet(userResults.current),
             from: "from current law",
           },
         },
@@ -112,7 +98,13 @@ function CalculatorResults({ data, formData, compareEnhanced = false, initialInc
 
   const explanation = () => {
     const { fplPct, onMedicaid, onChip, prior, current, revived } = userResults;
-    const fpl = fplPct.toFixed(0);
+    // Rounding shouldn't put a household on the wrong side of a limit.
+    const fpl =
+      fplPct > 400 && fplPct < 400.5
+        ? "just over 400"
+        : fplPct < 100 && fplPct >= 99.5
+          ? "just under 100"
+          : fplPct.toFixed(0);
     const monthly = (annual) => `${formatCurrency(annual / 12)}/month`;
     // The credit as the cards show it: the rounded premium less the rounded payment.
     const monthlyCredit = (values) =>
@@ -244,6 +236,14 @@ function CalculatorResults({ data, formData, compareEnhanced = false, initialInc
                     {formatCurrency(userResults.income)} is approximately{" "}
                     <strong>{userResults.fplPct.toFixed(0)}% FPL</strong> for your household
                   </p>
+                  {userResults.edge && (
+                    <p className="results-notice">
+                      This household's eligibility changes somewhere between{" "}
+                      {formatCurrency(userResults.edge.from)} and {formatCurrency(userResults.edge.to)}.
+                      Amounts affected by that change are for {formatCurrency(userResults.edge.shownAt)},
+                      the closest income calculated.
+                    </p>
+                  )}
                 </div>
 
                 <div className="impact-cards">

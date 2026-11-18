@@ -1,6 +1,6 @@
 # ACA Premium Tax Credit Calculator
 
-How ACA marketplace premiums change from 2026 to 2027 under current law, and what reviving the enhanced premium tax credits (H.R. 1834) would do, for households and nationwide.
+How ACA marketplace premiums change from 2026 to 2027 under current law, and what reviving the enhanced premium tax credits (H.R. 1834) would do for households.
 
 **🔗 [Try the Calculator](https://policyengine.org/us/aca-calc)**
 
@@ -8,9 +8,10 @@ How ACA marketplace premiums change from 2026 to 2027 under current law, and wha
 
 The American Rescue Plan Act enhanced ACA premium tax credits for 2021 and 2022, and the Inflation Reduction Act extended them through 2025. They expired after 2025, so 2026 and 2027 coverage follows the original ACA schedule. H.R. 1834, which passed the House on January 8, 2026 and has not been enacted, would revive them for 2026 through 2028.
 
-The app has two pages:
+The app has three pages:
 - **Overview**: how benchmark premiums rise in 2027, who pays the increase under current law, and what H.R. 1834 would mean for four example households.
 - **Calculator**: what a household would pay for its benchmark plan, and its credit, in 2026 and 2027 under current law and in 2027 under H.R. 1834.
+- **Methodology**: the model and data, the policies compared, and the limitations.
 
 **Key Differences:**
 - **Enhanced credits (2021–2025)**: No income cap; required contributions from 0% to 8.5% of income
