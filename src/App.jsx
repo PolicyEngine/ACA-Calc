@@ -114,7 +114,9 @@ function buildSections() {
 
 The PTCs cap how much of their income enrollees are required to pay for a **benchmark health plan**—the second-lowest-cost silver plan (SLCSP) in their area. If the benchmark plan costs more than the required contribution, the government pays the difference as a tax credit.
 
-The chart shows the share of income a household pays for the benchmark plan under current law in ${year}: from **${minNow}%** to **${maxNow}%**, with no credit above 400% of the federal poverty line (FPL).`,
+The chart shows the share of income a household pays for the benchmark plan under current law in ${year}: from **${minNow}%** to **${maxNow}%**. The credits are available from 100% to 400% of the federal poverty line (FPL).
+
+Households below 100% FPL don't qualify for the credits. In states that expanded Medicaid, adults with incomes up to 138% FPL qualify for Medicaid instead of a credit. In Texas, which hasn't expanded Medicaid, an adult without children earning less than 100% FPL qualifies for neither: the coverage gap.`,
       chart: { type: "schedule", policies: [`current${year}`] },
     },
     {
@@ -123,7 +125,9 @@ The chart shows the share of income a household pays for the benchmark plan unde
       content: `The American Rescue Plan Act (ARPA) of 2021 and the Inflation Reduction Act (IRA) of 2022 enhanced the subsidies from 2021 through 2025:
 • Households paid **0%** of income for the benchmark plan up to 150% FPL
 • No household paid more than **8.5%** of its income
-• Credits reached incomes above 400% FPL, with no income limit
+• Credits reached incomes above 400% FPL, with no upper income limit
+
+They kept the 100% FPL floor, so households below it still received no credit.
 
 The chart compares the enhanced schedule with current law for ${year}.`,
       chart: { type: "schedule", policies: [`current${year}`, "enhanced"] },
@@ -161,11 +165,11 @@ Lebanon County is in Pennsylvania's highest-cost rating area in the model's ${ye
       chart: { type: "household", columns: ["prior", "current"] },
     },
 
-    // PART 3: A clean extension of the enhanced credits
+    // PART 3: Extending the enhanced credits
     {
       id: "extension",
-      title: "What a clean extension would do",
-      content: `A clean extension of the enhanced credits would bring back the 2021–2025 schedule unchanged. H.R. 1834 would do this for 2026 through 2028. It passed the House on January 8, 2026; it has not been enacted.
+      title: "What an extension would do",
+      content: `Extending the enhanced credits would bring back the 2021–2025 schedule unchanged. H.R. 1834 would do this for 2026 through 2028. It passed the House on January 8, 2026; it has not been enacted.
 
 Under the extension, neither household would pay more than 8.5% of its income for the benchmark plan in ${year}. The Texas adult would pay **${monthly(below.revived.net_premium)}/month**, against ${monthly(below.current.net_premium)} under current law. The Pennsylvania adult would pay **${monthly(above.revived.net_premium)}/month**, with a credit of ${monthlyCredit(above.revived)}/month, against ${monthly(above.current.net_premium)}/month and no credit under current law.`,
       chart: { type: "household", columns: ["prior", "current", "revived"] },
@@ -309,7 +313,7 @@ function Chart({ chart }) {
 const PARTS = {
   how_credits_work: "How the credits work",
   household_prior: `Two households facing the ${examples.year} increase`,
-  extension: "A clean extension of the enhanced credits",
+  extension: "Extending the enhanced credits",
   other_households: "Other households",
 };
 
@@ -416,7 +420,7 @@ function App() {
           <div className="header-content">
             <h1>ACA Premium Tax Credits</h1>
             <p className="subtitle">
-              How 2027 premiums change under current law, and what a clean extension of the enhanced credits would do
+              How 2027 premiums change under current law, and what extending the enhanced credits would do
             </p>
             <div className="page-tabs">
               <button

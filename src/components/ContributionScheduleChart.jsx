@@ -53,7 +53,7 @@ function ContributionScheduleChart({ showPolicies = ["current2027", "enhanced"] 
   const showsCurrentLaw = showPolicies.some((policy) => CURRENT_LAW.includes(policy));
   // Name each line beside it, or fall back to a legend when they run too
   // close together (DirectLabels.jsx).
-  const plan = labelPlan(data, showPolicies, { yDomain: [0, 12], plotHeight: 340 - 52 });
+  const plan = labelPlan(data, showPolicies, { yDomain: [0, 12], plotHeight: 340 - 60 });
 
   return (
     <div className="contribution-chart">
@@ -63,7 +63,7 @@ function ContributionScheduleChart({ showPolicies = ["current2027", "enhanced"] 
       </p>
 
       <ResponsiveContainer width="100%" height={340}>
-        <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+        <LineChart data={data} margin={{ top: 8, right: 24, left: 0, bottom: 8 }}>
           <CartesianGrid {...GRID} vertical={false} />
           <XAxis
             dataKey="fpl"
@@ -129,7 +129,7 @@ function ContributionScheduleChart({ showPolicies = ["current2027", "enhanced"] 
       </ResponsiveContainer>
 
       {showsCurrentLaw && (
-        <p className="chart-note">Current law gives no credit above 400% FPL, where its lines end.</p>
+        <p className="chart-note">No credit is available below 100% FPL, where the lines start, and current law gives none above 400% FPL, where its lines end.</p>
       )}
     </div>
   );

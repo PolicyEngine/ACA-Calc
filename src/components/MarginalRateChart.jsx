@@ -119,7 +119,7 @@ function MarginalRateChart({ data, title, height = 360 }) {
             x={fpl * 4}
             stroke="var(--color-gray-400)"
             strokeDasharray="4 4"
-            label={{ value: "Cliff at 400% FPL", position: "insideTopRight", ...AXIS_LABEL, fontSize: 11 }}
+            label={{ value: "Cliff at 400% FPL", position: "insideTopLeft", offset: 8, ...AXIS_LABEL, fontSize: 11 }}
           />
           {lines.map(({ key, name }) => (
             <Line

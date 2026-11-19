@@ -79,9 +79,7 @@
   outline-offset: 2px;
 }
 
-/* The Overview: a single column of text with each chart under its section,
-   and on the Methodology tab, on wide screens, the section rail beside it
-   (StoryRail.css). */
+/* The Methodology tab: one centered column of text. */
 .story-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 760px) minmax(0, 1fr);

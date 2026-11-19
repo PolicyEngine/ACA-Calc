@@ -1,7 +1,5 @@
 "use client";
 
-import StoryRail from "./StoryRail";
-import useActiveSection from "./useActiveSection";
 import examples from "../data/households/examples.json";
 import schedules from "../data/contribution_schedules.json";
 import "./Methodology.css";
@@ -106,10 +104,8 @@ function buildSections() {
 const SECTIONS = buildSections();
 
 function Methodology({ onCalculator }) {
-  const active = useActiveSection(SECTIONS);
   return (
     <div className="story-layout">
-      <StoryRail sections={SECTIONS} parts={{}} active={active} />
       <main className="story">
         {SECTIONS.map((section) => (
           <section key={section.id} id={section.id} className="story-section">

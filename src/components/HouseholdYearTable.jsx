@@ -34,12 +34,12 @@ function HouseholdYearTable({ householdKeys = ["texas_single", "pennsylvania_sin
   const rows = [
     { label: "Benchmark premium", value: (v) => Math.round(v.slcsp / 12) },
     { label: "Premium tax credit", value: (v) => Math.round(v.slcsp / 12) - Math.round(v.net_premium / 12) },
-    { label: "Paid for the benchmark plan", value: (v) => Math.round(v.net_premium / 12), total: true },
+    { label: "Premium after credit", value: (v) => Math.round(v.net_premium / 12), total: true },
   ];
   return (
     <div className="examples-table">
       <h3 className="chart-title">Two single adults, per month</h3>
-      <p className="chart-subtitle">The benchmark premium, the credit, and what each pays for the benchmark plan</p>
+      <p className="chart-subtitle">The benchmark premium, the credit, and the premium after the credit</p>
       <div className="examples-table-scroll">
         <table>
           <thead>
@@ -78,7 +78,6 @@ function HouseholdYearTable({ householdKeys = ["texas_single", "pennsylvania_sin
           })}
         </table>
       </div>
-      <p className="chart-note">Each household has the same income in each year.</p>
     </div>
   );
 }

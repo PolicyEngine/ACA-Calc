@@ -41,8 +41,8 @@ function ExampleHouseholdsTable({ view = "net" }) {
         <thead>
           <tr>
             <th>Household</th>
-            <th>{priorYear}</th>
-            <th>{year}</th>
+            <th>{benchmark ? priorYear : `${priorYear}, current law`}</th>
+            <th>{benchmark ? year : `${year}, current law`}</th>
             <th>{benchmark ? "Change" : `${year}, H.R. 1834`}</th>
           </tr>
         </thead>
@@ -80,9 +80,6 @@ function ExampleHouseholdsTable({ view = "net" }) {
         </tbody>
       </table>
       </div>
-      <p className="chart-note">
-        Current law in {priorYear} and {year}. Each household has the same income in both years.
-      </p>
     </div>
   );
 }
