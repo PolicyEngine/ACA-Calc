@@ -8,9 +8,10 @@ How ACA marketplace premiums change from 2026 to 2027 under current law, and wha
 
 The American Rescue Plan Act enhanced ACA premium tax credits for 2021 and 2022, and the Inflation Reduction Act extended them through 2025. They expired after 2025, so 2026 and 2027 coverage follows the original ACA schedule. H.R. 1834, which passed the House on January 8, 2026 and has not been enacted, would revive them for 2026 through 2028.
 
-The app has three pages:
+The app has four pages:
 - **Overview**: how benchmark premiums rise in 2027, who pays the increase under current law, and what H.R. 1834 would mean for four example households.
 - **Calculator**: what a household would pay for its benchmark plan, and its credit, in 2026 and 2027 under current law and in 2027 under H.R. 1834.
+- **Local impact**: 2026 Marketplace plan selections, average premiums and advance credits by county and congressional district, from CMS's open enrollment files. CMS publishes county figures only for the states that use HealthCare.gov.
 - **Methodology**: the model and data, the policies compared, and the limitations.
 
 **Key Differences:**
@@ -62,9 +63,12 @@ County data sourced from PolicyEngine's ACA rating areas database.
 ├── src/
 │   ├── App.jsx             # The Overview and Calculator pages
 │   ├── components/         # Charts, tables and the calculator
+│   ├── views/              # The Local impact page
 │   ├── data/               # Precomputed results the Overview reads
 │   └── aca_api/            # The FastAPI backend (api.py, models.py)
 ├── aca_calc/calculations/  # The household builder and the scenarios' reforms
+├── aca_calc/data/          # CMS enrollment extracts and district boundaries for Local impact
+├── aca_calc/*_ingest.py    # Rebuild those extracts from CMS and Census files
 ├── modal_app.py            # The API's Modal deployment
 ├── modal-requirements.txt  # The API image's exact package versions
 ├── precompute_*.py         # Regenerate the precomputed results (see below)
