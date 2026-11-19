@@ -1,0 +1,1 @@
+Add a Local impact page with 2026 Marketplace plan selections, average premiums and advance credits by county, and a congressional district map of average paid premiums and advance credit uptake, from CMS's 2026 open enrollment files. Carried over from Daphne Hansell's work in #24.

@@ -6,6 +6,7 @@ import PremiumChart from "./components/PremiumChart";
 import MarginalRateChart from "./components/MarginalRateChart";
 import Calculator from "./components/Calculator";
 import Methodology from "./components/Methodology";
+import LocalImpact from "./views/LocalImpact";
 import useActiveSection from "./components/useActiveSection";
 import useMediaQuery from "./components/useMediaQuery";
 import { Reveal } from "./components/Motion";
@@ -214,12 +215,15 @@ const PAGE_ROUTES = {
   "overview": "main",
   "households": "main",
   "calculator": "calculator",
+  "local-impact": "local",
+  "local": "local",
   "methodology": "methodology",
 };
 
 const ROUTE_PAGES = {
   "main": "",
   "calculator": "calculator",
+  "local": "local-impact",
   "methodology": "methodology",
 };
 
@@ -432,6 +436,12 @@ function App() {
                 Calculator
               </button>
               <button
+                className={`page-tab ${currentPage === "local" ? "active" : ""}`}
+                onClick={() => navigateToPage("local")}
+              >
+                Local impact
+              </button>
+              <button
                 className={`page-tab ${currentPage === "methodology" ? "active" : ""}`}
                 onClick={() => navigateToPage("methodology")}
               >
@@ -444,6 +454,7 @@ function App() {
 
       {currentPage === "main" && renderMainPage()}
       {currentPage === "calculator" && renderCalculatorPage()}
+      {currentPage === "local" && <LocalImpact />}
       {currentPage === "methodology" && <Methodology onCalculator={() => navigateToPage("calculator")} />}
 
       {!embedded && (
