@@ -14,7 +14,7 @@ ENHANCED_THRESHOLDS = [0, 1.5, 2.0, 2.5, 3.0, 4.0]
 ENHANCED_INITIAL = [0, 0, 0.02, 0.04, 0.06]
 ENHANCED_FINAL = [0, 0.02, 0.04, 0.06, 0.085]
 
-# H.R. 1834 extends the enhanced schedule for 2026 through 2028.
+# H.R. 1834 revives the enhanced schedule for 2026 through 2028.
 ENHANCED_PERIOD = "2026-01-01.2028-12-31"
 
 
@@ -38,7 +38,7 @@ NO_INCOME_CAP = {"gov.aca.ptc_income_eligibility[2].amount": {ENHANCED_PERIOD: T
 
 
 def create_enhanced_ptc_reform():
-    """H.R. 1834: extend the enhanced premium tax credits for 2026-2028.
+    """H.R. 1834: revive the enhanced premium tax credits for 2026-2028.
 
     Restores the ARPA/IRA applicable-percentage schedule and removes the 400%
     FPL eligibility limit, so households above 400% FPL pay at most 8.5% of

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import CalculatorForm, { buildShareableUrl, shouldAutoLoadAi } from "./CalculatorForm";
+import CalculatorForm, { buildShareableUrl, getLinkFromUrl, toRequest } from "./CalculatorForm";
 import CalculatorResults from "./CalculatorResults";
 import ExampleHouseholds from "./ExampleHouseholds";
 import AIExplanation from "./AIExplanation";
@@ -112,7 +112,12 @@ function setInCache(key, data) {
   }
 }
 
+// The results tab and income when no link chose them.
+const NO_LINK_VIEW = { tab: "net", income: null };
+
 function Calculator() {
+  // What the page's link (#calculator?...) asks for, read when it opens.
+  const [link] = useState(() => getLinkFromUrl());
   const [results, setResults] = useState(null);
   const [formData, setFormData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -120,10 +125,15 @@ function Calculator() {
   const [error, setError] = useState(null);
   const [aiExplanation, setAiExplanation] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
-  const [pendingAiLoad, setPendingAiLoad] = useState(shouldAutoLoadAi());
+  const [pendingAiLoad, setPendingAiLoad] = useState(link.ai);
   // Current law in 2026 and 2027 by default; the form's checkbox adds 2027
   // under H.R. 1834, which the API returns with every calculation.
-  const [compareEnhanced, setCompareEnhanced] = useState(false);
+  const [compareEnhanced, setCompareEnhanced] = useState(link.compare);
+  // The results tab and income a link opens on, until another household is
+  // calculated or chosen; and the ones on screen, for the page's link.
+  const [linkView, setLinkView] = useState({ tab: link.view, income: link.income });
+  const [view, setView] = useState(NO_LINK_VIEW);
+  const [shareMessage, setShareMessage] = useState("");
   // The Overview's four households with their stored results
   // (precompute_calculator_examples.py), loaded with the page.
   const [examples, setExamples] = useState([]);
@@ -133,6 +143,7 @@ function Calculator() {
   const [formPreset, setFormPreset] = useState({ key: "initial", values: null });
   const resultsRef = useRef(null);
   const aiTriggeredRef = useRef(false);
+  const linkRunRef = useRef(false);
 
   useEffect(() => {
     import("../data/households/calculator_examples.json")
@@ -166,13 +177,13 @@ function Calculator() {
     setError(null);
     setAiExplanation(null);
     setLoading(false);
-    const url = buildShareableUrl(values);
-    window.history.replaceState(null, "", `#${url.split("#")[1] || ""}`);
+    setLinkView(NO_LINK_VIEW);
     scrollToResults();
   };
 
-  const handleCalculate = async (data) => {
+  const handleCalculate = async (data, { fromLink = false } = {}) => {
     setSelectedExample(null);
+    if (!fromLink) setLinkView(NO_LINK_VIEW);
     scrollToResults();
     setLoading(true);
     setError(null);
@@ -298,7 +309,7 @@ function Calculator() {
     return valueArray[closest] || 0;
   };
 
-  const handleExplainWithAI = async (updateUrl = true) => {
+  const handleExplainWithAI = async () => {
     if (!results || !formData) return;
 
     setAiLoading(true);
@@ -358,12 +369,6 @@ function Calculator() {
       const data = await response.json();
       setAiExplanation(data);
 
-      // Update URL to include ai=1 so it can be shared
-      if (updateUrl) {
-        const url = buildShareableUrl(formData, true);
-        const hashPart = url.split("#")[1] || "";
-        window.history.replaceState(null, "", `#${hashPart}`);
-      }
     } catch (err) {
       setError(err.message || "Failed to generate AI explanation");
     } finally {
@@ -376,9 +381,43 @@ function Calculator() {
   useEffect(() => {
     if (pendingAiLoad && results && formData && !aiExplanation && !aiLoading && !aiTriggeredRef.current) {
       aiTriggeredRef.current = true;
-      handleExplainWithAI(false); // Don't update URL again since it already has ai=1
+      handleExplainWithAI();
     }
   }, [pendingAiLoad, results, formData, aiExplanation, aiLoading]);
+
+  // A link with a household calculates it when the page opens, so the link
+  // lands on its results.
+  useEffect(() => {
+    if (linkRunRef.current || !link.form) return;
+    linkRunRef.current = true;
+    handleCalculate(toRequest(link.form), { fromLink: true });
+  }, []);
+
+  // The page's link follows what it shows, so the address and the share
+  // button both reopen these results.
+  const pageLink = formData
+    ? buildShareableUrl(formData, {
+        compare: compareEnhanced,
+        view: view.tab,
+        income: view.income,
+        ai: Boolean(aiExplanation),
+      })
+    : null;
+  useEffect(() => {
+    if (pageLink) window.history.replaceState(null, "", `#${pageLink.split("#")[1]}`);
+  }, [pageLink]);
+
+  const handleShare = () => {
+    const say = (message) => {
+      setShareMessage(message);
+      setTimeout(() => setShareMessage(""), 2000);
+    };
+    if (!navigator.clipboard) return say("Failed to copy");
+    navigator.clipboard.writeText(pageLink).then(
+      () => say("Link copied!"),
+      () => say("Failed to copy")
+    );
+  };
 
   return (
     <div className="calculator">
@@ -475,8 +514,24 @@ function Calculator() {
                 data={results}
                 formData={formData}
                 compareEnhanced={compareEnhanced}
-                initialIncome={selectedExample?.income ?? null}
+                initialTab={selectedExample ? "net" : linkView.tab}
+                initialIncome={selectedExample?.income ?? linkView.income}
+                onViewChange={setView}
               />
+              <div className="results-share">
+                <button
+                  type="button"
+                  className="share-button"
+                  onClick={handleShare}
+                  title="Copy a link to these results"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" />
+                  </svg>
+                  Share results
+                </button>
+                {shareMessage && <span className="share-message" role="status">{shareMessage}</span>}
+              </div>
             </>
           )}
 

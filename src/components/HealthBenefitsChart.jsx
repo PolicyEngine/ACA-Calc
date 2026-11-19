@@ -311,7 +311,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             />
           )}
 
-          {/* IRA EXTENSION vs CURRENT LAW - stacked area showing baseline + IRA gain */}
+          {/* H.R. 1834 vs CURRENT LAW - stacked area showing baseline + IRA gain */}
           {chartState === "ira_impact" && (
             <Area
               type="monotone"
@@ -420,7 +420,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             <Line
               type="monotone"
               dataKey="deltaIRA"
-              name="Gain from IRA Extension"
+              name="Gain from H.R. 1834"
               stroke={COLORS.ira}
               strokeWidth={2.5}
               dot={false}
@@ -457,7 +457,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             />
           )}
 
-          {/* COMPARISON VIEW - for "Baseline vs Extension" tab (both_reforms) */}
+          {/* COMPARISON VIEW - for "Baseline vs H.R. 1834" tab (both_reforms) */}
           {chartState === "both_reforms" && shouldShow("ptcBaseline") && (
             <Area
               type="monotone"
@@ -491,7 +491,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
                 !shouldShow("ptcBaseline") ? "ptcIRA" :
                 shouldShow("ptc700FPL") ? "deltaIRAOver700FPL" : "deltaIRA"
               }
-              name="PTC (IRA Extension)"
+              name="PTC (H.R. 1834)"
               fill={COLORS.ira}
               fillOpacity={0.5}
               stroke={COLORS.ira}
@@ -540,7 +540,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             <Line
               type="monotone"
               dataKey="ptcIRA"
-              name="PTC (IRA Extension)"
+              name="PTC (H.R. 1834)"
               stroke={COLORS.ira}
               strokeWidth={2.5}
               dot={false}

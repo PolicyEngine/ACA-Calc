@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect } from "react";
 import ContributionScheduleChart from "./components/ContributionScheduleChart";
 import ExampleHouseholdsTable from "./components/ExampleHouseholdsTable";
 import HouseholdYearTable from "./components/HouseholdYearTable";
@@ -116,7 +116,7 @@ The PTCs cap how much of their income enrollees are required to pay for a **benc
 
 The chart shows the share of income a household pays for the benchmark plan under current law in ${year}: from **${minNow}%** to **${maxNow}%**. The credits are available from 100% to 400% of the federal poverty line (FPL).
 
-Households below 100% FPL don't qualify for the credits. In states that expanded Medicaid, adults with incomes up to 138% FPL qualify for Medicaid instead of a credit. In Texas, which hasn't expanded Medicaid, an adult without children earning less than 100% FPL qualifies for neither: the coverage gap.`,
+Households below 100% FPL don't qualify for the credits. In states that expanded Medicaid, adults with incomes up to 138% FPL qualify for Medicaid instead of a credit. In non-expansion states, an adult without children earning less than 100% of the FPL falls in the **coverage gap**, where they qualify for neither Medicaid nor the PTCs.`,
       chart: { type: "schedule", policies: [`current${year}`] },
     },
     {
@@ -165,19 +165,19 @@ Lebanon County is in Pennsylvania's highest-cost rating area in the model's ${ye
       chart: { type: "household", columns: ["prior", "current"] },
     },
 
-    // PART 3: Extending the enhanced credits
+    // PART 3: Reviving the enhanced credits
     {
       id: "extension",
-      title: "What an extension would do",
-      content: `Extending the enhanced credits would bring back the 2021–2025 schedule unchanged. H.R. 1834 would do this for 2026 through 2028. It passed the House on January 8, 2026; it has not been enacted.
+      title: "What reviving the enhanced credits would do",
+      content: `Reviving the enhanced credits would bring back the 2021–2025 schedule unchanged. H.R. 1834 would do this for 2026 through 2028. It passed the House on January 8, 2026; it has not been enacted.
 
-Under the extension, neither household would pay more than 8.5% of its income for the benchmark plan in ${year}. The Texas adult would pay **${monthly(below.revived.net_premium)}/month**, against ${monthly(below.current.net_premium)} under current law. The Pennsylvania adult would pay **${monthly(above.revived.net_premium)}/month**, with a credit of ${monthlyCredit(above.revived)}/month, against ${monthly(above.current.net_premium)}/month and no credit under current law.`,
+Under H.R. 1834, neither household would pay more than 8.5% of its income for the benchmark plan in ${year}. The Texas adult would pay **${monthly(below.revived.net_premium)}/month**, against ${monthly(below.current.net_premium)} under current law. The Pennsylvania adult would pay **${monthly(above.revived.net_premium)}/month**, with a credit of ${monthlyCredit(above.revived)}/month, against ${monthly(above.current.net_premium)}/month and no credit under current law.`,
       chart: { type: "household", columns: ["prior", "current", "revived"] },
     },
     {
       id: "across_incomes",
       title: "Across incomes",
-      content: `For a ${cliffDemoData.household_info.age}-year-old in Lebanon County, the extension would lower the payment at every income above Pennsylvania's Medicaid limit (138% FPL) up to about **${formatDollars(revivedEnd)}**, where 8.5% of its income reaches the benchmark premium of ${formatDollars(pennsylvania.current.slcsp)} a year.
+      content: `For a ${cliffDemoData.household_info.age}-year-old in Lebanon County, H.R. 1834 would lower the payment at every income above Pennsylvania's Medicaid limit (138% FPL) up to about **${formatDollars(revivedEnd)}**, where 8.5% of its income reaches the benchmark premium of ${formatDollars(pennsylvania.current.slcsp)} a year.
 
 Under current law the payment rises with income up to 400% FPL (${formatDollars(cliffIncome)}), then jumps to the full premium of ${monthly(pennsylvania.current.slcsp)}/month.`,
       chart: { type: "premium", lines: ["prior", "current", "revived"] },
@@ -189,7 +189,7 @@ Under current law the payment rises with income up to 400% FPL (${formatDollars(
 
 Under current law, the Pennsylvania adult's credit ends at 400% FPL (${formatDollars(cliffIncome)}). Earning ${formatDollars(incomes[cliffStep + 1] - incomes[cliffStep])} more, from ${formatDollars(incomes[cliffStep])} to ${formatDollars(incomes[cliffStep + 1])}, costs it ${formatDollars(creditLost)} of credit, so its net income falls by **${formatDollars(netLost)}**: a marginal tax rate of ${cliffRate.toFixed(0)}% on that ${formatDollars(incomes[cliffStep + 1] - incomes[cliffStep])}.
 
-Under the extension there is no cliff. Above 400% FPL the household pays at most 8.5% of its income for the benchmark plan, so each extra dollar lowers its credit by 8.5 cents. Its marginal tax rate is **${pointsHigher.toFixed(1)} points higher** than under current law at each income from 400% FPL until the credit ends at about ${formatDollars(revivedEnd)}; beyond that, the two are the same.`,
+Under H.R. 1834 there is no cliff. Above 400% FPL the household pays at most 8.5% of its income for the benchmark plan, so each extra dollar lowers its credit by 8.5 cents. Its marginal tax rate is **${pointsHigher.toFixed(1)} points higher** than under current law at each income from 400% FPL until the credit ends at about ${formatDollars(revivedEnd)}; beyond that, the two are the same.`,
       chart: { type: "mtr" },
     },
 
@@ -203,7 +203,7 @@ Besides the Texas and Pennsylvania adults, the Florida family of four earning ${
 
 The California couple in their 60s earning ${formatDollars(household.california_couple.income)}, just above 400% FPL, pays the whole premium, **${monthly(california.current.net_premium)}/month**: ${share(california.current.net_premium / household.california_couple.income, 0)} of its income. Like the Pennsylvania adult, it lives in its state's highest-cost rating area in the model's ${year} premium data.
 
-The table shows what each would pay under current law and under the extension.`,
+The table shows what each would pay under current law and under H.R. 1834.`,
       chart: { type: "examples", view: "net" },
     },
   ];
@@ -313,13 +313,22 @@ function Chart({ chart }) {
 const PARTS = {
   how_credits_work: "How the credits work",
   household_prior: `Two households facing the ${examples.year} increase`,
-  extension: "Extending the enhanced credits",
+  extension: "Reviving the enhanced credits",
   other_households: "Other households",
 };
 
 function App() {
-  const [currentPage, setCurrentPage] = useState(() => getPageFromHash());
-  const [embedded] = useState(() => isEmbedded());
+  // The page and the embed setting come from the address, which the server
+  // can't see. It renders the Overview, unembedded, and the browser switches
+  // to what the address asks for once it hydrates, so the two first renders
+  // match.
+  const [currentPage, setCurrentPage] = useState("main");
+  const [calculatorKey, setCalculatorKey] = useState(0);
+  const [embedded, setEmbedded] = useState(false);
+  useLayoutEffect(() => {
+    setCurrentPage(getPageFromHash());
+    setEmbedded(isEmbedded());
+  }, []);
   // The split layout's breakpoint (App.css): wide screens pin the chart.
   const wide = useMediaQuery("(min-width: 1025px)");
   const activeId = useActiveSection(SECTIONS, currentPage === "main" && wide);
@@ -330,6 +339,9 @@ function App() {
     const handleHashChange = () => {
       const page = getPageFromHash();
       setCurrentPage(page);
+      // A calculator link opened on the page (pasted, or with back and
+      // forward) starts the calculator over from that link.
+      if (window.location.hash.includes("?")) setCalculatorKey((key) => key + 1);
     };
 
     window.addEventListener("hashchange", handleHashChange);
@@ -409,7 +421,7 @@ function App() {
   // Render the calculator page
   const renderCalculatorPage = () => (
     <main className="calculator-page">
-      <Calculator />
+      <Calculator key={calculatorKey} />
     </main>
   );
 
@@ -420,7 +432,7 @@ function App() {
           <div className="header-content">
             <h1>ACA Premium Tax Credits</h1>
             <p className="subtitle">
-              How 2027 premiums change under current law, and what extending the enhanced credits would do
+              How 2027 premiums change under current law, and what reviving the enhanced credits would do
             </p>
             <div className="page-tabs">
               <button

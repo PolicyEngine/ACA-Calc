@@ -32,7 +32,7 @@ class CalculateRequest(BaseModel):
     year: int = Field(default=DEFAULT_YEAR, description="Coverage year (2026 or 2027)")
     show_ira: bool = Field(
         default=True,
-        description="Calculate H.R. 1834, the enhanced credits extended (the IRA extension)",
+        description="Calculate H.R. 1834, which revives the enhanced credits",
     )
     show_700fpl: bool = Field(
         default=False,
@@ -102,7 +102,7 @@ class CalculateResponse(BaseModel):
 
     income: list[float] = Field(description="Income values (1,001 points)")
     ptc_baseline: list[float] = Field(description="PTC under current law for the year")
-    ptc_ira: list[float] = Field(description="PTC under H.R. 1834 (the IRA extension)")
+    ptc_ira: list[float] = Field(description="PTC under H.R. 1834 (the enhanced credits revived)")
     ptc_700fpl: list[float] = Field(description="PTC under 700% FPL bill")
     ptc_additional_bracket: list[float] = Field(
         default_factory=list, description="PTC under additional bracket reform"
@@ -180,7 +180,7 @@ class ExplainRequest(BaseModel):
     chip_threshold_pct: int = Field(default=0, description="CHIP eligibility (% FPL), 0 if no children")
 
     # Which reforms are selected
-    show_ira: bool = Field(default=True, description="Whether IRA extension is selected")
+    show_ira: bool = Field(default=True, description="Whether H.R. 1834 is selected")
     show_700fpl: bool = Field(default=True, description="Whether 700% FPL bill is selected")
     show_additional_bracket: bool = Field(default=False, description="Whether additional bracket is selected")
     show_simplified_bracket: bool = Field(default=False, description="Whether simplified bracket is selected")

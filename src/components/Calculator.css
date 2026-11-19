@@ -226,6 +226,7 @@
 .share-button {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   padding: 14px 20px;
   background: var(--pe-gray-100);
@@ -258,6 +259,14 @@
   color: var(--pe-accent);
   font-weight: 500;
   white-space: nowrap;
+}
+
+/* Under the results: copies a link that reopens them */
+.results-share {
+  display: flex;
+  align-items: center;
+  gap: var(--pe-space-sm);
+  margin-top: var(--pe-space-lg);
 }
 
 .form-warning {

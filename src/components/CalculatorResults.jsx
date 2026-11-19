@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import PremiumChart from "./PremiumChart";
 import { closestIndex, scenarioAtIncome } from "./householdAtIncome";
 import "./Calculator.css";
@@ -26,10 +26,24 @@ const formatChange = (monthly) => {
 // What the household pays each month, as its card shows it.
 const monthlyNet = (values) => Math.round(values.net / 12);
 
-function CalculatorResults({ data, formData, compareEnhanced = false, initialIncome = null }) {
-  const [activeTab, setActiveTab] = useState("net");
-  // An example household's income, so its cards match the Overview.
+function CalculatorResults({
+  data,
+  formData,
+  compareEnhanced = false,
+  initialTab = "net",
+  initialIncome = null,
+  onViewChange,
+}) {
+  // The tab and income a link opened on, or an example household's income,
+  // so its cards match the Overview.
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [userIncome, setUserIncome] = useState(initialIncome ? String(initialIncome) : "");
+
+  // Tell the calculator what's on screen, for the page's link.
+  useEffect(() => {
+    const income = parseFloat(userIncome);
+    onViewChange?.({ tab: activeTab, income: income > 0 ? income : null });
+  }, [activeTab, userIncome, onViewChange]);
 
   // An answer from before the API took a year is for 2026.
   const year = data?.year || 2026;

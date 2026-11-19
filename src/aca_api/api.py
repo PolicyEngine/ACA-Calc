@@ -283,7 +283,7 @@ def build_response(
 async def calculate_ptc(data: CalculateRequest):
     """Calculate premium tax credits across income range.
 
-    Returns arrays of PTC values under baseline, IRA extension, and 700% FPL
+    Returns arrays of PTC values under baseline, H.R. 1834, and 700% FPL
     scenarios for the specified household.
     """
     # Check cache first (persistent or local), unless the request skips it
@@ -466,7 +466,7 @@ def build_explain_prompt(data: ExplainRequest) -> str:
     if data.show_ira:
         reform_descriptions.append("""
 H.R. 1834 (show_ira=True):
-- Would extend the enhanced premium tax credits of the American Rescue Plan Act and the Inflation Reduction Act, which expired after 2025, for 2026 through 2028
+- Would revive the enhanced premium tax credits of the American Rescue Plan Act and the Inflation Reduction Act, which expired after 2025, for 2026 through 2028
 - Required contributions run from 0% of income up to 150% FPL to 8.5% at 400% FPL and above
 - Removes the income eligibility limit at 400% FPL
 - Passed the House on January 8, 2026; it has not been enacted""")
@@ -486,7 +486,7 @@ ADDITIONAL BRACKET (show_additional_bracket=True):
 - Adds a new bracket above 400% FPL with a linear phase-out
 - Contribution percentage increases by ~4 percentage points per 100% FPL above transition threshold
 - Creates a more gradual cliff than current law
-- CRFB estimates it would cost about $280 billion through 2035, against $350 billion for the full IRA extension""")
+- CRFB estimates it would cost about $280 billion through 2035, against $350 billion for reviving the enhanced credits permanently""")
 
     if data.show_simplified_bracket:
         reform_descriptions.append("""
@@ -533,7 +533,7 @@ SIMPLIFIED BRACKET (show_simplified_bracket=True):
     # Add a section for each selected reform
     if data.show_ira:
         diff = data.ptc_ira_at_sample - data.ptc_baseline_at_sample
-        sections_spec.append(f'{section_num}. id: "ira", chartState: "ira_impact" - Explain H.R. 1834, which would extend the enhanced credits. At ${data.sample_income:,.0f} income, it provides ${data.ptc_ira_at_sample:,.0f}/year vs current law ${data.ptc_baseline_at_sample:,.0f}/year (difference: ${diff:,.0f}/year). Explain the 8.5% cap and removal of the 400% FPL limit.')
+        sections_spec.append(f'{section_num}. id: "ira", chartState: "ira_impact" - Explain H.R. 1834, which would revive the enhanced credits. At ${data.sample_income:,.0f} income, it provides ${data.ptc_ira_at_sample:,.0f}/year vs current law ${data.ptc_baseline_at_sample:,.0f}/year (difference: ${diff:,.0f}/year). Explain the 8.5% cap and removal of the 400% FPL limit.')
         sections_json.append('{{"id": "ira", "title": "...", "content": "...", "chartState": "ira_impact"}}')
         section_num += 1
 
@@ -545,7 +545,7 @@ SIMPLIFIED BRACKET (show_simplified_bracket=True):
 
     if data.show_additional_bracket:
         diff = data.ptc_additional_bracket_at_sample - data.ptc_baseline_at_sample
-        sections_spec.append(f'{section_num}. id: "additional", chartState: "additional_focus" - Explain the Additional Bracket reform (CRFB proposal). At ${data.sample_income:,.0f} income, it provides ${data.ptc_additional_bracket_at_sample:,.0f}/year vs current law ${data.ptc_baseline_at_sample:,.0f}/year (difference: ${diff:,.0f}/year). This proposal extends subsidies below 300% FPL while adding a linear phase-up above; CRFB estimates it would cost about $280B, against $350B for the full IRA extension.')
+        sections_spec.append(f'{section_num}. id: "additional", chartState: "additional_focus" - Explain the Additional Bracket reform (CRFB proposal). At ${data.sample_income:,.0f} income, it provides ${data.ptc_additional_bracket_at_sample:,.0f}/year vs current law ${data.ptc_baseline_at_sample:,.0f}/year (difference: ${diff:,.0f}/year). This proposal extends subsidies below 300% FPL while adding a linear phase-up above; CRFB estimates it would cost about $280B, against $350B for reviving the enhanced credits permanently.')
         sections_json.append('{{"id": "additional", "title": "...", "content": "...", "chartState": "additional_focus"}}')
         section_num += 1
 
