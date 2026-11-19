@@ -116,7 +116,7 @@ The PTCs cap how much of their income enrollees are required to pay for a **benc
 
 The chart shows the share of income a household pays for the benchmark plan under current law in ${year}: from **${minNow}%** to **${maxNow}%**. The credits are available from 100% to 400% of the federal poverty line (FPL).
 
-Households below 100% FPL don't qualify for the credits. In states that expanded Medicaid, adults with incomes up to 138% FPL qualify for Medicaid instead of a credit. In non-expansion states, an adult without children earning less than 100% of the FPL falls in the **coverage gap**, where they qualify for neither Medicaid nor the PTCs.`,
+Households below 100% FPL don't qualify for the credits. In states that expanded Medicaid, adults with incomes up to 138% FPL qualify for Medicaid instead of a credit. In most non-expansion states, an adult without children earning less than 100% of the FPL falls in the **coverage gap**, where they qualify for neither Medicaid nor the PTCs.`,
       chart: { type: "schedule", policies: [`current${year}`] },
     },
     {
