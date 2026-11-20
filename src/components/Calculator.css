@@ -641,6 +641,18 @@
   margin: var(--pe-space-sm) 0 0 0;
 }
 
+/* A card whose household Medicaid or CHIP covers names the program instead. */
+.impact-value-text {
+  font-size: 1.25rem;
+}
+
+/* Under a card's breakdown, as in the coverage gap. */
+.impact-note {
+  font-size: 0.75rem;
+  color: var(--pe-gray-600);
+  margin: var(--pe-space-sm) 0 0 0;
+}
+
 .results-caption {
   margin: var(--pe-space-md) 0 0 0;
   font-size: 0.8125rem;

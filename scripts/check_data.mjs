@@ -5,7 +5,6 @@
 //   node scripts/check_data.mjs
 
 import { readFileSync } from "node:fs";
-import { scenarioAtIncome } from "../src/components/householdAtIncome.js";
 
 const FILES = {
   cliff: "households/cliff_demo.json",
@@ -112,37 +111,43 @@ if (sweepAt >= 0 && pennsylvania) {
   }
 }
 
-// 7. The calculator's cards don't blend incomes across the credit's limits. The
-// Texas example has no Medicaid expansion, so its credit starts at 100% FPL and
-// ends at 400% FPL.
-const texas = data.calculator.examples.find((example) => example.key === "texas_single")?.response;
-check(Boolean(texas), "the calculator examples lack the Texas household");
-if (texas) {
-  const at = (income) =>
-    scenarioAtIncome(income, texas.income, {
-      benchmark: texas.slcsp_by_income,
-      credit: texas.ptc_baseline,
-      lowerLimit: texas.fpl,
-      upperLimit: 4 * texas.fpl,
-    });
-  const limit = 4 * texas.fpl;
-  const below = Math.floor(limit / 1000) * 1000 + 100;
-  const percent = Math.floor((100 * below) / texas.fpl);
-  const share = data.schedules.schedules[`current_${year}`][data.schedules.fpl_percent.indexOf(percent)];
-  const rule = Math.max(...texas.slcsp_by_income) - (share / 100) * below;
-  check(below < limit, `the Texas check's income $${below} isn't below the 400% FPL limit`);
-  check(
-    Math.abs(at(below).credit - rule) < 12,
-    `at $${below}, under the 400% FPL limit, the card's credit is $${at(below).credit.toFixed(0)}, the rules' $${rule.toFixed(0)}`
-  );
-  check(at(limit).credit > 0, "the card shows no credit at exactly 400% FPL, which qualifies");
-  check(at(limit + 1).credit === 0, "the card shows a credit above 400% FPL");
-  check(at(texas.fpl - 1).credit === 0, "the card shows a credit below 100% FPL in a state without expansion");
-  check(at(texas.fpl).credit > 0, "the card shows no credit at 100% FPL");
-  check(
-    [below, limit + 1, texas.fpl - 1, texas.fpl].every((income) => at(income).edge === null),
-    "the card can't place the credit's limits at 100% and 400% FPL"
-  );
+// 7. Each example's "Your household" cards, which the API calculated at its
+// earnings, match the Overview's table, to the dollar a month.
+for (const example of data.calculator.examples) {
+  const table = overview[example.key];
+  const answer = example.at_income;
+  if (!table) continue;
+  if (!answer || answer.income !== example.income) {
+    problems.push(`calculator example ${example.key} has no answer at its income: rerun precompute_calculator_examples.py`);
+    continue;
+  }
+  const cards = {
+    [`current_${year - 1}`]: answer.prior_year,
+    [`current_${year}`]: answer.current,
+    [`hr1834_${year}`]: answer.ira,
+  };
+  for (const [scenario, card] of Object.entries(cards)) {
+    const value = card ? net(card.benchmark, card.credit) : NaN;
+    const expected = table.scenarios[scenario].net_premium / 12;
+    check(
+      Math.abs(value - expected) < 1,
+      `${example.key}, ${scenario}: the card pays $${value.toFixed(2)}/month, the Overview $${expected.toFixed(2)}`
+    );
+  }
+}
+
+// 8. Current law pays a credit at exactly 400% FPL, which qualifies (26 U.S.C.
+// 36B(c)(1)(A)), and none a step above. The Florida family's 400% FPL is on
+// the income axis.
+const florida = data.calculator.examples.find((example) => example.key === "florida_family")?.response;
+check(Boolean(florida), "the calculator examples lack the Florida household");
+if (florida) {
+  const atLimit = florida.income.indexOf(4 * florida.fpl);
+  check(atLimit >= 0, `the Florida household's 400% FPL, $${4 * florida.fpl}, isn't on its income axis`);
+  if (atLimit >= 0) {
+    check(florida.ptc_baseline[atLimit] > 0, "current law shows no credit at exactly 400% FPL, which qualifies");
+    check(florida.ptc_baseline[atLimit + 1] === 0, "current law shows a credit above 400% FPL");
+  }
 }
 
 if (problems.length) {

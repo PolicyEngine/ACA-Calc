@@ -1,6 +1,7 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import PremiumChart from "./PremiumChart";
-import { closestIndex, scenarioAtIncome } from "./householdAtIncome";
+import { MAX_EARNINGS, useHouseholdAtIncome } from "./householdAtIncome";
+import { EXPANSION_STATES } from "./medicaidExpansion";
 import "./Calculator.css";
 
 const TABS = [
@@ -23,8 +24,191 @@ const formatChange = (monthly) => {
   return `${rounded > 0 ? "+" : "−"}${formatCurrency(Math.abs(rounded))}/month`;
 };
 
+const joinList = (items) =>
+  items.length <= 1 ? items[0] ?? "" : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+
+const capitalize = (text) => text.charAt(0).toUpperCase() + text.slice(1);
+
+const indicesWhere = (items, test) =>
+  items.flatMap((item, i) => (test(item, i) ? [i] : []));
+
+// Names some of the household's members for a sentence: "you", "you and your
+// spouse", "your children", "you and your child aged 20".
+function describeMembers(indices, people) {
+  const picked = new Set(indices);
+  const label = (i) => {
+    const { relationship, age } = people[i];
+    if (relationship === "head") return "you";
+    if (relationship === "spouse") return "your spouse";
+    return `your ${age < 19 ? "child" : "dependent"} aged ${age}`;
+  };
+  const adults = indicesWhere(people, (person, i) => person.relationship !== "dependent" && picked.has(i));
+  const dependents = indicesWhere(people, (person) => person.relationship === "dependent");
+  const pickedDependents = dependents.filter((i) => picked.has(i));
+
+  if (adults.length === 2 && pickedDependents.length === 0) return "you and your spouse";
+  const parts = adults.map(label);
+  if (pickedDependents.length > 0 && pickedDependents.length === dependents.length) {
+    const children = pickedDependents.every((i) => people[i].age < 19);
+    if (dependents.length === 1) parts.push(children ? "your child" : "your dependent");
+    else parts.push(children ? "your children" : "your dependents");
+  } else {
+    parts.push(...pickedDependents.map(label));
+  }
+  return joinList(parts);
+}
+
+const isCovered = (member) => member.medicaid || member.chip;
+
+// "Medicaid would cover your children, and CHIP would cover ...", naming each
+// program only for the members it covers.
+function coverageSentence(coverage, people) {
+  const medicaid = indicesWhere(coverage, (member) => member.medicaid);
+  const chip = indicesWhere(coverage, (member) => !member.medicaid && member.chip);
+  return [
+    medicaid.length > 0 && `Medicaid would cover ${describeMembers(medicaid, people)}`,
+    chip.length > 0 && `CHIP would cover ${describeMembers(chip, people)}`,
+  ]
+    .filter(Boolean)
+    .join(", and ");
+}
+
+// What a scenario's card shows, in annual amounts.
+function cardValues(scenario) {
+  if (scenario.coverage.every(isCovered)) {
+    const programs = [
+      scenario.coverage.some((member) => member.medicaid) && "Medicaid",
+      scenario.coverage.some((member) => !member.medicaid && member.chip) && "CHIP",
+    ].filter(Boolean);
+    return { covered: true, programs: programs.join(" and ") };
+  }
+  // In the coverage gap the model prices no plan, since it assumes no one there
+  // buys one; the card shows what one would cost without a credit.
+  const gap = scenario.benchmark === 0;
+  const benchmark = gap ? scenario.full_premium : scenario.benchmark;
+  const credit = gap ? 0 : scenario.credit;
+  return { covered: false, gap, benchmark, credit, net: Math.max(0, benchmark - credit) };
+}
+
 // What the household pays each month, as its card shows it.
 const monthlyNet = (values) => Math.round(values.net / 12);
+
+// The credit's income as a share of the poverty line, in whole percents
+// rounded down, as Form 8962 line 5 has it; just over 400% FPL rounds down to
+// 400, which still qualifies, so it's worded.
+function fplText(scenario) {
+  const percent = (100 * scenario.magi) / scenario.fpl;
+  if (percent > 400 && percent < 401) return "just over 400";
+  return String(Math.floor(percent));
+}
+
+function Explanation({ answer, state, year, compareEnhanced }) {
+  const { people, current, ira, prior_year: priorYear } = answer;
+  const fpl = fplText(current);
+  const percent = (100 * current.magi) / current.fpl;
+  const monthly = (annual) => `${formatCurrency(annual / 12)}/month`;
+  // The credit as the cards show it: the rounded premium less the rounded payment.
+  const monthlyCredit = (values) =>
+    `${formatCurrency(Math.round(values.benchmark / 12) - Math.round(values.net / 12))}/month`;
+
+  const covered = indicesWhere(current.coverage, isCovered);
+  const uncovered = indicesWhere(current.coverage, (member) => !isCovered(member));
+  if (uncovered.length === 0) {
+    // Medicaid and CHIP measure income against the coverage year's guideline,
+    // not the credit's, so the share of the credit's guideline isn't named.
+    return (
+      <p>
+        At this income, {coverageSentence(current.coverage, people)}. Premium tax credits are not
+        available to people eligible for these programs.
+      </p>
+    );
+  }
+
+  // Members Medicaid or CHIP covers leave the benchmark plan to the others.
+  const lead = covered.length > 0 && (
+    <>
+      {capitalize(coverageSentence(current.coverage, people))}, so the benchmark plan covers{" "}
+      {describeMembers(uncovered, people)}.{" "}
+    </>
+  );
+  const who = describeMembers(uncovered, people);
+  const values = cardValues(current);
+  const revived = ira ? cardValues(ira) : null;
+  const prior = priorYear && !priorYear.coverage.every(isCovered) ? cardValues(priorYear) : null;
+
+  if (percent < 100 && current.credit <= 0 && (ira?.credit ?? 0) <= 0) {
+    const barred = uncovered.some((i) => current.coverage[i].medicaid_work_requirement);
+    let reason;
+    if (barred) {
+      // The model applies Medicaid's work requirement from 2027, counting
+      // earnings of 80 hours a month at the federal minimum wage ($7.25).
+      reason = (
+        <>
+          {who} wouldn't qualify for Medicaid: from 2027, Medicaid requires most adults
+          aged 19 to 64 to work or do other qualifying activities for 80 hours a month, which the
+          model counts as earnings of at least $580 a month. Premium tax credits start at 100% FPL.
+        </>
+      );
+    } else if (!EXPANSION_STATES.includes(state)) {
+      reason = (
+        <>
+          {who} fall into the <strong>coverage gap</strong>. Your state has not expanded
+          Medicaid, so adults at this income don't qualify, and premium tax credits start at 100% FPL.
+        </>
+      );
+    } else {
+      reason = (
+        <>
+          {who} wouldn't qualify for Medicaid, and premium tax credits start at 100% FPL.
+        </>
+      );
+    }
+    return (
+      <p>
+        {lead}At {fpl}% FPL, {reason}
+      </p>
+    );
+  }
+
+  if (current.credit <= 0 && percent > 400) {
+    return (
+      <p>
+        {lead}At {fpl}% FPL, your household is <strong>above current law's 400% FPL limit</strong>, so
+        it receives no credit and pays the whole benchmark premium: {monthly(values.net)} in {year}
+        {prior && <>, against {monthly(prior.net)} in {year - 1}</>}.{" "}
+        {compareEnhanced &&
+          revived &&
+          (revived.credit > 0
+            ? `H.R. 1834 would limit what it pays for the benchmark plan to 8.5% of income, a credit of ${monthlyCredit(revived)}.`
+            : "Under H.R. 1834 it would receive no credit either: the benchmark plan costs less than 8.5% of its income.")}
+      </p>
+    );
+  }
+
+  if (current.credit > 0) {
+    return (
+      <p>
+        {lead}At {fpl}% FPL, current law limits what your household pays for the benchmark plan to a
+        share of its income, and the credit pays the rest, so the credit grows when premiums do.
+        Your household would pay {monthly(values.net)} in {year}
+        {prior && <>, against {monthly(prior.net)} in {year - 1}</>}.
+        {compareEnhanced && revived && <> H.R. 1834 would lower its share of income, to {monthly(revived.net)}.</>}
+      </p>
+    );
+  }
+
+  return (
+    <p>
+      {lead}At {fpl}% FPL, the benchmark plan costs less than the share of income current law asks
+      your household to pay, so it receives no credit.{" "}
+      {compareEnhanced &&
+        revived &&
+        (revived.credit > 0
+          ? `H.R. 1834 would lower that share, giving a credit of ${monthlyCredit(revived)}.`
+          : "H.R. 1834 wouldn't give it a credit either.")}
+    </p>
+  );
+}
 
 function CalculatorResults({
   data,
@@ -32,6 +216,7 @@ function CalculatorResults({
   compareEnhanced = false,
   initialTab = "net",
   initialIncome = null,
+  storedAtIncome = null,
   onViewChange,
 }) {
   // The tab and income a link opened on, or an example household's income,
@@ -50,137 +235,44 @@ function CalculatorResults({
   // A server that predates the year setting answers for 2026 whatever is asked.
   const requestedYear = formData?.year;
   const yearMismatch = Boolean(requestedYear) && requestedYear !== year;
-  const hasPrior = Boolean(data?.ptc_prior_year?.length);
 
-  // Annual amounts at the income entered, for each scenario.
-  const userResults = useMemo(() => {
-    const income = parseFloat(userIncome) || 0;
-    if (!data || income <= 0) return null;
-    const at = (benchmark, credit, fpl, creditEndsAt400 = true) =>
-      scenarioAtIncome(income, data.income, {
-        benchmark,
-        credit,
-        lowerLimit: fpl,
-        upperLimit: creditEndsAt400 ? 4 * fpl : undefined,
-      });
-    const index = closestIndex(income, data.income);
-    const prior = hasPrior
-      ? at(data.slcsp_by_income_prior_year, data.ptc_prior_year, data.fpl_prior_year)
-      : null;
-    const current = at(data.slcsp_by_income, data.ptc_baseline, data.fpl);
-    // H.R. 1834 has no limit at 400% FPL.
-    const revived = at(data.slcsp_by_income, data.ptc_ira, data.fpl, false);
-    return {
-      income,
-      fplPct: (income / data.fpl) * 100,
-      onMedicaid: data.medicaid?.[index] > 0,
-      onChip: data.chip?.[index] > 0,
-      prior,
-      current,
-      revived,
-      edge: [current, revived, prior].find((scenario) => scenario?.edge)?.edge ?? null,
-    };
-  }, [userIncome, data, hasPrior]);
+  // The household at the earnings entered, calculated by the API.
+  const income = parseFloat(userIncome) || 0;
+  const tooHigh = income > MAX_EARNINGS;
+  const atIncome = useHouseholdAtIncome(formData, income, storedAtIncome);
+  const answer = atIncome.status === "ready" && atIncome.answer?.income === income ? atIncome.answer : null;
 
-  const cards = userResults
-    ? [
-        userResults.prior && {
-          key: "prior",
-          title: `${year - 1}, current law`,
-          values: userResults.prior,
-        },
-        {
-          key: "baseline",
-          title: `${year}, current law`,
-          values: userResults.current,
-          change: userResults.prior && {
-            monthly: monthlyNet(userResults.current) - monthlyNet(userResults.prior),
-            from: `from ${year - 1}`,
+  const cards = answer
+    ? (() => {
+        const prior = answer.prior_year && cardValues(answer.prior_year);
+        const current = cardValues(answer.current);
+        const revived = answer.ira && cardValues(answer.ira);
+        // A change only between two cards with amounts.
+        const change = (values, from, label) =>
+          from && !from.covered && !values.covered
+            ? { monthly: monthlyNet(values) - monthlyNet(from), from: label }
+            : null;
+        return [
+          prior && { key: "prior", title: `${year - 1}, current law`, values: prior },
+          {
+            key: "baseline",
+            title: `${year}, current law`,
+            values: current,
+            change: change(current, prior, `from ${year - 1}`),
           },
-        },
-        compareEnhanced && {
-          key: "ira",
-          title: `${year}, H.R. 1834`,
-          values: userResults.revived,
-          change: {
-            monthly: monthlyNet(userResults.revived) - monthlyNet(userResults.current),
-            from: "from current law",
-          },
-        },
-      ].filter(Boolean)
+          compareEnhanced &&
+            revived && {
+              key: "ira",
+              title: `${year}, H.R. 1834`,
+              values: revived,
+              change: change(revived, current, "from current law"),
+            },
+        ].filter(Boolean);
+      })()
     : [];
 
-  const explanation = () => {
-    const { fplPct, onMedicaid, onChip, prior, current, revived } = userResults;
-    // Rounding shouldn't put a household on the wrong side of a limit.
-    const fpl =
-      fplPct > 400 && fplPct < 400.5
-        ? "just over 400"
-        : fplPct < 100 && fplPct >= 99.5
-          ? "just under 100"
-          : fplPct.toFixed(0);
-    const monthly = (annual) => `${formatCurrency(annual / 12)}/month`;
-    // The credit as the cards show it: the rounded premium less the rounded payment.
-    const monthlyCredit = (values) =>
-      `${formatCurrency(Math.round(values.benchmark / 12) - Math.round(values.net / 12))}/month`;
-
-    if (onMedicaid || onChip) {
-      const programs = [onMedicaid && "Medicaid", onChip && "CHIP"].filter(Boolean).join(" and ");
-      return (
-        <p>
-          At {fpl}% FPL, your household would be covered by <strong>{programs}</strong>.
-          Premium tax credits are not available to people eligible for these programs.
-        </p>
-      );
-    }
-
-    if (fplPct < 100 && current.credit <= 0 && revived.credit <= 0) {
-      return (
-        <p>
-          At {fpl}% FPL, you fall into the <strong>coverage gap</strong>. Your state has not
-          expanded Medicaid, so adults at this income don't qualify, and premium tax credits
-          start at 100% FPL.
-        </p>
-      );
-    }
-
-    if (current.credit <= 0 && fplPct > 400) {
-      return (
-        <p>
-          At {fpl}% FPL, your household is <strong>above current law's 400% FPL limit</strong>, so
-          it receives no credit and pays the whole benchmark premium: {monthly(current.benchmark)} in {year}
-          {prior && <>, against {monthly(prior.benchmark)} in {year - 1}</>}.{" "}
-          {compareEnhanced &&
-            (revived.credit > 0
-              ? `H.R. 1834 would limit what it pays for the benchmark plan to 8.5% of income, a credit of ${monthlyCredit(revived)}.`
-              : "Under H.R. 1834 it would receive no credit either: the benchmark plan costs less than 8.5% of its income.")}
-        </p>
-      );
-    }
-
-    if (current.credit > 0) {
-      return (
-        <p>
-          At {fpl}% FPL, current law limits what your household pays for the benchmark plan to a
-          share of its income, and the credit pays the rest, so the credit grows when premiums do.
-          Your household would pay {monthly(current.net)} in {year}
-          {prior && <>, against {monthly(prior.net)} in {year - 1}</>}.
-          {compareEnhanced && <> H.R. 1834 would lower its share of income, to {monthly(revived.net)}.</>}
-        </p>
-      );
-    }
-
-    return (
-      <p>
-        At {fpl}% FPL, the benchmark plan costs less than the share of income current law asks your
-        household to pay, so it receives no credit.{" "}
-        {compareEnhanced &&
-          (revived.credit > 0
-            ? `H.R. 1834 would lower that share, giving a credit of ${monthlyCredit(revived)}.`
-            : "H.R. 1834 wouldn't give it a credit either.")}
-      </p>
-    );
-  };
+  const otherIncome = answer ? answer.current.magi - answer.income : 0;
+  const everyone = answer ? describeMembers(answer.people.map((_, i) => i), answer.people) : "";
 
   return (
     <div className="calculator-results">
@@ -210,6 +302,7 @@ function CalculatorResults({
                 measure={activeTab}
                 lines={compareEnhanced ? ["prior", "current", "revived"] : ["prior", "current"]}
                 height={400}
+                xLabel="Earnings"
                 title={
                   activeTab === "net"
                     ? "What your household would pay for the benchmark plan"
@@ -228,7 +321,7 @@ function CalculatorResults({
         {activeTab === "impact" && (
           <div className="results-impact">
             <div className="impact-input-section">
-              <label htmlFor="user-income">Enter your annual household income:</label>
+              <label htmlFor="user-income">Enter your household's annual earnings:</label>
               <div className="income-input-wrapper">
                 <span className="currency-prefix">$</span>
                 <input
@@ -238,47 +331,63 @@ function CalculatorResults({
                   onChange={(e) => setUserIncome(e.target.value)}
                   placeholder="75,000"
                   min="0"
+                  max={MAX_EARNINGS}
                   step="1000"
                 />
               </div>
             </div>
 
-            {userResults && (
+            {tooHigh && (
+              <p className="results-notice">The calculator covers earnings up to $1,000,000.</p>
+            )}
+
+            {atIncome.status === "error" && <p className="results-notice">{atIncome.error}</p>}
+
+            {answer && (
               <div className="impact-results">
                 <div className="impact-summary">
                   <p className="fpl-indicator">
-                    {formatCurrency(userResults.income)} is approximately{" "}
-                    <strong>{userResults.fplPct.toFixed(0)}% FPL</strong> for your household
+                    {formatCurrency(answer.income)} of earnings
+                    {otherIncome >= 1 && <>, with {formatCurrency(otherIncome)} of other income the credit counts,</>}{" "}
+                    is approximately <strong>{fplText(answer.current)}% FPL</strong> for your household
                   </p>
-                  {userResults.edge && (
-                    <p className="results-notice">
-                      This household's eligibility changes somewhere between{" "}
-                      {formatCurrency(userResults.edge.from)} and {formatCurrency(userResults.edge.to)}.
-                      Amounts affected by that change are for {formatCurrency(userResults.edge.shownAt)},
-                      the closest income calculated.
-                    </p>
-                  )}
                 </div>
 
                 <div className="impact-cards">
                   {cards.map((card) => (
                     <div key={card.key} className={`impact-card ${card.key}`}>
                       <h4>{card.title}</h4>
-                      <p className="impact-value">{formatCurrency(card.values.net / 12)}</p>
-                      <p className="impact-label">Benchmark plan after credit, per month</p>
-                      <dl className="impact-breakdown">
-                        <div>
-                          <dt>Benchmark plan</dt>
-                          <dd>{formatCurrency(card.values.benchmark / 12)}</dd>
-                        </div>
-                        <div>
-                          <dt>Premium tax credit</dt>
-                          {/* The rounded premium less the rounded payment, so the card adds up. */}
-                          <dd>
-                            {formatCurrency(Math.round(card.values.benchmark / 12) - Math.round(card.values.net / 12))}
-                          </dd>
-                        </div>
-                      </dl>
+                      {card.values.covered ? (
+                        <>
+                          <p className="impact-value impact-value-text">{card.values.programs}</p>
+                          <p className="impact-label">Covers {everyone}</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="impact-value">{formatCurrency(card.values.net / 12)}</p>
+                          <p className="impact-label">
+                            {card.values.gap ? "Full premium, per month" : "Benchmark plan after credit, per month"}
+                          </p>
+                          <dl className="impact-breakdown">
+                            <div>
+                              <dt>Benchmark plan</dt>
+                              <dd>{formatCurrency(card.values.benchmark / 12)}</dd>
+                            </div>
+                            <div>
+                              <dt>Premium tax credit</dt>
+                              {/* The rounded premium less the rounded payment, so the card adds up. */}
+                              <dd>
+                                {formatCurrency(
+                                  Math.round(card.values.benchmark / 12) - Math.round(card.values.net / 12)
+                                )}
+                              </dd>
+                            </div>
+                          </dl>
+                          {card.values.gap && (
+                            <p className="impact-note">A plan bought without a credit costs its full premium.</p>
+                          )}
+                        </>
+                      )}
                       {card.change && (
                         <p className="impact-change">
                           {formatChange(card.change.monthly)} {card.change.from}
@@ -290,16 +399,22 @@ function CalculatorResults({
 
                 <div className="impact-explanation">
                   <h4>What this means</h4>
-                  {explanation()}
+                  <Explanation
+                    answer={answer}
+                    state={formData?.state}
+                    year={year}
+                    compareEnhanced={compareEnhanced}
+                  />
                 </div>
               </div>
             )}
 
-            {!userResults && (
+            {!answer && !tooHigh && atIncome.status !== "error" && (
               <div className="impact-placeholder">
                 <p>
-                  Enter your income above to see what your household would pay for the benchmark
-                  plan in each scenario.
+                  {atIncome.status === "loading"
+                    ? `Calculating your household at ${formatCurrency(income)} of earnings…`
+                    : "Enter your earnings above to see what your household would pay for the benchmark plan in each scenario."}
                 </p>
               </div>
             )}

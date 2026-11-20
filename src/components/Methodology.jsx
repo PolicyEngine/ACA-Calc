@@ -85,6 +85,10 @@ function buildSections() {
             The credit measures income against the previous year's poverty guideline: {priorYear}'s for{" "}
             {year} coverage. Alaska and Hawaii have their own guidelines.
           </p>
+          <p>
+            Income of exactly 400% FPL qualifies for the credit under 26 U.S.C. 36B(c)(1)(A). The
+            calculator pays the credit there; policyengine-us {examples.model_version} doesn't.
+          </p>
         </>
       ),
     },

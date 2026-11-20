@@ -129,6 +129,14 @@ class CalculateResponse(BaseModel):
     )
     medicaid: list[float] = Field(description="Medicaid value by income")
     chip: list[float] = Field(description="CHIP value by income")
+    magi: list[float] | None = Field(
+        default=None,
+        description=(
+            "The credit's income at each point (aca_magi): the earnings plus any "
+            "other income the model counts, such as Alaska's Permanent Fund "
+            "Dividend, so the credit's limits can be placed on the earnings axis"
+        ),
+    )
     # With show_prior_year: current law a year before the coverage year.
     ptc_prior_year: list[float] | None = Field(
         default=None, description="PTC under current law for the year before"
@@ -138,6 +146,73 @@ class CalculateResponse(BaseModel):
     )
     fpl_prior_year: float | None = Field(
         default=None, description="The guideline the year before's credit uses"
+    )
+
+
+class AtIncomeRequest(CalculateRequest):
+    """A household at one level of earnings: the calculator's "Your household"
+    tab calculates each scenario at the earnings entered, instead of reading
+    between the income axis's $1,000 steps."""
+
+    income: float = Field(
+        ge=0, le=1_000_000, description="Annual earnings, up to $1,000,000"
+    )
+
+
+class Person(BaseModel):
+    """A member of the household, in the order the request lists them."""
+
+    name: str = Field(description="The member's name in the situation")
+    age: int = Field(description="Age")
+    relationship: str = Field(description="head, spouse or dependent")
+
+
+class PersonCoverage(BaseModel):
+    """What covers one member in a scenario."""
+
+    medicaid: bool = Field(description="Eligible for Medicaid")
+    chip: bool = Field(description="Eligible for CHIP")
+    medicaid_work_requirement: bool = Field(
+        description="Would be eligible for Medicaid but for its work requirement"
+    )
+
+
+class ScenarioAtIncome(BaseModel):
+    """One scenario's annual amounts at the earnings asked for."""
+
+    year: int = Field(description="Coverage year")
+    benchmark: float = Field(
+        description=(
+            "Benchmark premium for the members who can use the credit, zero "
+            "where none can"
+        )
+    )
+    credit: float = Field(description="Premium tax credit")
+    full_premium: float = Field(
+        description=(
+            "Benchmark premium for every member without Medicaid or CHIP: the "
+            "benchmark, except in the coverage gap, where the model assumes no "
+            "one buys a plan and this is what one would cost without a credit"
+        )
+    )
+    magi: float = Field(description="The credit's income (aca_magi)")
+    fpl: float = Field(description="The poverty guideline the credit uses")
+    coverage: list[PersonCoverage] = Field(description="Each member's coverage, as in people")
+
+
+class AtIncomeResponse(BaseModel):
+    """Each scenario at one level of earnings."""
+
+    income: float = Field(description="Annual earnings")
+    year: int = Field(description="Coverage year")
+    model_version: str = Field(description="policyengine-us version")
+    people: list[Person] = Field(description="The household's members")
+    current: ScenarioAtIncome = Field(description="Current law for the coverage year")
+    ira: ScenarioAtIncome | None = Field(
+        default=None, description="H.R. 1834 for the coverage year, with show_ira"
+    )
+    prior_year: ScenarioAtIncome | None = Field(
+        default=None, description="Current law the year before, with show_prior_year"
     )
 
 

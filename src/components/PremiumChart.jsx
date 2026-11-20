@@ -44,15 +44,27 @@ const formatCurrency = (value) =>
 // What the benchmark plan costs after the credit, never below zero.
 const net = (benchmark, credit) => Math.max(0, (benchmark || 0) - (credit || 0));
 
+// The earnings at which the credit's income (magi) reaches an amount. The
+// credit's income adds other income to the earnings, such as Alaska's Permanent
+// Fund Dividend; without it, the earnings are the credit's income.
+function earningsAt(amount, incomes, magi) {
+  if (!magi?.length) return amount;
+  const i = magi.findIndex((value) => value >= amount);
+  if (i <= 0) return i === 0 ? incomes[0] : amount;
+  const share = (amount - magi[i - 1]) / (magi[i] - magi[i - 1]);
+  return incomes[i - 1] + share * (incomes[i] - incomes[i - 1]);
+}
+
 /**
  * Monthly amounts by income for 2026 and 2027 current law and 2027 under H.R.
  * 1834: what the household pays for the benchmark plan after the credit
  * (measure "net") or the credit itself (measure "credit").
  *
  * `data` has the calculator API's fields: income, ptc_prior_year, ptc_baseline,
- * ptc_ira, slcsp_by_income_prior_year, slcsp_by_income, fpl and year. `lines`
- * picks the scenarios to draw. The chart is `height` pixels tall and as wide
- * as its container.
+ * ptc_ira, slcsp_by_income_prior_year, slcsp_by_income, fpl, year and, if the
+ * API sent it, magi. `lines` picks the scenarios to draw, and `xLabel` names
+ * the income axis. The chart is `height` pixels tall and as wide as its
+ * container.
  */
 function PremiumChart({
   data,
@@ -60,6 +72,7 @@ function PremiumChart({
   title,
   lines: shown = ["prior", "current", "revived"],
   height = 380,
+  xLabel = "Household income",
 }) {
   const year = data?.year || 2027;
   const hasPrior = Boolean(data?.ptc_prior_year?.length);
@@ -77,7 +90,7 @@ function PremiumChart({
     }
     return data.income
       .map((income, i) => {
-        const point = { income };
+        const point = { income, magi: data.magi?.[i] ?? income };
         if (measure === "net") {
           point.current = net(data.slcsp_by_income?.[i], data.ptc_baseline[i]) / 12;
           point.revived = net(data.slcsp_by_income?.[i], data.ptc_ira[i]) / 12;
@@ -109,11 +122,12 @@ function PremiumChart({
   const CustomTooltip = ({ active, payload }) => {
     if (!active || !payload?.length) return null;
     const income = payload[0]?.payload?.income || 0;
+    const magi = payload[0]?.payload?.magi ?? income;
     return (
       <div className="premium-chart-tooltip">
         <p className="premium-chart-tooltip-income">
           {formatCurrency(income)}
-          {fpl > 0 && ` (${Math.round((100 * income) / fpl)}% FPL)`}
+          {fpl > 0 && ` (${Math.round((100 * magi) / fpl)}% FPL)`}
         </p>
         {payload.map((entry) => (
           <p key={entry.dataKey}>
@@ -126,6 +140,8 @@ function PremiumChart({
   };
 
   const maxIncome = points.length ? points[points.length - 1].income : 0;
+  // 400% FPL on the earnings axis.
+  const limit400 = fpl > 0 ? earningsAt(4 * fpl, data.income, data.magi) : 0;
   const step = maxIncome > 160000 ? 40000 : 20000;
   const xTicks = [];
   for (let tick = 0; tick <= maxIncome; tick += step) xTicks.push(tick);
@@ -144,7 +160,7 @@ function PremiumChart({
             tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
             {...AXIS}
             height={44}
-            label={{ value: "Household income", position: "insideBottom", offset: 0, ...AXIS_LABEL }}
+            label={{ value: xLabel, position: "insideBottom", offset: 0, ...AXIS_LABEL }}
           />
           <YAxis tickFormatter={(v) => formatCurrency(v)} {...AXIS} width={64} />
           <Tooltip content={<CustomTooltip />} cursor={CURSOR} />
@@ -159,7 +175,7 @@ function PremiumChart({
           )}
           {fpl > 0 && (
             <ReferenceLine
-              x={fpl * 4}
+              x={limit400}
               stroke="var(--color-gray-400)"
               strokeDasharray="4 4"
               label={{ value: "400% FPL", position: "insideTopRight", ...AXIS_LABEL, fontSize: 11 }}

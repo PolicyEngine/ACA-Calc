@@ -3,18 +3,9 @@ import CalculatorForm, { buildShareableUrl, getLinkFromUrl, toRequest } from "./
 import CalculatorResults from "./CalculatorResults";
 import ExampleHouseholds from "./ExampleHouseholds";
 import AIExplanation from "./AIExplanation";
+import { API_URL } from "./api";
+import { EXPANSION_STATES } from "./medicaidExpansion";
 import "./Calculator.css";
-
-// API URL - uses environment variable or defaults to localhost for development
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
-
-// Medicaid expansion states
-const EXPANSION_STATES = [
-  "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "HI", "ID", "IL", "IN", "IA",
-  "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MO", "MT", "NE", "NV", "NH",
-  "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SD", "UT",
-  "VT", "VA", "WA", "WV"
-];
 
 // Medicaid adult thresholds by state (% FPL) - expansion states are 138%, non-expansion varies
 const getMedicaidAdultThreshold = (state) => {
@@ -64,7 +55,9 @@ const CACHE_TTL = 24 * 60 * 60 * 1000;
 
 // Part of every browser cache key: change it when the API's answers change for
 // the same request (a new policyengine-us pin), so no one sees the old ones.
-const CACHE_VERSION = "policyengine-us-2.138.2";
+// The suffix marks answers with the credit's income (magi) and the credit at
+// exactly 400% FPL.
+const CACHE_VERSION = "policyengine-us-2.138.2-magi";
 
 function getCacheKey(data) {
   const keyData = {
@@ -516,6 +509,11 @@ function Calculator() {
                 compareEnhanced={compareEnhanced}
                 initialTab={selectedExample ? "net" : linkView.tab}
                 initialIncome={selectedExample?.income ?? linkView.income}
+                storedAtIncome={
+                  selectedExample?.at_income
+                    ? { income: selectedExample.income, answer: selectedExample.at_income }
+                    : null
+                }
                 onViewChange={setView}
               />
               <div className="results-share">

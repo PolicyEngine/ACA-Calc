@@ -3,8 +3,10 @@
 Usage: python scripts/smoke_test_api.py API_URL [--explain] [--commit SHA [--wait SECONDS]]
 
 Checks /api/health, then both calculator endpoints: /api/calculate-stream,
-which the calculator page calls, and /api/calculate, its fallback, and then a
-2027 calculation with 2026 alongside, as the calculator page asks. The
+which the calculator page calls, and /api/calculate, its fallback, then a
+2027 calculation with 2026 alongside, as the calculator page asks, and the
+same household at one level of earnings (/api/calculate-at-income), which the
+page's "Your household" tab asks for. The
 requests set skip_cache, so the deployed code computes
 each answer instead of returning one from the 7-day calculation cache, and the
 stream check confirms that it did. With --explain it checks /api/health and then /api/explain
@@ -185,6 +187,27 @@ def check_calculate_2027(base):
     check_result("/api/calculate (2027)", result)
 
 
+def check_calculate_at_income(base):
+    # The "Your household" tab's request: 2027, with H.R. 1834 and 2026.
+    result = call(
+        f"{base}/api/calculate-at-income",
+        {**FRESH, "year": 2027, "show_prior_year": True, "income": 40_000},
+    )
+    assert result.get("year") == 2027, f"asked for 2027, got {result.get('year')}"
+    assert result.get("income") == 40_000, f"asked for $40,000, got {result.get('income')}"
+    for name in ("current", "ira", "prior_year"):
+        scenario = result.get(name)
+        assert scenario, f"/api/calculate-at-income: no {name} scenario"
+        for field in ("benchmark", "credit", "full_premium", "magi", "fpl"):
+            value = scenario[field]
+            assert math.isfinite(value) and value >= 0, f"{name}: {field} is {value}"
+        assert scenario["credit"] > 0, f"{name}: no credit at $40,000"
+    print(
+        f"ok /api/calculate-at-income: 2027 credit {result['current']['credit']:,.0f} "
+        f"at $40,000, 2026 {result['prior_year']['credit']:,.0f}"
+    )
+
+
 def check_explain(base):
     # A fixed household, so after the first deploy the answer usually comes
     # from the explanation cache rather than a new Anthropic API call.
@@ -249,7 +272,13 @@ def main():
     if args.explain:
         checks = [check_health, check_explain]
     else:
-        checks = [check_health, check_calculate_stream, check_calculate, check_calculate_2027]
+        checks = [
+            check_health,
+            check_calculate_stream,
+            check_calculate,
+            check_calculate_2027,
+            check_calculate_at_income,
+        ]
     for check in checks:
         from_this_deploy(check, base)
 

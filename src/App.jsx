@@ -127,7 +127,7 @@ Households below 100% FPL don't qualify for the credits. In states that expanded
 • No household paid more than **8.5%** of its income
 • Credits reached incomes above 400% FPL, with no upper income limit
 
-They kept the 100% FPL floor, so households below it still received no credit.
+They kept the 100% FPL floor.
 
 The chart compares the enhanced schedule with current law for ${year}.`,
       chart: { type: "schedule", policies: [`current${year}`, "enhanced"] },

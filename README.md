@@ -116,7 +116,8 @@ the `main` environment of PolicyEngine's Modal workspace, defined in
 runs the API tests against the image's pinned packages on pull requests that
 touch the backend. When such a change merges to `main`, it deploys the app and
 smoke-tests `/api/health`, both calculator endpoints (`/api/calculate-stream`,
-which the page calls, and `/api/calculate`, its fallback) and `/api/explain`.
+which the page calls, and `/api/calculate`, its fallback), `/api/calculate-at-income`
+(the "Your household" tab's answer at the earnings entered) and `/api/explain`.
 The calculator checks set `skip_cache`, which makes both endpoints compute a
 new answer without reading or writing the 7-day cache, and the stream check
 confirms that the new code computed its answer. Modal can keep sending

@@ -5,9 +5,11 @@ changes affect household premium tax credits across income levels.
 """
 
 import asyncio
+import copy
 import hashlib
 import json
 import os
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from importlib.metadata import version
@@ -34,6 +36,11 @@ from aca_calc.calculations.reforms import (
 # The model version is part of every cache key, so a new pin never serves
 # answers the previous version computed.
 MODEL_VERSION = version("policyengine-us")
+
+# Also part of every cache key: change it when this API's answers change for
+# the same request and model version, so the caches drop the old ones.
+# 2: the credit at exactly 400% FPL, and the credit's income on the axis.
+ANSWER_VERSION = 2
 
 # Each scenario: the request flag that turns it on, the response field for its
 # credits, and the reform that models it.
@@ -65,13 +72,20 @@ def set_persistent_cache(calc_cache, explain_cache):
 
 
 def get_from_cache(key: str, cache_type: str = "calc"):
-    """Get value from cache, checking TTL. Returns None if not found or expired."""
+    """Get value from cache, checking TTL. Returns None if not found or expired.
+
+    cache_type is "calc" (the income axis), "at_income" (one income) or
+    "explain"; the first two share the calculation cache.
+    """
     # Import models lazily to avoid circular imports
-    from .models import CalculateResponse, ExplainResponse
+    from .models import AtIncomeResponse, CalculateResponse, ExplainResponse
+
+    models = {"calc": CalculateResponse, "at_income": AtIncomeResponse, "explain": ExplainResponse}
+    explain = cache_type == "explain"
 
     # Try persistent cache first (Modal Dict)
-    persistent_cache = _persistent_calc_cache if cache_type == "calc" else _persistent_explain_cache
-    ttl = CALC_CACHE_TTL if cache_type == "calc" else EXPLAIN_CACHE_TTL
+    persistent_cache = _persistent_explain_cache if explain else _persistent_calc_cache
+    ttl = EXPLAIN_CACHE_TTL if explain else CALC_CACHE_TTL
 
     if persistent_cache is not None:
         try:
@@ -82,10 +96,7 @@ def get_from_cache(key: str, cache_type: str = "calc"):
                     data = entry.get("data")
                     # Reconstruct Pydantic model from dict
                     if isinstance(data, dict):
-                        if cache_type == "calc":
-                            return CalculateResponse(**data)
-                        else:
-                            return ExplainResponse(**data)
+                        return models[cache_type](**data)
                     return data
                 # Expired - remove it
                 try:
@@ -96,14 +107,15 @@ def get_from_cache(key: str, cache_type: str = "calc"):
             pass
 
     # Fall back to local cache
-    local_cache = _local_calculation_cache if cache_type == "calc" else _local_explanation_cache
+    local_cache = _local_explanation_cache if explain else _local_calculation_cache
     return local_cache.get(key)
 
 
 def set_in_cache(key: str, data, cache_type: str = "calc"):
     """Store value in cache with timestamp for TTL."""
     # Store in persistent cache if available
-    persistent_cache = _persistent_calc_cache if cache_type == "calc" else _persistent_explain_cache
+    explain = cache_type == "explain"
+    persistent_cache = _persistent_explain_cache if explain else _persistent_calc_cache
 
     if persistent_cache is not None:
         try:
@@ -117,7 +129,7 @@ def set_in_cache(key: str, data, cache_type: str = "calc"):
             pass
 
     # Also store in local cache as fallback (can store Pydantic models directly)
-    local_cache = _local_calculation_cache if cache_type == "calc" else _local_explanation_cache
+    local_cache = _local_explanation_cache if explain else _local_calculation_cache
     local_cache[key] = data
 
 
@@ -126,10 +138,15 @@ calculation_cache = _local_calculation_cache
 explanation_cache = _local_explanation_cache
 
 from .models import (
+    AtIncomeRequest,
+    AtIncomeResponse,
     CalculateRequest,
     CalculateResponse,
     ExplainRequest,
     ExplainResponse,
+    Person,
+    PersonCoverage,
+    ScenarioAtIncome,
     ScrollySection,
 )
 
@@ -192,9 +209,65 @@ def get_cache_key(data: CalculateRequest) -> str:
         "show_prior_year": data.show_prior_year,
         "year": data.year,
         "model_version": MODEL_VERSION,
+        "answer_version": ANSWER_VERSION,
+        # Set only for an answer at one income.
+        "income": getattr(data, "income", None),
     }
     key_str = json.dumps(key_data, sort_keys=True)
     return hashlib.md5(key_str.encode()).hexdigest()
+
+
+_enhanced_system = None
+_enhanced_system_lock = threading.Lock()
+
+
+def enhanced_system():
+    """H.R. 1834's version of the model, built once per process.
+
+    Building it takes about 10 seconds and 1 GB; with it built, a household
+    calculates in under a second, which the calculator's answers at one income
+    need. The other scenarios build theirs per request, since the page doesn't
+    ask for them, and holding each would take another 1 GB.
+    """
+    global _enhanced_system
+    with _enhanced_system_lock:
+        if _enhanced_system is None:
+            _enhanced_system = Simulation.default_tax_benefit_system(
+                reform=create_enhanced_ptc_reform()
+            )
+    return _enhanced_system
+
+
+def scenario_simulation(situation: dict, create_reform) -> Simulation:
+    """A simulation of the situation under a scenario's reform."""
+    if create_reform is create_enhanced_ptc_reform:
+        return Simulation(tax_benefit_system=enhanced_system(), situation=situation)
+    return Simulation(situation=situation, reform=create_reform())
+
+
+def credit_at_400_percent(sim: Simulation, year: int, credit: np.ndarray) -> np.ndarray:
+    """Current law's credit, with the tax units whose income is exactly 400% FPL
+    given theirs.
+
+    A tax unit whose income "does not exceed 400 percent" of the poverty line
+    qualifies (26 U.S.C. 36B(c)(1)(A)), and Form 8962 Worksheet 2 decides
+    "more than" 400% on dollars. policyengine-us 2.138.2 makes exactly 400%
+    ineligible (draft fix: PolicyEngine/policyengine-us#10312), so there this
+    applies the model's own formula (aca_ptc_before_filing_gate and the filing
+    condition of files_return_for_aca_ptc). It changes nothing else: a dollar
+    above, income exceeds the limit.
+    """
+    magi = sim.calculate("aca_magi", period=year)
+    at_limit = magi == 4 * sim.calculate("aca_fpg", period=year)
+    if not at_limit.any():
+        return credit
+    benchmark = sim.calculate("aca_ptc_slcsp", period=year)
+    rate = sim.calculate("aca_required_contribution_percentage", period=year)
+    files = sim.calculate("tax_unit_is_filer", period=year) | sim.calculate(
+        "takes_up_aca_if_eligible", period=year
+    )
+    statutory = np.maximum(0, benchmark - magi * rate) * files
+    return np.where(at_limit & (benchmark > 0), statutory, credit)
 
 
 def household_situation(data: CalculateRequest) -> dict:
@@ -217,9 +290,12 @@ def run_baseline(data: CalculateRequest, situation: dict) -> dict:
     sim = Simulation(situation=situation)
     fpl = sim.calculate("tax_unit_fpg", period=year - 1)
     slcsp = sim.calculate("slcsp", map_to="household", period=year)
+    # One tax unit per household, so tax unit and household values line up.
+    credit = credit_at_400_percent(sim, year, sim.calculate("aca_ptc", period=year))
     return {
         "income": sim.calculate("employment_income", map_to="household", period=year),
-        "ptc_baseline": sim.calculate("aca_ptc", map_to="household", period=year),
+        "ptc_baseline": credit,
+        "magi": sim.calculate("aca_magi", period=year),
         "medicaid": sim.calculate("medicaid", map_to="household", period=year),
         "chip": sim.calculate("chip", map_to="household", period=year),
         # The benchmark covers the members eligible for the credit at each
@@ -241,10 +317,9 @@ def run_prior_year(data: CalculateRequest) -> dict:
     prior = data.model_copy(update={"year": data.year - 1})
     sim = Simulation(situation=household_situation(prior))
     fpl = sim.calculate("tax_unit_fpg", period=prior.year - 1)
+    credit = sim.calculate("aca_ptc", period=prior.year)
     return {
-        "ptc_prior_year": convert_to_native(
-            sim.calculate("aca_ptc", map_to="household", period=prior.year)
-        ),
+        "ptc_prior_year": convert_to_native(credit_at_400_percent(sim, prior.year, credit)),
         "slcsp_by_income_prior_year": convert_to_native(
             sim.calculate("slcsp", map_to="household", period=prior.year)
         ),
@@ -256,7 +331,7 @@ def run_scenario(data: CalculateRequest, situation: dict, flag: str, create_refo
     """A scenario's credits across the income axis, or zeros if it is off."""
     if not getattr(data, flag):
         return zeros
-    sim = Simulation(situation=situation, reform=create_reform())
+    sim = scenario_simulation(situation, create_reform)
     return sim.calculate("aca_ptc", map_to="household", period=data.year)
 
 
@@ -274,6 +349,7 @@ def build_response(
         slcsp_by_income=convert_to_native(baseline["slcsp_by_income"]),
         medicaid=convert_to_native(baseline["medicaid"]),
         chip=convert_to_native(baseline["chip"]),
+        magi=convert_to_native(baseline["magi"]),
         model_version=MODEL_VERSION,
         **prior_year,
     )
@@ -384,6 +460,129 @@ async def calculate_ptc_stream(data: CalculateRequest):
             yield f"data: {json.dumps({'step': 'error', 'error': f'Calculation error: {e}'})}\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")
+
+
+def situation_at_income(data: AtIncomeRequest, year: int) -> dict:
+    """The household for a coverage year, with the earnings asked for, on the
+    first member as the income axis puts them."""
+    situation = build_household_situation(
+        age_head=data.age_head,
+        age_spouse=data.age_spouse,
+        dependent_ages=list(data.dependent_ages),
+        state=data.state,
+        county=data.county,
+        zip_code=data.zip_code,
+        year=year,
+    )
+    situation["people"]["you"]["employment_income"] = {year: data.income}
+    return situation
+
+
+def household_people(data: AtIncomeRequest, situation: dict) -> list[Person]:
+    """The members in the situation's order: head, spouse, then dependents."""
+    relationships = ["head"] + (["spouse"] if data.age_spouse else [])
+    relationships += ["dependent"] * len(data.dependent_ages)
+    ages = [data.age_head] + ([data.age_spouse] if data.age_spouse else [])
+    ages += list(data.dependent_ages)
+    return [
+        Person(name=name, age=age, relationship=relationship)
+        for name, age, relationship in zip(situation["people"], ages, relationships)
+    ]
+
+
+def premium_without_credit(situation: dict, year: int, system, members: list[str]) -> float:
+    """What the benchmark plan would cost these members without a credit.
+
+    The model assumes no one in the coverage gap buys a plan, so it prices none
+    there (policyengine-us #9472). This prices one for the members as the model
+    prices an enrollee's: adults, and the three oldest children.
+    """
+    situation = copy.deepcopy(situation)
+    p = system.get_parameters_at_instant(f"{year}-01-01").gov.aca
+    age = lambda name: situation["people"][name]["age"][year]
+    adults = [name for name in members if age(name) > p.slcsp.max_child_age]
+    children = sorted(
+        (name for name in members if age(name) <= p.slcsp.max_child_age), key=age, reverse=True
+    )[: int(p.max_child_count)]
+    for name in adults + children:
+        situation["people"][name]["pays_aca_premium"] = {year: True}
+    sim = Simulation(tax_benefit_system=system, situation=situation)
+    return float(sim.calculate("slcsp", map_to="household", period=year)[0])
+
+
+def run_at_income(data: AtIncomeRequest, year: int, enhanced: bool) -> ScenarioAtIncome:
+    """A scenario at the earnings asked for: current law for the year, or H.R.
+    1834. The household has one tax unit, so each tax unit value is its own."""
+    situation = situation_at_income(data, year)
+    if enhanced:
+        sim = Simulation(tax_benefit_system=enhanced_system(), situation=situation)
+    else:
+        sim = Simulation(situation=situation)
+    credit = sim.calculate("aca_ptc", period=year)
+    if not enhanced:
+        credit = credit_at_400_percent(sim, year, credit)
+    benchmark = float(sim.calculate("slcsp", map_to="household", period=year)[0])
+    medicaid = sim.calculate("is_medicaid_eligible", period=year)
+    chip = sim.calculate("is_chip_eligible", period=year)
+    barred = sim.calculate("is_medicaid_ineligible_due_to_work_requirement", period=year)
+    coverage = [
+        PersonCoverage(medicaid=bool(m), chip=bool(c), medicaid_work_requirement=bool(b))
+        for m, c, b in zip(medicaid, chip, barred)
+    ]
+    uncovered = [
+        name for name, person in zip(situation["people"], coverage)
+        if not (person.medicaid or person.chip)
+    ]
+    full_premium = benchmark
+    if benchmark == 0 and uncovered:
+        full_premium = premium_without_credit(situation, year, sim.tax_benefit_system, uncovered)
+    return ScenarioAtIncome(
+        year=year,
+        benchmark=benchmark,
+        credit=float(credit[0]),
+        full_premium=full_premium,
+        magi=float(sim.calculate("aca_magi", period=year)[0]),
+        fpl=float(sim.calculate("aca_fpg", period=year)[0]),
+        coverage=coverage,
+    )
+
+
+@app.post("/api/calculate-at-income", response_model=AtIncomeResponse)
+async def calculate_at_income(data: AtIncomeRequest):
+    """Each scenario at one level of earnings, for the calculator's "Your
+    household" tab: current law for the coverage year, H.R. 1834 with show_ira,
+    and current law the year before with show_prior_year."""
+    cache_key = get_cache_key(data)
+    cached = None if data.skip_cache else get_from_cache(cache_key, "at_income")
+    if cached is not None:
+        return cached
+
+    try:
+        loop = asyncio.get_event_loop()
+        run = lambda year, enhanced: loop.run_in_executor(
+            simulation_executor, run_at_income, data, year, enhanced
+        )
+        jobs = {"current": run(data.year, False)}
+        if data.show_ira:
+            jobs["ira"] = run(data.year, True)
+        if data.show_prior_year:
+            jobs["prior_year"] = run(data.year - 1, False)
+        scenarios = dict(zip(jobs, await asyncio.gather(*jobs.values())))
+        response = AtIncomeResponse(
+            income=data.income,
+            year=data.year,
+            model_version=MODEL_VERSION,
+            people=household_people(data, situation_at_income(data, data.year)),
+            **scenarios,
+        )
+        if not data.skip_cache:
+            set_in_cache(cache_key, response, "at_income")
+        return response
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Calculation error: {e}")
 
 
 @app.get("/api/health")
