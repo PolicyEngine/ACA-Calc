@@ -1,0 +1,45 @@
+.premium-chart {
+  width: 100%;
+  min-width: 0;
+}
+
+.premium-chart-title {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-gray-900);
+  margin-bottom: 8px;
+}
+
+.premium-chart-tooltip {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-container);
+  padding: 10px 12px;
+  box-shadow: var(--pe-shadow-lg);
+  font-family: var(--font-sans);
+}
+
+.premium-chart-tooltip p {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  margin: 2px 0;
+  color: var(--color-gray-700);
+}
+
+.premium-chart-tooltip .premium-chart-tooltip-income {
+  font-weight: 600;
+  color: var(--color-gray-900);
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.premium-chart-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 3px;
+  border-radius: 2px;
+}

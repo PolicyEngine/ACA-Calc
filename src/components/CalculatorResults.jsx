@@ -1,168 +1,288 @@
-import { useState, useMemo, useEffect } from "react";
-import HealthBenefitsChart from "./HealthBenefitsChart";
+import { useState, useEffect } from "react";
+import PremiumChart from "./PremiumChart";
+import { MAX_EARNINGS, useHouseholdAtIncome } from "./householdAtIncome";
+import { EXPANSION_STATES } from "./medicaidExpansion";
 import "./Calculator.css";
 
-function CalculatorResults({ data, formData }) {
-  const [activeTab, setActiveTab] = useState("gain");
-  const [userIncome, setUserIncome] = useState("");
+const TABS = [
+  { id: "net", label: "What you'd pay" },
+  { id: "credit", label: "Premium tax credits" },
+  { id: "impact", label: "Your household" },
+];
 
-  // Determine which reforms were actually calculated
-  const selectedReforms = useMemo(() => ({
-    ira: formData?.show_ira ?? true,
-    fpl700: formData?.show_700fpl ?? false,
-    additionalBracket: formData?.show_additional_bracket ?? false,
-    simplifiedBracket: formData?.show_simplified_bracket ?? false,
-  }), [formData]);
+const formatCurrency = (value) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(value);
 
-  const [visibleLines, setVisibleLines] = useState({
-    baseline: true,
-    ira: true,
-    fpl700: false,
-    additionalBracket: false,
-    simplifiedBracket: false,
-  });
+// A monthly change in what the household pays, such as "+$12/month".
+const formatChange = (monthly) => {
+  const rounded = Math.round(monthly);
+  if (rounded === 0) return "No change";
+  return `${rounded > 0 ? "+" : "−"}${formatCurrency(Math.abs(rounded))}/month`;
+};
 
-  // Sync visibleLines with selectedReforms when formData changes
+const joinList = (items) =>
+  items.length <= 1 ? items[0] ?? "" : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+
+const capitalize = (text) => text.charAt(0).toUpperCase() + text.slice(1);
+
+const indicesWhere = (items, test) =>
+  items.flatMap((item, i) => (test(item, i) ? [i] : []));
+
+// Names some of the household's members for a sentence: "you", "you and your
+// spouse", "your children", "you and your child aged 20".
+function describeMembers(indices, people) {
+  const picked = new Set(indices);
+  const label = (i) => {
+    const { relationship, age } = people[i];
+    if (relationship === "head") return "you";
+    if (relationship === "spouse") return "your spouse";
+    return `your ${age < 19 ? "child" : "dependent"} aged ${age}`;
+  };
+  const adults = indicesWhere(people, (person, i) => person.relationship !== "dependent" && picked.has(i));
+  const dependents = indicesWhere(people, (person) => person.relationship === "dependent");
+  const pickedDependents = dependents.filter((i) => picked.has(i));
+
+  if (adults.length === 2 && pickedDependents.length === 0) return "you and your spouse";
+  const parts = adults.map(label);
+  if (pickedDependents.length > 0 && pickedDependents.length === dependents.length) {
+    const children = pickedDependents.every((i) => people[i].age < 19);
+    if (dependents.length === 1) parts.push(children ? "your child" : "your dependent");
+    else parts.push(children ? "your children" : "your dependents");
+  } else {
+    parts.push(...pickedDependents.map(label));
+  }
+  return joinList(parts);
+}
+
+const isCovered = (member) => member.medicaid || member.chip;
+
+// "Medicaid would cover your children, and CHIP would cover ...", naming each
+// program only for the members it covers.
+function coverageSentence(coverage, people) {
+  const medicaid = indicesWhere(coverage, (member) => member.medicaid);
+  const chip = indicesWhere(coverage, (member) => !member.medicaid && member.chip);
+  return [
+    medicaid.length > 0 && `Medicaid would cover ${describeMembers(medicaid, people)}`,
+    chip.length > 0 && `CHIP would cover ${describeMembers(chip, people)}`,
+  ]
+    .filter(Boolean)
+    .join(", and ");
+}
+
+// What a scenario's card shows, in annual amounts.
+function cardValues(scenario) {
+  if (scenario.coverage.every(isCovered)) {
+    const programs = [
+      scenario.coverage.some((member) => member.medicaid) && "Medicaid",
+      scenario.coverage.some((member) => !member.medicaid && member.chip) && "CHIP",
+    ].filter(Boolean);
+    return { covered: true, programs: programs.join(" and ") };
+  }
+  // In the coverage gap the model prices no plan, since it assumes no one there
+  // buys one; the card shows what one would cost without a credit.
+  const gap = scenario.benchmark === 0;
+  const benchmark = gap ? scenario.full_premium : scenario.benchmark;
+  const credit = gap ? 0 : scenario.credit;
+  return { covered: false, gap, benchmark, credit, net: Math.max(0, benchmark - credit) };
+}
+
+// What the household pays each month, as its card shows it.
+const monthlyNet = (values) => Math.round(values.net / 12);
+
+// The credit's income as a share of the poverty line, in whole percents
+// rounded down, as Form 8962 line 5 has it; just over 400% FPL rounds down to
+// 400, which still qualifies, so it's worded.
+function fplText(scenario) {
+  const percent = (100 * scenario.magi) / scenario.fpl;
+  if (percent > 400 && percent < 401) return "just over 400";
+  return String(Math.floor(percent));
+}
+
+function Explanation({ answer, state, year, compareEnhanced }) {
+  const { people, current, ira, prior_year: priorYear } = answer;
+  const fpl = fplText(current);
+  const percent = (100 * current.magi) / current.fpl;
+  const monthly = (annual) => `${formatCurrency(annual / 12)}/month`;
+  // The credit as the cards show it: the rounded premium less the rounded payment.
+  const monthlyCredit = (values) =>
+    `${formatCurrency(Math.round(values.benchmark / 12) - Math.round(values.net / 12))}/month`;
+
+  const covered = indicesWhere(current.coverage, isCovered);
+  const uncovered = indicesWhere(current.coverage, (member) => !isCovered(member));
+  if (uncovered.length === 0) {
+    // Medicaid and CHIP measure income against the coverage year's guideline,
+    // not the credit's, so the share of the credit's guideline isn't named.
+    return (
+      <p>
+        At this income, {coverageSentence(current.coverage, people)}. Premium tax credits are not
+        available to people eligible for these programs.
+      </p>
+    );
+  }
+
+  // Members Medicaid or CHIP covers leave the benchmark plan to the others.
+  const lead = covered.length > 0 && (
+    <>
+      {capitalize(coverageSentence(current.coverage, people))}, so the benchmark plan covers{" "}
+      {describeMembers(uncovered, people)}.{" "}
+    </>
+  );
+  const who = describeMembers(uncovered, people);
+  const values = cardValues(current);
+  const revived = ira ? cardValues(ira) : null;
+  const prior = priorYear && !priorYear.coverage.every(isCovered) ? cardValues(priorYear) : null;
+
+  if (percent < 100 && current.credit <= 0 && (ira?.credit ?? 0) <= 0) {
+    const barred = uncovered.some((i) => current.coverage[i].medicaid_work_requirement);
+    let reason;
+    if (barred) {
+      // The model applies Medicaid's work requirement from 2027, counting
+      // earnings of 80 hours a month at the federal minimum wage ($7.25).
+      reason = (
+        <>
+          {who} wouldn't qualify for Medicaid: from 2027, Medicaid requires most adults
+          aged 19 to 64 to work or do other qualifying activities for 80 hours a month, which the
+          model counts as earnings of at least $580 a month. Premium tax credits start at 100% FPL.
+        </>
+      );
+    } else if (!EXPANSION_STATES.includes(state)) {
+      reason = (
+        <>
+          {who} fall into the <strong>coverage gap</strong>. Your state has not expanded
+          Medicaid, so adults at this income don't qualify, and premium tax credits start at 100% FPL.
+        </>
+      );
+    } else {
+      reason = (
+        <>
+          {who} wouldn't qualify for Medicaid, and premium tax credits start at 100% FPL.
+        </>
+      );
+    }
+    return (
+      <p>
+        {lead}At {fpl}% FPL, {reason}
+      </p>
+    );
+  }
+
+  if (current.credit <= 0 && percent > 400) {
+    return (
+      <p>
+        {lead}At {fpl}% FPL, your household is <strong>above current law's 400% FPL limit</strong>, so
+        it receives no credit and pays the whole benchmark premium: {monthly(values.net)} in {year}
+        {prior && <>, against {monthly(prior.net)} in {year - 1}</>}.{" "}
+        {compareEnhanced &&
+          revived &&
+          (revived.credit > 0
+            ? `H.R. 1834 would limit what it pays for the benchmark plan to 8.5% of income, a credit of ${monthlyCredit(revived)}.`
+            : "Under H.R. 1834 it would receive no credit either: the benchmark plan costs less than 8.5% of its income.")}
+      </p>
+    );
+  }
+
+  if (current.credit > 0) {
+    return (
+      <p>
+        {lead}At {fpl}% FPL, current law limits what your household pays for the benchmark plan to a
+        share of its income, and the credit pays the rest, so the credit grows when premiums do.
+        Your household would pay {monthly(values.net)} in {year}
+        {prior && <>, against {monthly(prior.net)} in {year - 1}</>}.
+        {compareEnhanced && revived && <> H.R. 1834 would lower its share of income, to {monthly(revived.net)}.</>}
+      </p>
+    );
+  }
+
+  return (
+    <p>
+      {lead}At {fpl}% FPL, the benchmark plan costs less than the share of income current law asks
+      your household to pay, so it receives no credit.{" "}
+      {compareEnhanced &&
+        revived &&
+        (revived.credit > 0
+          ? `H.R. 1834 would lower that share, giving a credit of ${monthlyCredit(revived)}.`
+          : "H.R. 1834 wouldn't give it a credit either.")}
+    </p>
+  );
+}
+
+function CalculatorResults({
+  data,
+  formData,
+  compareEnhanced = false,
+  initialTab = "net",
+  initialIncome = null,
+  storedAtIncome = null,
+  onViewChange,
+}) {
+  // The tab and income a link opened on, or an example household's income,
+  // so its cards match the Overview.
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const [userIncome, setUserIncome] = useState(initialIncome ? String(initialIncome) : "");
+
+  // Tell the calculator what's on screen, for the page's link.
   useEffect(() => {
-    setVisibleLines({
-      baseline: true,
-      ira: selectedReforms.ira,
-      fpl700: selectedReforms.fpl700,
-      additionalBracket: selectedReforms.additionalBracket,
-      simplifiedBracket: selectedReforms.simplifiedBracket,
-    });
-  }, [selectedReforms]);
+    const income = parseFloat(userIncome);
+    onViewChange?.({ tab: activeTab, income: income > 0 ? income : null });
+  }, [activeTab, userIncome, onViewChange]);
 
-  const toggleLine = (line) => {
-    setVisibleLines(prev => ({ ...prev, [line]: !prev[line] }));
-  };
+  // An answer from before the API took a year is for 2026.
+  const year = data?.year || 2026;
+  // A server that predates the year setting answers for 2026 whatever is asked.
+  const requestedYear = formData?.year;
+  const yearMismatch = Boolean(requestedYear) && requestedYear !== year;
 
-  // Format data for HealthBenefitsChart
-  const chartData = useMemo(() => {
-    if (!data) return null;
-    return {
-      income: data.income,
-      ptc_baseline: data.ptc_baseline,
-      ptc_ira: data.ptc_ira,
-      ptc_700fpl: data.ptc_700fpl,
-      ptc_additional_bracket: data.ptc_additional_bracket,
-      ptc_simplified_bracket: data.ptc_simplified_bracket,
-      medicaid: data.medicaid,
-      chip: data.chip,
-      fpl: data.fpl,
-    };
-  }, [data]);
+  // The household at the earnings entered, calculated by the API.
+  const income = parseFloat(userIncome) || 0;
+  const tooHigh = income > MAX_EARNINGS;
+  const atIncome = useHouseholdAtIncome(formData, income, storedAtIncome);
+  const answer = atIncome.status === "ready" && atIncome.answer?.income === income ? atIncome.answer : null;
 
-  // Interpolate PTC value at user's income
-  const interpolatePTC = (income, incomeArray, ptcArray) => {
-    if (!incomeArray || !ptcArray || income <= 0) return 0;
+  const cards = answer
+    ? (() => {
+        const prior = answer.prior_year && cardValues(answer.prior_year);
+        const current = cardValues(answer.current);
+        const revived = answer.ira && cardValues(answer.ira);
+        // A change only between two cards with amounts.
+        const change = (values, from, label) =>
+          from && !from.covered && !values.covered
+            ? { monthly: monthlyNet(values) - monthlyNet(from), from: label }
+            : null;
+        return [
+          prior && { key: "prior", title: `${year - 1}, current law`, values: prior },
+          {
+            key: "baseline",
+            title: `${year}, current law`,
+            values: current,
+            change: change(current, prior, `from ${year - 1}`),
+          },
+          compareEnhanced &&
+            revived && {
+              key: "ira",
+              title: `${year}, H.R. 1834`,
+              values: revived,
+              change: change(revived, current, "from current law"),
+            },
+        ].filter(Boolean);
+      })()
+    : [];
 
-    // Find surrounding points
-    let i = 0;
-    while (i < incomeArray.length - 1 && incomeArray[i + 1] < income) {
-      i++;
-    }
-
-    if (i >= incomeArray.length - 1) {
-      return ptcArray[ptcArray.length - 1];
-    }
-
-    // Linear interpolation
-    const x0 = incomeArray[i];
-    const x1 = incomeArray[i + 1];
-    const y0 = ptcArray[i];
-    const y1 = ptcArray[i + 1];
-
-    if (x1 === x0) return y0;
-    return y0 + (y1 - y0) * (income - x0) / (x1 - x0);
-  };
-
-  // Calculate values at user's income
-  const userResults = useMemo(() => {
-    const income = parseFloat(userIncome) || 0;
-    if (!data) return null;
-
-    // Find closest index for medicaid/chip lookup
-    const findClosestIndex = (targetIncome, incomeArray) => {
-      if (!incomeArray || targetIncome <= 0) return 0;
-      let closest = 0;
-      let minDiff = Infinity;
-      for (let i = 0; i < incomeArray.length; i++) {
-        const diff = Math.abs(incomeArray[i] - targetIncome);
-        if (diff < minDiff) {
-          minDiff = diff;
-          closest = i;
-        }
-      }
-      return closest;
-    };
-
-    const closestIdx = findClosestIndex(income, data.income);
-    const onMedicaid = data.medicaid?.[closestIdx] > 0;
-    const onChip = data.chip?.[closestIdx] > 0;
-
-    // At 0 income, check actual medicaid status
-    if (income <= 0) {
-      return {
-        income: 0,
-        baseline: 0,
-        ira: 0,
-        fpl700: 0,
-        additionalBracket: 0,
-        simplifiedBracket: 0,
-        iraGain: 0,
-        fpl700Gain: 0,
-        additionalBracketGain: 0,
-        simplifiedBracketGain: 0,
-        fplPct: 0,
-        onMedicaid: data.medicaid?.[0] > 0,
-        onChip: data.chip?.[0] > 0,
-      };
-    }
-
-    const baseline = interpolatePTC(income, data.income, data.ptc_baseline);
-    const ira = interpolatePTC(income, data.income, data.ptc_ira);
-    const fpl700 = interpolatePTC(income, data.income, data.ptc_700fpl);
-    const additionalBracket = interpolatePTC(income, data.income, data.ptc_additional_bracket);
-    const simplifiedBracket = interpolatePTC(income, data.income, data.ptc_simplified_bracket);
-    const fplPct = (income / data.fpl) * 100;
-
-    return {
-      income,
-      baseline,
-      ira,
-      fpl700,
-      additionalBracket,
-      simplifiedBracket,
-      iraGain: ira - baseline,
-      fpl700Gain: fpl700 - baseline,
-      additionalBracketGain: additionalBracket - baseline,
-      simplifiedBracketGain: simplifiedBracket - baseline,
-      fplPct,
-      onMedicaid,
-      onChip,
-    };
-  }, [userIncome, data]);
-
-  // Format currency
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
-
-  const tabs = [
-    { id: "gain", label: "Gain from Reform" },
-    { id: "comparison", label: "Baseline vs Extension" },
-    { id: "impact", label: "Your Impact" },
-  ];
+  const otherIncome = answer ? answer.current.magi - answer.income : 0;
+  const everyone = answer ? describeMembers(answer.people.map((_, i) => i), answer.people) : "";
 
   return (
     <div className="calculator-results">
+      {yearMismatch && (
+        <p className="results-notice">
+          These results are for {year}: the calculator's server doesn't support {requestedYear} yet.
+        </p>
+      )}
       <div className="results-tabs">
-        {tabs.map(tab => (
+        {TABS.map((tab) => (
           <button
             key={tab.id}
             className={`results-tab ${activeTab === tab.id ? "active" : ""}`}
@@ -174,141 +294,34 @@ function CalculatorResults({ data, formData }) {
       </div>
 
       <div className="results-content">
-        {/* GAIN FROM REFORM TAB - shows gains over baseline, lines only, no shading */}
-        {activeTab === "gain" && chartData && (
+        {(activeTab === "net" || activeTab === "credit") && data && (
           <>
-            <div className="chart-toggles">
-              <span className="toggle-label">Show gain from:</span>
-              {selectedReforms.ira && (
-                <label className={`toggle-item ${visibleLines.ira ? 'active' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={visibleLines.ira}
-                    onChange={() => toggleLine('ira')}
-                  />
-                  <span className="toggle-color ira"></span>
-                  IRA Extension
-                </label>
-              )}
-              {selectedReforms.fpl700 && (
-                <label className={`toggle-item ${visibleLines.fpl700 ? 'active' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={visibleLines.fpl700}
-                    onChange={() => toggleLine('fpl700')}
-                  />
-                  <span className="toggle-color fpl700"></span>
-                  700% FPL Bill
-                </label>
-              )}
-              {selectedReforms.additionalBracket && (
-                <label className={`toggle-item ${visibleLines.additionalBracket ? 'active' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={visibleLines.additionalBracket}
-                    onChange={() => toggleLine('additionalBracket')}
-                  />
-                  <span className="toggle-color additional"></span>
-                  Additional Bracket
-                </label>
-              )}
-              {selectedReforms.simplifiedBracket && (
-                <label className={`toggle-item ${visibleLines.simplifiedBracket ? 'active' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={visibleLines.simplifiedBracket}
-                    onChange={() => toggleLine('simplifiedBracket')}
-                  />
-                  <span className="toggle-color simplified"></span>
-                  Simplified Bracket
-                </label>
-              )}
-            </div>
             <div className="results-chart">
-              <HealthBenefitsChart
-                data={chartData}
-                chartState="gain_view"
-                householdInfo={{}}
-                visibleLines={visibleLines}
+              <PremiumChart
+                data={data}
+                measure={activeTab}
+                lines={compareEnhanced ? ["prior", "current", "revived"] : ["prior", "current"]}
+                height={400}
+                xLabel="Earnings"
+                title={
+                  activeTab === "net"
+                    ? "What your household would pay for the benchmark plan"
+                    : "Your household's premium tax credit"
+                }
               />
             </div>
-          </>
-        )}
-
-        {/* COMPARISON TAB - all reforms with shading */}
-        {activeTab === "comparison" && chartData && (
-          <>
-            <div className="chart-toggles">
-              <span className="toggle-label">Show:</span>
-              <label className={`toggle-item ${visibleLines.baseline ? 'active' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={visibleLines.baseline}
-                  onChange={() => toggleLine('baseline')}
-                />
-                <span className="toggle-color baseline"></span>
-                Baseline
-              </label>
-              {selectedReforms.ira && (
-                <label className={`toggle-item ${visibleLines.ira ? 'active' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={visibleLines.ira}
-                    onChange={() => toggleLine('ira')}
-                  />
-                  <span className="toggle-color ira"></span>
-                  IRA Extension
-                </label>
-              )}
-              {selectedReforms.fpl700 && (
-                <label className={`toggle-item ${visibleLines.fpl700 ? 'active' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={visibleLines.fpl700}
-                    onChange={() => toggleLine('fpl700')}
-                  />
-                  <span className="toggle-color fpl700"></span>
-                  700% FPL Bill
-                </label>
-              )}
-              {selectedReforms.additionalBracket && (
-                <label className={`toggle-item ${visibleLines.additionalBracket ? 'active' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={visibleLines.additionalBracket}
-                    onChange={() => toggleLine('additionalBracket')}
-                  />
-                  <span className="toggle-color additional"></span>
-                  Additional Bracket
-                </label>
-              )}
-              {selectedReforms.simplifiedBracket && (
-                <label className={`toggle-item ${visibleLines.simplifiedBracket ? 'active' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={visibleLines.simplifiedBracket}
-                    onChange={() => toggleLine('simplifiedBracket')}
-                  />
-                  <span className="toggle-color simplified"></span>
-                  Simplified Bracket
-                </label>
-              )}
-            </div>
-            <div className="results-chart">
-              <HealthBenefitsChart
-                data={chartData}
-                chartState="both_reforms"
-                householdInfo={{}}
-                visibleLines={visibleLines}
-              />
-            </div>
+            <p className="results-caption">
+              The benchmark plan is the second-lowest-cost silver plan in your area.
+              {compareEnhanced &&
+                " H.R. 1834 would revive the enhanced credits of 2021–2025 for 2026 through 2028; it passed the House on January 8, 2026 and has not been enacted."}
+            </p>
           </>
         )}
 
         {activeTab === "impact" && (
           <div className="results-impact">
             <div className="impact-input-section">
-              <label htmlFor="user-income">Enter your annual household income:</label>
+              <label htmlFor="user-income">Enter your household's annual earnings:</label>
               <div className="income-input-wrapper">
                 <span className="currency-prefix">$</span>
                 <input
@@ -318,185 +331,91 @@ function CalculatorResults({ data, formData }) {
                   onChange={(e) => setUserIncome(e.target.value)}
                   placeholder="75,000"
                   min="0"
+                  max={MAX_EARNINGS}
                   step="1000"
                 />
               </div>
             </div>
 
-            {userResults && (
+            {tooHigh && (
+              <p className="results-notice">The calculator covers earnings up to $1,000,000.</p>
+            )}
+
+            {atIncome.status === "error" && <p className="results-notice">{atIncome.error}</p>}
+
+            {answer && (
               <div className="impact-results">
                 <div className="impact-summary">
                   <p className="fpl-indicator">
-                    {formatCurrency(userResults.income)} is approximately <strong>{userResults.fplPct.toFixed(0)}% FPL</strong> for your household
+                    {formatCurrency(answer.income)} of earnings
+                    {otherIncome >= 1 && <>, with {formatCurrency(otherIncome)} of other income the credit counts,</>}{" "}
+                    is approximately <strong>{fplText(answer.current)}% FPL</strong> for your household
                   </p>
                 </div>
 
                 <div className="impact-cards">
-                  <div className="impact-card baseline">
-                    <h4>Baseline (2026)</h4>
-                    <p className="impact-value">{formatCurrency(userResults.baseline)}</p>
-                    <p className="impact-label">Annual PTC</p>
-                    <p className="impact-monthly">{formatCurrency(userResults.baseline / 12)}/month</p>
-                  </div>
-
-                  {selectedReforms.ira && (
-                    <div className="impact-card ira">
-                      <h4>IRA Extension</h4>
-                      <p className="impact-value">{formatCurrency(userResults.ira)}</p>
-                      <p className="impact-label">Annual PTC</p>
-                      <p className="impact-monthly">{formatCurrency(userResults.ira / 12)}/month</p>
-                      {userResults.iraGain > 0 && (
-                        <p className="impact-gain">+{formatCurrency(userResults.iraGain)}/year</p>
+                  {cards.map((card) => (
+                    <div key={card.key} className={`impact-card ${card.key}`}>
+                      <h4>{card.title}</h4>
+                      {card.values.covered ? (
+                        <>
+                          <p className="impact-value impact-value-text">{card.values.programs}</p>
+                          <p className="impact-label">Covers {everyone}</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="impact-value">{formatCurrency(card.values.net / 12)}</p>
+                          <p className="impact-label">
+                            {card.values.gap ? "Full premium, per month" : "Benchmark plan after credit, per month"}
+                          </p>
+                          <dl className="impact-breakdown">
+                            <div>
+                              <dt>Benchmark plan</dt>
+                              <dd>{formatCurrency(card.values.benchmark / 12)}</dd>
+                            </div>
+                            <div>
+                              <dt>Premium tax credit</dt>
+                              {/* The rounded premium less the rounded payment, so the card adds up. */}
+                              <dd>
+                                {formatCurrency(
+                                  Math.round(card.values.benchmark / 12) - Math.round(card.values.net / 12)
+                                )}
+                              </dd>
+                            </div>
+                          </dl>
+                          {card.values.gap && (
+                            <p className="impact-note">A plan bought without a credit costs its full premium.</p>
+                          )}
+                        </>
+                      )}
+                      {card.change && (
+                        <p className="impact-change">
+                          {formatChange(card.change.monthly)} {card.change.from}
+                        </p>
                       )}
                     </div>
-                  )}
-
-                  {selectedReforms.fpl700 && (
-                    <div className="impact-card fpl700">
-                      <h4>700% FPL Bill</h4>
-                      <p className="impact-value">{formatCurrency(userResults.fpl700)}</p>
-                      <p className="impact-label">Annual PTC</p>
-                      <p className="impact-monthly">{formatCurrency(userResults.fpl700 / 12)}/month</p>
-                      {userResults.fpl700Gain > 0 && (
-                        <p className="impact-gain">+{formatCurrency(userResults.fpl700Gain)}/year</p>
-                      )}
-                    </div>
-                  )}
-
-                  {selectedReforms.additionalBracket && (
-                    <div className="impact-card additional-bracket" title="CRFB 'Progressive Alternative': extends enhanced subsidies below 300% FPL with linear phase-up above">
-                      <h4>
-                        <a href="https://www.crfb.org/blogs/understanding-aca-subsidy-discussion" target="_blank" rel="noopener noreferrer" className="reform-link">
-                          Additional Bracket
-                        </a>
-                      </h4>
-                      <p className="impact-value">{formatCurrency(userResults.additionalBracket)}</p>
-                      <p className="impact-label">Annual PTC</p>
-                      <p className="impact-monthly">{formatCurrency(userResults.additionalBracket / 12)}/month</p>
-                      {userResults.additionalBracketGain > 0 && (
-                        <p className="impact-gain">+{formatCurrency(userResults.additionalBracketGain)}/year</p>
-                      )}
-                    </div>
-                  )}
-
-                  {selectedReforms.simplifiedBracket && (
-                    <div className="impact-card simplified-bracket" title="CRFB 'Smaller Alternative': subsidies set halfway between baseline and enhanced rates">
-                      <h4>
-                        <a href="https://www.crfb.org/blogs/understanding-aca-subsidy-discussion" target="_blank" rel="noopener noreferrer" className="reform-link">
-                          Simplified Bracket
-                        </a>
-                      </h4>
-                      <p className="impact-value">{formatCurrency(userResults.simplifiedBracket)}</p>
-                      <p className="impact-label">Annual PTC</p>
-                      <p className="impact-monthly">{formatCurrency(userResults.simplifiedBracket / 12)}/month</p>
-                      {userResults.simplifiedBracketGain > 0 && (
-                        <p className="impact-gain">+{formatCurrency(userResults.simplifiedBracketGain)}/year</p>
-                      )}
-                    </div>
-                  )}
+                  ))}
                 </div>
 
                 <div className="impact-explanation">
                   <h4>What this means</h4>
-                  {(() => {
-                    const hasBaseline = userResults.baseline > 0;
-                    const hasIra = userResults.ira > 0;
-                    const hasFpl700 = userResults.fpl700 > 0;
-                    const fpl = userResults.fplPct.toFixed(0);
-
-                    // Check if on Medicaid or CHIP based on actual calculations
-                    if (userResults.onMedicaid || userResults.onChip) {
-                      const programs = [];
-                      if (userResults.onMedicaid) programs.push("Medicaid");
-                      if (userResults.onChip) programs.push("CHIP");
-                      const programList = programs.join(" and ");
-                      return (
-                        <p>
-                          At {fpl}% FPL, your household would be covered by <strong>{programList}</strong>.
-                          Premium tax credits are not available when eligible for these programs.
-                        </p>
-                      );
-                    }
-
-                    // Below 100% FPL with no Medicaid - coverage gap
-                    if (userResults.fplPct < 100 && !hasBaseline && !hasIra && !hasFpl700) {
-                      return (
-                        <p>
-                          At {fpl}% FPL, you fall into the <strong>coverage gap</strong>.
-                          Your state has not expanded Medicaid, so adults at this income level don't qualify.
-                          Marketplace subsidies are only available starting at 100% FPL,
-                          leaving a gap in coverage for those below 100% FPL in non-expansion states.
-                        </p>
-                      );
-                    }
-
-                    // Above 700% FPL - only IRA could help
-                    if (userResults.fplPct > 700) {
-                      return (
-                        <p>
-                          At {fpl}% FPL, you are <strong>above the 700% FPL threshold</strong>.
-                          {hasIra
-                            ? " The IRA Extension would provide subsidies, but the 700% FPL Bill only extends eligibility to 700% FPL."
-                            : " Your required contribution under the IRA Extension (8.5% of income) exceeds the benchmark premium cost, so you would not receive subsidies under either reform option."}
-                        </p>
-                      );
-                    }
-
-                    // Above 400% FPL but under 700%
-                    if (userResults.fplPct > 400) {
-                      if (hasIra && hasFpl700) {
-                        return (
-                          <p>
-                            At {fpl}% FPL, you are <strong>above the 400% FPL cliff</strong> but within range of both reform options.
-                            Under baseline 2026 law, you would receive no premium tax credits.
-                            Both reform options would provide you with subsidies.
-                          </p>
-                        );
-                      } else if (hasIra && !hasFpl700) {
-                        return (
-                          <p>
-                            At {fpl}% FPL, you are <strong>above the 400% FPL cliff</strong>.
-                            The IRA Extension would provide subsidies. The 700% FPL Bill would not provide subsidies because
-                            your required contribution (9.25% of income) would exceed the benchmark premium cost.
-                          </p>
-                        );
-                      } else {
-                        return (
-                          <p>
-                            At {fpl}% FPL, you are <strong>above the 400% FPL cliff</strong>.
-                            Your income is high enough that your required contribution would exceed the benchmark premium cost,
-                            so neither reform option would provide subsidies at this income level.
-                          </p>
-                        );
-                      }
-                    }
-
-                    // Between 138% and 400% FPL
-                    if (hasBaseline) {
-                      return (
-                        <p>
-                          At {fpl}% FPL, you are <strong>in the marketplace subsidy range</strong>.
-                          You would receive subsidies under baseline law, but the reform options
-                          would increase your credits by lowering your required contribution percentage.
-                        </p>
-                      );
-                    } else {
-                      return (
-                        <p>
-                          At {fpl}% FPL, you are <strong>in the marketplace subsidy range</strong>.
-                          Your required contribution under baseline law would exceed the benchmark premium cost,
-                          so you would not receive subsidies. The reform options lower required contributions and may provide credits.
-                        </p>
-                      );
-                    }
-                  })()}
+                  <Explanation
+                    answer={answer}
+                    state={formData?.state}
+                    year={year}
+                    compareEnhanced={compareEnhanced}
+                  />
                 </div>
               </div>
             )}
 
-            {!userResults && (
+            {!answer && !tooHigh && atIncome.status !== "error" && (
               <div className="impact-placeholder">
-                <p>Enter your income above to see how each policy would affect your premium tax credits.</p>
+                <p>
+                  {atIncome.status === "loading"
+                    ? `Calculating your household at ${formatCurrency(income)} of earnings…`
+                    : "Enter your earnings above to see what your household would pay for the benchmark plan in each scenario."}
+                </p>
               </div>
             )}
           </div>

@@ -5,11 +5,14 @@ changes affect household premium tax credits across income levels.
 """
 
 import asyncio
+import copy
 import hashlib
 import json
 import os
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from importlib.metadata import version
 
 import anthropic
 import numpy as np
@@ -29,6 +32,24 @@ from aca_calc.calculations.reforms import (
     create_additional_bracket_reform,
     create_simplified_bracket_reform,
 )
+
+# The model version is part of every cache key, so a new pin never serves
+# answers the previous version computed.
+MODEL_VERSION = version("policyengine-us")
+
+# Also part of every cache key: change it when this API's answers change for
+# the same request and model version, so the caches drop the old ones.
+# 2: the credit at exactly 400% FPL, and the credit's income on the axis.
+ANSWER_VERSION = 2
+
+# Each scenario: the request flag that turns it on, the response field for its
+# credits, and the reform that models it.
+SCENARIOS = [
+    ("show_ira", "ptc_ira", create_enhanced_ptc_reform),
+    ("show_700fpl", "ptc_700fpl", create_700fpl_reform),
+    ("show_additional_bracket", "ptc_additional_bracket", create_additional_bracket_reform),
+    ("show_simplified_bracket", "ptc_simplified_bracket", create_simplified_bracket_reform),
+]
 
 # Local cache fallback for development (in-memory, lost on restart)
 _local_calculation_cache = TTLCache(maxsize=1000, ttl=86400)
@@ -51,13 +72,20 @@ def set_persistent_cache(calc_cache, explain_cache):
 
 
 def get_from_cache(key: str, cache_type: str = "calc"):
-    """Get value from cache, checking TTL. Returns None if not found or expired."""
+    """Get value from cache, checking TTL. Returns None if not found or expired.
+
+    cache_type is "calc" (the income axis), "at_income" (one income) or
+    "explain"; the first two share the calculation cache.
+    """
     # Import models lazily to avoid circular imports
-    from .models import CalculateResponse, ExplainResponse
+    from .models import AtIncomeResponse, CalculateResponse, ExplainResponse
+
+    models = {"calc": CalculateResponse, "at_income": AtIncomeResponse, "explain": ExplainResponse}
+    explain = cache_type == "explain"
 
     # Try persistent cache first (Modal Dict)
-    persistent_cache = _persistent_calc_cache if cache_type == "calc" else _persistent_explain_cache
-    ttl = CALC_CACHE_TTL if cache_type == "calc" else EXPLAIN_CACHE_TTL
+    persistent_cache = _persistent_explain_cache if explain else _persistent_calc_cache
+    ttl = EXPLAIN_CACHE_TTL if explain else CALC_CACHE_TTL
 
     if persistent_cache is not None:
         try:
@@ -68,10 +96,7 @@ def get_from_cache(key: str, cache_type: str = "calc"):
                     data = entry.get("data")
                     # Reconstruct Pydantic model from dict
                     if isinstance(data, dict):
-                        if cache_type == "calc":
-                            return CalculateResponse(**data)
-                        else:
-                            return ExplainResponse(**data)
+                        return models[cache_type](**data)
                     return data
                 # Expired - remove it
                 try:
@@ -82,14 +107,15 @@ def get_from_cache(key: str, cache_type: str = "calc"):
             pass
 
     # Fall back to local cache
-    local_cache = _local_calculation_cache if cache_type == "calc" else _local_explanation_cache
+    local_cache = _local_explanation_cache if explain else _local_calculation_cache
     return local_cache.get(key)
 
 
 def set_in_cache(key: str, data, cache_type: str = "calc"):
     """Store value in cache with timestamp for TTL."""
     # Store in persistent cache if available
-    persistent_cache = _persistent_calc_cache if cache_type == "calc" else _persistent_explain_cache
+    explain = cache_type == "explain"
+    persistent_cache = _persistent_explain_cache if explain else _persistent_calc_cache
 
     if persistent_cache is not None:
         try:
@@ -103,7 +129,7 @@ def set_in_cache(key: str, data, cache_type: str = "calc"):
             pass
 
     # Also store in local cache as fallback (can store Pydantic models directly)
-    local_cache = _local_calculation_cache if cache_type == "calc" else _local_explanation_cache
+    local_cache = _local_explanation_cache if explain else _local_calculation_cache
     local_cache[key] = data
 
 
@@ -112,10 +138,15 @@ calculation_cache = _local_calculation_cache
 explanation_cache = _local_explanation_cache
 
 from .models import (
+    AtIncomeRequest,
+    AtIncomeResponse,
     CalculateRequest,
     CalculateResponse,
     ExplainRequest,
     ExplainResponse,
+    Person,
+    PersonCoverage,
+    ScenarioAtIncome,
     ScrollySection,
 )
 
@@ -175,16 +206,160 @@ def get_cache_key(data: CalculateRequest) -> str:
         "show_700fpl": data.show_700fpl,
         "show_additional_bracket": data.show_additional_bracket,
         "show_simplified_bracket": data.show_simplified_bracket,
+        "show_prior_year": data.show_prior_year,
+        "year": data.year,
+        "model_version": MODEL_VERSION,
+        "answer_version": ANSWER_VERSION,
+        # Set only for an answer at one income.
+        "income": getattr(data, "income", None),
     }
     key_str = json.dumps(key_data, sort_keys=True)
     return hashlib.md5(key_str.encode()).hexdigest()
+
+
+_enhanced_system = None
+_enhanced_system_lock = threading.Lock()
+
+
+def enhanced_system():
+    """H.R. 1834's version of the model, built once per process.
+
+    Building it takes about 10 seconds and 1 GB; with it built, a household
+    calculates in under a second, which the calculator's answers at one income
+    need. The other scenarios build theirs per request, since the page doesn't
+    ask for them, and holding each would take another 1 GB.
+    """
+    global _enhanced_system
+    with _enhanced_system_lock:
+        if _enhanced_system is None:
+            _enhanced_system = Simulation.default_tax_benefit_system(
+                reform=create_enhanced_ptc_reform()
+            )
+    return _enhanced_system
+
+
+def scenario_simulation(situation: dict, create_reform) -> Simulation:
+    """A simulation of the situation under a scenario's reform."""
+    if create_reform is create_enhanced_ptc_reform:
+        return Simulation(tax_benefit_system=enhanced_system(), situation=situation)
+    return Simulation(situation=situation, reform=create_reform())
+
+
+def credit_at_400_percent(sim: Simulation, year: int, credit: np.ndarray) -> np.ndarray:
+    """Current law's credit, with the tax units whose income is exactly 400% FPL
+    given theirs.
+
+    A tax unit whose income "does not exceed 400 percent" of the poverty line
+    qualifies (26 U.S.C. 36B(c)(1)(A)), and Form 8962 Worksheet 2 decides
+    "more than" 400% on dollars. policyengine-us 2.138.2 makes exactly 400%
+    ineligible (draft fix: PolicyEngine/policyengine-us#10312), so there this
+    applies the model's own formula (aca_ptc_before_filing_gate and the filing
+    condition of files_return_for_aca_ptc). It changes nothing else: a dollar
+    above, income exceeds the limit.
+    """
+    magi = sim.calculate("aca_magi", period=year)
+    at_limit = magi == 4 * sim.calculate("aca_fpg", period=year)
+    if not at_limit.any():
+        return credit
+    benchmark = sim.calculate("aca_ptc_slcsp", period=year)
+    rate = sim.calculate("aca_required_contribution_percentage", period=year)
+    files = sim.calculate("tax_unit_is_filer", period=year) | sim.calculate(
+        "takes_up_aca_if_eligible", period=year
+    )
+    statutory = np.maximum(0, benchmark - magi * rate) * files
+    return np.where(at_limit & (benchmark > 0), statutory, credit)
+
+
+def household_situation(data: CalculateRequest) -> dict:
+    """The household, with an income axis, for the request's coverage year."""
+    return build_household_situation(
+        age_head=data.age_head,
+        age_spouse=data.age_spouse,
+        dependent_ages=list(data.dependent_ages),
+        state=data.state,
+        county=data.county,
+        zip_code=data.zip_code,
+        year=data.year,
+        with_axes=True,
+    )
+
+
+def run_baseline(data: CalculateRequest, situation: dict) -> dict:
+    """Current law for the coverage year across the income axis."""
+    year = data.year
+    sim = Simulation(situation=situation)
+    fpl = sim.calculate("tax_unit_fpg", period=year - 1)
+    slcsp = sim.calculate("slcsp", map_to="household", period=year)
+    # One tax unit per household, so tax unit and household values line up.
+    credit = credit_at_400_percent(sim, year, sim.calculate("aca_ptc", period=year))
+    return {
+        "income": sim.calculate("employment_income", map_to="household", period=year),
+        "ptc_baseline": credit,
+        "magi": sim.calculate("aca_magi", period=year),
+        "medicaid": sim.calculate("medicaid", map_to="household", period=year),
+        "chip": sim.calculate("chip", map_to="household", period=year),
+        # The benchmark covers the members eligible for the credit at each
+        # income, so it is zero where none is; the scalar is its maximum.
+        "slcsp_by_income": slcsp,
+        "slcsp": float(np.max(slcsp)),
+        # The credit measures income against the prior year's guideline
+        # (aca_magi_fraction), so the page's FPL lines use that one too.
+        "fpl": float(fpl[len(fpl) // 2]),
+    }
+
+
+def run_prior_year(data: CalculateRequest) -> dict:
+    """Current law a year before the coverage year, for the same household and
+    incomes (the income axis doesn't change with the year), or nothing if the
+    request doesn't ask for it."""
+    if not data.show_prior_year:
+        return {}
+    prior = data.model_copy(update={"year": data.year - 1})
+    sim = Simulation(situation=household_situation(prior))
+    fpl = sim.calculate("tax_unit_fpg", period=prior.year - 1)
+    credit = sim.calculate("aca_ptc", period=prior.year)
+    return {
+        "ptc_prior_year": convert_to_native(credit_at_400_percent(sim, prior.year, credit)),
+        "slcsp_by_income_prior_year": convert_to_native(
+            sim.calculate("slcsp", map_to="household", period=prior.year)
+        ),
+        "fpl_prior_year": float(fpl[len(fpl) // 2]),
+    }
+
+
+def run_scenario(data: CalculateRequest, situation: dict, flag: str, create_reform, zeros):
+    """A scenario's credits across the income axis, or zeros if it is off."""
+    if not getattr(data, flag):
+        return zeros
+    sim = scenario_simulation(situation, create_reform)
+    return sim.calculate("aca_ptc", map_to="household", period=data.year)
+
+
+def build_response(
+    data: CalculateRequest, baseline: dict, scenarios: dict, prior_year: dict
+) -> CalculateResponse:
+    return CalculateResponse(
+        income=convert_to_native(baseline["income"]),
+        ptc_baseline=convert_to_native(baseline["ptc_baseline"]),
+        **{field: convert_to_native(values) for field, values in scenarios.items()},
+        year=data.year,
+        fpl=baseline["fpl"],
+        fpl_year=data.year - 1,
+        slcsp=baseline["slcsp"],
+        slcsp_by_income=convert_to_native(baseline["slcsp_by_income"]),
+        medicaid=convert_to_native(baseline["medicaid"]),
+        chip=convert_to_native(baseline["chip"]),
+        magi=convert_to_native(baseline["magi"]),
+        model_version=MODEL_VERSION,
+        **prior_year,
+    )
 
 
 @app.post("/api/calculate", response_model=CalculateResponse)
 async def calculate_ptc(data: CalculateRequest):
     """Calculate premium tax credits across income range.
 
-    Returns arrays of PTC values under baseline, IRA extension, and 700% FPL
+    Returns arrays of PTC values under baseline, H.R. 1834, and 700% FPL
     scenarios for the specified household.
     """
     # Check cache first (persistent or local), unless the request skips it
@@ -194,100 +369,18 @@ async def calculate_ptc(data: CalculateRequest):
         return cached
 
     try:
-        # Build household situation with income axis
-        situation = build_household_situation(
-            age_head=data.age_head,
-            age_spouse=data.age_spouse,
-            dependent_ages=list(data.dependent_ages),
-            state=data.state,
-            county=data.county,
-            zip_code=data.zip_code,
-            year=2026,
-            with_axes=True,
-        )
+        situation = household_situation(data)
+        prior_year = simulation_executor.submit(run_prior_year, data)
+        baseline = run_baseline(data, situation)
 
-        # Run baseline simulation
-        sim_baseline = Simulation(situation=situation)
-        income = sim_baseline.calculate(
-            "employment_income", map_to="household", period=2026
-        )
-        ptc_baseline = sim_baseline.calculate(
-            "aca_ptc", map_to="household", period=2026
-        )
-        medicaid = sim_baseline.calculate(
-            "medicaid", map_to="household", period=2026
-        )
-        chip = sim_baseline.calculate(
-            "chip", map_to="household", period=2026
-        )
-        slcsp_array = sim_baseline.calculate(
-            "slcsp", map_to="household", period=2026
-        )
-        fpl_array = sim_baseline.calculate("tax_unit_fpg", period=2026)
-
-        # Get scalar values
-        slcsp = float(np.max(slcsp_array))
-        fpl = float(fpl_array[len(fpl_array) // 2])
-
-        # Run reform simulations in parallel
-        def run_ira_simulation():
-            if not data.show_ira:
-                return np.zeros_like(ptc_baseline)
-            reform_ira = create_enhanced_ptc_reform()
-            sim_ira = Simulation(situation=situation, reform=reform_ira)
-            return sim_ira.calculate("aca_ptc", map_to="household", period=2026)
-
-        def run_700fpl_simulation():
-            if not data.show_700fpl:
-                return np.zeros_like(ptc_baseline)
-            reform_700fpl = create_700fpl_reform()
-            if not reform_700fpl:
-                return np.zeros_like(ptc_baseline)
-            sim_700fpl = Simulation(situation=situation, reform=reform_700fpl)
-            return sim_700fpl.calculate("aca_ptc", map_to="household", period=2026)
-
-        def run_additional_bracket_simulation():
-            if not data.show_additional_bracket:
-                return np.zeros_like(ptc_baseline)
-            reform = create_additional_bracket_reform()
-            if not reform:
-                return np.zeros_like(ptc_baseline)
-            sim = Simulation(situation=situation, reform=reform)
-            return sim.calculate("aca_ptc", map_to="household", period=2026)
-
-        def run_simplified_bracket_simulation():
-            if not data.show_simplified_bracket:
-                return np.zeros_like(ptc_baseline)
-            reform = create_simplified_bracket_reform()
-            if not reform:
-                return np.zeros_like(ptc_baseline)
-            sim = Simulation(situation=situation, reform=reform)
-            return sim.calculate("aca_ptc", map_to="household", period=2026)
-
-        # Submit all simulations to run in parallel
-        ira_future = simulation_executor.submit(run_ira_simulation)
-        fpl700_future = simulation_executor.submit(run_700fpl_simulation)
-        additional_bracket_future = simulation_executor.submit(run_additional_bracket_simulation)
-        simplified_bracket_future = simulation_executor.submit(run_simplified_bracket_simulation)
-
-        # Wait for all to complete
-        ptc_ira = ira_future.result()
-        ptc_700fpl = fpl700_future.result()
-        ptc_additional_bracket = additional_bracket_future.result()
-        ptc_simplified_bracket = simplified_bracket_future.result()
-
-        response = CalculateResponse(
-            income=convert_to_native(income),
-            ptc_baseline=convert_to_native(ptc_baseline),
-            ptc_ira=convert_to_native(ptc_ira),
-            ptc_700fpl=convert_to_native(ptc_700fpl),
-            ptc_additional_bracket=convert_to_native(ptc_additional_bracket),
-            ptc_simplified_bracket=convert_to_native(ptc_simplified_bracket),
-            fpl=fpl,
-            slcsp=slcsp,
-            medicaid=convert_to_native(medicaid),
-            chip=convert_to_native(chip),
-        )
+        # Run the selected scenarios in parallel
+        zeros = np.zeros_like(baseline["ptc_baseline"])
+        futures = {
+            field: simulation_executor.submit(run_scenario, data, situation, flag, create, zeros)
+            for flag, field, create in SCENARIOS
+        }
+        scenarios = {field: future.result() for field, future in futures.items()}
+        response = build_response(data, baseline, scenarios, prior_year.result())
 
         # Cache the result (persistent + local)
         if not data.skip_cache:
@@ -323,107 +416,37 @@ async def calculate_ptc_stream(data: CalculateRequest):
             yield f"data: {json.dumps({'step': 'setup', 'progress': 10, 'message': 'Setting up household...'})}\n\n"
             await asyncio.sleep(0)  # Allow event to be sent
 
-            situation = build_household_situation(
-                age_head=data.age_head,
-                age_spouse=data.age_spouse,
-                dependent_ages=list(data.dependent_ages),
-                state=data.state,
-                county=data.county,
-                zip_code=data.zip_code,
-                year=2026,
-                with_axes=True,
-            )
+            situation = household_situation(data)
+            loop = asyncio.get_event_loop()
+            prior_year = loop.run_in_executor(simulation_executor, run_prior_year, data)
 
-            # Step 2: Run baseline simulation
-            yield f"data: {json.dumps({'step': 'baseline', 'progress': 25, 'message': 'Calculating baseline (2026)...'})}\n\n"
+            # Step 2: Run the current-law simulation
+            message = f"Calculating current law ({data.year})..."
+            yield f"data: {json.dumps({'step': 'baseline', 'progress': 25, 'message': message})}\n\n"
             await asyncio.sleep(0)
 
-            sim_baseline = Simulation(situation=situation)
-            income = sim_baseline.calculate(
-                "employment_income", map_to="household", period=2026
-            )
-            ptc_baseline = sim_baseline.calculate(
-                "aca_ptc", map_to="household", period=2026
-            )
-            medicaid = sim_baseline.calculate(
-                "medicaid", map_to="household", period=2026
-            )
-            chip = sim_baseline.calculate(
-                "chip", map_to="household", period=2026
-            )
-            slcsp_array = sim_baseline.calculate(
-                "slcsp", map_to="household", period=2026
-            )
-            fpl_array = sim_baseline.calculate("tax_unit_fpg", period=2026)
+            baseline = run_baseline(data, situation)
 
-            slcsp = float(np.max(slcsp_array))
-            fpl = float(fpl_array[len(fpl_array) // 2])
-
-            # Step 3: Run reform simulations in parallel
+            # Step 3: Run the selected scenarios in parallel
             yield f"data: {json.dumps({'step': 'reforms', 'progress': 50, 'message': 'Calculating policy reforms...'})}\n\n"
             await asyncio.sleep(0)
 
-            def run_ira_simulation():
-                if not data.show_ira:
-                    return np.zeros_like(ptc_baseline)
-                reform_ira = create_enhanced_ptc_reform()
-                sim_ira = Simulation(situation=situation, reform=reform_ira)
-                return sim_ira.calculate("aca_ptc", map_to="household", period=2026)
-
-            def run_700fpl_simulation():
-                if not data.show_700fpl:
-                    return np.zeros_like(ptc_baseline)
-                reform_700fpl = create_700fpl_reform()
-                if not reform_700fpl:
-                    return np.zeros_like(ptc_baseline)
-                sim_700fpl = Simulation(situation=situation, reform=reform_700fpl)
-                return sim_700fpl.calculate("aca_ptc", map_to="household", period=2026)
-
-            def run_additional_bracket_simulation():
-                if not data.show_additional_bracket:
-                    return np.zeros_like(ptc_baseline)
-                reform = create_additional_bracket_reform()
-                if not reform:
-                    return np.zeros_like(ptc_baseline)
-                sim = Simulation(situation=situation, reform=reform)
-                return sim.calculate("aca_ptc", map_to="household", period=2026)
-
-            def run_simplified_bracket_simulation():
-                if not data.show_simplified_bracket:
-                    return np.zeros_like(ptc_baseline)
-                reform = create_simplified_bracket_reform()
-                if not reform:
-                    return np.zeros_like(ptc_baseline)
-                sim = Simulation(situation=situation, reform=reform)
-                return sim.calculate("aca_ptc", map_to="household", period=2026)
-
-            # Run all reform simulations in parallel
-            loop = asyncio.get_event_loop()
-            ira_future = loop.run_in_executor(simulation_executor, run_ira_simulation)
-            fpl700_future = loop.run_in_executor(simulation_executor, run_700fpl_simulation)
-            additional_bracket_future = loop.run_in_executor(simulation_executor, run_additional_bracket_simulation)
-            simplified_bracket_future = loop.run_in_executor(simulation_executor, run_simplified_bracket_simulation)
-
-            ptc_ira, ptc_700fpl, ptc_additional_bracket, ptc_simplified_bracket = await asyncio.gather(
-                ira_future, fpl700_future, additional_bracket_future, simplified_bracket_future
+            zeros = np.zeros_like(baseline["ptc_baseline"])
+            results = await asyncio.gather(
+                *(
+                    loop.run_in_executor(
+                        simulation_executor, run_scenario, data, situation, flag, create, zeros
+                    )
+                    for flag, _, create in SCENARIOS
+                )
             )
+            scenarios = {field: result for (_, field, _), result in zip(SCENARIOS, results)}
 
             # Step 4: Complete
             yield f"data: {json.dumps({'step': 'finalizing', 'progress': 90, 'message': 'Finalizing results...'})}\n\n"
             await asyncio.sleep(0)
 
-            response = CalculateResponse(
-                income=convert_to_native(income),
-                ptc_baseline=convert_to_native(ptc_baseline),
-                ptc_ira=convert_to_native(ptc_ira),
-                ptc_700fpl=convert_to_native(ptc_700fpl),
-                ptc_additional_bracket=convert_to_native(ptc_additional_bracket),
-                ptc_simplified_bracket=convert_to_native(ptc_simplified_bracket),
-                fpl=fpl,
-                slcsp=slcsp,
-                medicaid=convert_to_native(medicaid),
-                chip=convert_to_native(chip),
-            )
+            response = build_response(data, baseline, scenarios, await prior_year)
 
             # Cache the result (persistent + local)
             if not data.skip_cache:
@@ -437,6 +460,129 @@ async def calculate_ptc_stream(data: CalculateRequest):
             yield f"data: {json.dumps({'step': 'error', 'error': f'Calculation error: {e}'})}\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")
+
+
+def situation_at_income(data: AtIncomeRequest, year: int) -> dict:
+    """The household for a coverage year, with the earnings asked for, on the
+    first member as the income axis puts them."""
+    situation = build_household_situation(
+        age_head=data.age_head,
+        age_spouse=data.age_spouse,
+        dependent_ages=list(data.dependent_ages),
+        state=data.state,
+        county=data.county,
+        zip_code=data.zip_code,
+        year=year,
+    )
+    situation["people"]["you"]["employment_income"] = {year: data.income}
+    return situation
+
+
+def household_people(data: AtIncomeRequest, situation: dict) -> list[Person]:
+    """The members in the situation's order: head, spouse, then dependents."""
+    relationships = ["head"] + (["spouse"] if data.age_spouse else [])
+    relationships += ["dependent"] * len(data.dependent_ages)
+    ages = [data.age_head] + ([data.age_spouse] if data.age_spouse else [])
+    ages += list(data.dependent_ages)
+    return [
+        Person(name=name, age=age, relationship=relationship)
+        for name, age, relationship in zip(situation["people"], ages, relationships)
+    ]
+
+
+def premium_without_credit(situation: dict, year: int, system, members: list[str]) -> float:
+    """What the benchmark plan would cost these members without a credit.
+
+    The model assumes no one in the coverage gap buys a plan, so it prices none
+    there (policyengine-us #9472). This prices one for the members as the model
+    prices an enrollee's: adults, and the three oldest children.
+    """
+    situation = copy.deepcopy(situation)
+    p = system.get_parameters_at_instant(f"{year}-01-01").gov.aca
+    age = lambda name: situation["people"][name]["age"][year]
+    adults = [name for name in members if age(name) > p.slcsp.max_child_age]
+    children = sorted(
+        (name for name in members if age(name) <= p.slcsp.max_child_age), key=age, reverse=True
+    )[: int(p.max_child_count)]
+    for name in adults + children:
+        situation["people"][name]["pays_aca_premium"] = {year: True}
+    sim = Simulation(tax_benefit_system=system, situation=situation)
+    return float(sim.calculate("slcsp", map_to="household", period=year)[0])
+
+
+def run_at_income(data: AtIncomeRequest, year: int, enhanced: bool) -> ScenarioAtIncome:
+    """A scenario at the earnings asked for: current law for the year, or H.R.
+    1834. The household has one tax unit, so each tax unit value is its own."""
+    situation = situation_at_income(data, year)
+    if enhanced:
+        sim = Simulation(tax_benefit_system=enhanced_system(), situation=situation)
+    else:
+        sim = Simulation(situation=situation)
+    credit = sim.calculate("aca_ptc", period=year)
+    if not enhanced:
+        credit = credit_at_400_percent(sim, year, credit)
+    benchmark = float(sim.calculate("slcsp", map_to="household", period=year)[0])
+    medicaid = sim.calculate("is_medicaid_eligible", period=year)
+    chip = sim.calculate("is_chip_eligible", period=year)
+    barred = sim.calculate("is_medicaid_ineligible_due_to_work_requirement", period=year)
+    coverage = [
+        PersonCoverage(medicaid=bool(m), chip=bool(c), medicaid_work_requirement=bool(b))
+        for m, c, b in zip(medicaid, chip, barred)
+    ]
+    uncovered = [
+        name for name, person in zip(situation["people"], coverage)
+        if not (person.medicaid or person.chip)
+    ]
+    full_premium = benchmark
+    if benchmark == 0 and uncovered:
+        full_premium = premium_without_credit(situation, year, sim.tax_benefit_system, uncovered)
+    return ScenarioAtIncome(
+        year=year,
+        benchmark=benchmark,
+        credit=float(credit[0]),
+        full_premium=full_premium,
+        magi=float(sim.calculate("aca_magi", period=year)[0]),
+        fpl=float(sim.calculate("aca_fpg", period=year)[0]),
+        coverage=coverage,
+    )
+
+
+@app.post("/api/calculate-at-income", response_model=AtIncomeResponse)
+async def calculate_at_income(data: AtIncomeRequest):
+    """Each scenario at one level of earnings, for the calculator's "Your
+    household" tab: current law for the coverage year, H.R. 1834 with show_ira,
+    and current law the year before with show_prior_year."""
+    cache_key = get_cache_key(data)
+    cached = None if data.skip_cache else get_from_cache(cache_key, "at_income")
+    if cached is not None:
+        return cached
+
+    try:
+        loop = asyncio.get_event_loop()
+        run = lambda year, enhanced: loop.run_in_executor(
+            simulation_executor, run_at_income, data, year, enhanced
+        )
+        jobs = {"current": run(data.year, False)}
+        if data.show_ira:
+            jobs["ira"] = run(data.year, True)
+        if data.show_prior_year:
+            jobs["prior_year"] = run(data.year - 1, False)
+        scenarios = dict(zip(jobs, await asyncio.gather(*jobs.values())))
+        response = AtIncomeResponse(
+            income=data.income,
+            year=data.year,
+            model_version=MODEL_VERSION,
+            people=household_people(data, situation_at_income(data, data.year)),
+            **scenarios,
+        )
+        if not data.skip_cache:
+            set_in_cache(cache_key, response, "at_income")
+        return response
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Calculation error: {e}")
 
 
 @app.get("/api/health")
@@ -496,17 +642,21 @@ def build_explain_prompt(data: ExplainRequest) -> str:
     expansion_note = "This is a non-expansion state." if not data.is_expansion_state else "This is an expansion state."
     chip_line = f"- CHIP for children: {data.chip_threshold_pct}% FPL (${chip_income:,.0f})" if has_children and data.chip_threshold_pct > 0 else ""
 
+    year = data.year
+
     # Build reform data section based on which reforms are selected
-    reform_data_lines = [f"- Baseline PTC (2026 if IRA expires): ${data.ptc_baseline_at_sample:,.0f}/year (${data.ptc_baseline_at_sample/12:,.0f}/month)"]
+    reform_data_lines = [f"- Current-law PTC ({year}): ${data.ptc_baseline_at_sample:,.0f}/year (${data.ptc_baseline_at_sample/12:,.0f}/month)"]
 
     if data.show_ira:
-        reform_data_lines.append(f"- IRA Extension PTC: ${data.ptc_ira_at_sample:,.0f}/year (${data.ptc_ira_at_sample/12:,.0f}/month)")
+        reform_data_lines.append(f"- H.R. 1834 PTC: ${data.ptc_ira_at_sample:,.0f}/year (${data.ptc_ira_at_sample/12:,.0f}/month)")
     if data.show_700fpl:
         reform_data_lines.append(f"- 700% FPL Bill PTC: ${data.ptc_700fpl_at_sample:,.0f}/year (${data.ptc_700fpl_at_sample/12:,.0f}/month)")
     if data.show_additional_bracket:
         reform_data_lines.append(f"- Additional Bracket PTC: ${data.ptc_additional_bracket_at_sample:,.0f}/year (${data.ptc_additional_bracket_at_sample/12:,.0f}/month)")
     if data.show_simplified_bracket:
         reform_data_lines.append(f"- Simplified Bracket PTC: ${data.ptc_simplified_bracket_at_sample:,.0f}/year (${data.ptc_simplified_bracket_at_sample/12:,.0f}/month)")
+    if data.show_prior_year:
+        reform_data_lines.insert(0, f"- Current-law PTC ({year - 1}): ${data.ptc_prior_year_at_sample:,.0f}/year (${data.ptc_prior_year_at_sample/12:,.0f}/month)")
 
     reform_data_text = "\n".join(reform_data_lines)
 
@@ -514,17 +664,17 @@ def build_explain_prompt(data: ExplainRequest) -> str:
     reform_descriptions = []
     if data.show_ira:
         reform_descriptions.append("""
-IRA EXTENSION (show_ira=True):
-- Extends the Inflation Reduction Act's enhanced premium tax credits
-- Sets an 8.5% income cap on health insurance contributions for those above 400% FPL
-- Removes the income eligibility cliff at 400% FPL
-- Anyone above 400% FPL pays at most 8.5% of income toward benchmark plan""")
+H.R. 1834 (show_ira=True):
+- Would revive the enhanced premium tax credits of the American Rescue Plan Act and the Inflation Reduction Act, which expired after 2025, for 2026 through 2028
+- Required contributions run from 0% of income up to 150% FPL to 8.5% at 400% FPL and above
+- Removes the income eligibility limit at 400% FPL
+- Passed the House on January 8, 2026; it has not been enacted""")
 
     if data.show_700fpl:
         reform_descriptions.append("""
 700% FPL BILL (show_700fpl=True):
-- Bipartisan Health Insurance Affordability Act proposal
-- Extends subsidies up to 700% FPL (vs current 400% FPL cliff)
+- Bipartisan Health Insurance Affordability Act, introduced by Reps. Dunn and Schneider on December 9, 2025; it has not been enacted
+- Extends subsidies up to 700% FPL (vs the current 400% FPL limit)
 - Contribution rates: 2-4% at 200-250% FPL, 4-6% at 250-300%, 6-8.5% at 300-400%, 8.5% at 400-600%, 8.5-9.25% at 600-700%
 - Eligibility ends at 700% FPL""")
 
@@ -534,8 +684,8 @@ ADDITIONAL BRACKET (show_additional_bracket=True):
 - CRFB proposal: "Extend Subsidies Below 300% of Poverty, Extend Phase Up Above"
 - Adds a new bracket above 400% FPL with a linear phase-out
 - Contribution percentage increases by ~4 percentage points per 100% FPL above transition threshold
-- Creates a more gradual cliff than current law while reducing costs vs full IRA extension
-- Estimated cost: ~$280 billion through 2035 (vs $350B for full IRA extension)""")
+- Creates a more gradual cliff than current law
+- CRFB estimates it would cost about $280 billion through 2035, against $350 billion for reviving the enhanced credits permanently""")
 
     if data.show_simplified_bracket:
         reform_descriptions.append("""
@@ -543,8 +693,8 @@ SIMPLIFIED BRACKET (show_simplified_bracket=True):
 - CRFB proposal: sets subsidies "about halfway between base and enhanced rate"
 - Single linear phase-out starting at 100% FPL
 - Contribution percentage increases by 4 percentage points per 100% FPL from the start
-- Simplest structure but most aggressive phase-out
-- Estimated cost: ~$175 billion through 2035""")
+- Simplest structure, with the fastest phase-out of the options
+- CRFB estimates it would cost about $175 billion through 2035""")
 
     reform_descriptions_text = "\n".join(reform_descriptions) if reform_descriptions else "No reforms selected."
 
@@ -554,7 +704,14 @@ SIMPLIFIED BRACKET (show_simplified_bracket=True):
     sections_json = []
 
     # Section 1: Always intro
-    sections_spec.append(f'{section_num}. id: "intro", chartState: "all_programs" - Introduce this household and their location. State the SLCSP cost of ${data.slcsp:,.0f}/year.')
+    prior_year_note = (
+        f" Compare it with the {year - 1} benchmark of ${data.slcsp_prior_year:,.0f}/year, and"
+        f" say how the household's current-law credit at ${data.sample_income:,.0f} changes"
+        f" between {year - 1} and {year}."
+        if data.show_prior_year
+        else ""
+    )
+    sections_spec.append(f'{section_num}. id: "intro", chartState: "all_programs" - Introduce this household and their location. State the SLCSP cost of ${data.slcsp:,.0f}/year.{prior_year_note}')
     sections_json.append('{{"id": "intro", "title": "...", "content": "...", "chartState": "all_programs"}}')
     section_num += 1
 
@@ -568,39 +725,39 @@ SIMPLIFIED BRACKET (show_simplified_bracket=True):
         sections_spec.append(f'{section_num}. id: "chip", chartState: "chip_focus" - Explain CHIP coverage for children up to {data.chip_threshold_pct}% FPL (${chip_income:,.0f}).')
         sections_json.append('{{"id": "chip", "title": "...", "content": "...", "chartState": "chip_focus"}}')
     else:
-        sections_spec.append(f'{section_num}. id: "cliff", chartState: "cliff_focus" - Explain the 400% FPL cliff at ${data.fpl_400_income:,.0f} where baseline subsidies end. Above this income, there are no premium tax credits under current law (2026).')
+        sections_spec.append(f'{section_num}. id: "cliff", chartState: "cliff_focus" - Explain the 400% FPL cliff at ${data.fpl_400_income:,.0f} where current-law subsidies end. Above this income, there are no premium tax credits under current law ({year}).')
         sections_json.append('{{"id": "cliff", "title": "...", "content": "...", "chartState": "cliff_focus"}}')
     section_num += 1
 
     # Add a section for each selected reform
     if data.show_ira:
         diff = data.ptc_ira_at_sample - data.ptc_baseline_at_sample
-        sections_spec.append(f'{section_num}. id: "ira", chartState: "ira_impact" - Explain the IRA Extension reform. At ${data.sample_income:,.0f} income, IRA provides ${data.ptc_ira_at_sample:,.0f}/year vs baseline ${data.ptc_baseline_at_sample:,.0f}/year (difference: ${diff:,.0f}/year). Explain the 8.5% cap and removal of the 400% FPL cliff.')
+        sections_spec.append(f'{section_num}. id: "ira", chartState: "ira_impact" - Explain H.R. 1834, which would revive the enhanced credits. At ${data.sample_income:,.0f} income, it provides ${data.ptc_ira_at_sample:,.0f}/year vs current law ${data.ptc_baseline_at_sample:,.0f}/year (difference: ${diff:,.0f}/year). Explain the 8.5% cap and removal of the 400% FPL limit.')
         sections_json.append('{{"id": "ira", "title": "...", "content": "...", "chartState": "ira_impact"}}')
         section_num += 1
 
     if data.show_700fpl:
         diff = data.ptc_700fpl_at_sample - data.ptc_baseline_at_sample
-        sections_spec.append(f'{section_num}. id: "fpl700", chartState: "fpl700_focus" - Explain the 700% FPL Bill (Bipartisan Health Insurance Affordability Act). At ${data.sample_income:,.0f} income, it provides ${data.ptc_700fpl_at_sample:,.0f}/year vs baseline ${data.ptc_baseline_at_sample:,.0f}/year (difference: ${diff:,.0f}/year). Explain the graduated brackets up to 700% FPL.')
+        sections_spec.append(f'{section_num}. id: "fpl700", chartState: "fpl700_focus" - Explain the 700% FPL Bill (Bipartisan Health Insurance Affordability Act). At ${data.sample_income:,.0f} income, it provides ${data.ptc_700fpl_at_sample:,.0f}/year vs current law ${data.ptc_baseline_at_sample:,.0f}/year (difference: ${diff:,.0f}/year). Explain the graduated brackets up to 700% FPL.')
         sections_json.append('{{"id": "fpl700", "title": "...", "content": "...", "chartState": "fpl700_focus"}}')
         section_num += 1
 
     if data.show_additional_bracket:
         diff = data.ptc_additional_bracket_at_sample - data.ptc_baseline_at_sample
-        sections_spec.append(f'{section_num}. id: "additional", chartState: "additional_focus" - Explain the Additional Bracket reform (CRFB proposal). At ${data.sample_income:,.0f} income, it provides ${data.ptc_additional_bracket_at_sample:,.0f}/year vs baseline ${data.ptc_baseline_at_sample:,.0f}/year (difference: ${diff:,.0f}/year). This proposal extends subsidies below 300% FPL while adding a linear phase-up above, costing ~$280B vs $350B for full IRA extension.')
+        sections_spec.append(f'{section_num}. id: "additional", chartState: "additional_focus" - Explain the Additional Bracket reform (CRFB proposal). At ${data.sample_income:,.0f} income, it provides ${data.ptc_additional_bracket_at_sample:,.0f}/year vs current law ${data.ptc_baseline_at_sample:,.0f}/year (difference: ${diff:,.0f}/year). This proposal extends subsidies below 300% FPL while adding a linear phase-up above; CRFB estimates it would cost about $280B, against $350B for reviving the enhanced credits permanently.')
         sections_json.append('{{"id": "additional", "title": "...", "content": "...", "chartState": "additional_focus"}}')
         section_num += 1
 
     if data.show_simplified_bracket:
         diff = data.ptc_simplified_bracket_at_sample - data.ptc_baseline_at_sample
-        sections_spec.append(f'{section_num}. id: "simplified", chartState: "simplified_focus" - Explain the Simplified Bracket reform (CRFB proposal). At ${data.sample_income:,.0f} income, it provides ${data.ptc_simplified_bracket_at_sample:,.0f}/year vs baseline ${data.ptc_baseline_at_sample:,.0f}/year (difference: ${diff:,.0f}/year). This proposal uses a single linear phase-out from 100% FPL, setting subsidies about halfway between baseline and enhanced rates, costing ~$175B.')
+        sections_spec.append(f'{section_num}. id: "simplified", chartState: "simplified_focus" - Explain the Simplified Bracket reform (CRFB proposal). At ${data.sample_income:,.0f} income, it provides ${data.ptc_simplified_bracket_at_sample:,.0f}/year vs current law ${data.ptc_baseline_at_sample:,.0f}/year (difference: ${diff:,.0f}/year). This proposal uses a single linear phase-out from 100% FPL, setting subsidies about halfway between current-law and enhanced rates; CRFB estimates it would cost about $175B.')
         sections_json.append('{{"id": "simplified", "title": "...", "content": "...", "chartState": "simplified_focus"}}')
         section_num += 1
 
     # Final comparison section (always included)
     selected_reforms = []
     if data.show_ira:
-        selected_reforms.append("IRA Extension")
+        selected_reforms.append("H.R. 1834")
     if data.show_700fpl:
         selected_reforms.append("700% FPL Bill")
     if data.show_additional_bracket:
@@ -610,9 +767,15 @@ SIMPLIFIED BRACKET (show_simplified_bracket=True):
 
     if len(selected_reforms) > 1:
         reforms_list = ", ".join(selected_reforms)
-        sections_spec.append(f'{section_num}. id: "comparison", chartState: "both_reforms" - Compare all selected reforms: baseline vs {reforms_list}. Use the exact PTC values provided for ${data.sample_income:,.0f} income. Summarize which provides the most/least subsidy for this household.')
+        sections_spec.append(f'{section_num}. id: "comparison", chartState: "both_reforms" - Compare all selected reforms: current law vs {reforms_list}. Use the exact PTC values provided for ${data.sample_income:,.0f} income. Summarize which provides the most/least subsidy for this household.')
         sections_json.append('{{"id": "comparison", "title": "...", "content": "...", "chartState": "both_reforms"}}')
 
+    prior_year_benchmark = (
+        f"\n- Annual benchmark plan (SLCSP) in {year - 1}: ${data.slcsp_prior_year:,.0f}"
+        f" (${data.slcsp_prior_year/12:,.0f}/month)"
+        if data.show_prior_year
+        else ""
+    )
     sections_spec_text = "\n\n".join(sections_spec)
     sections_json_text = ",\n    ".join(sections_json)
     total_sections = len(sections_json)
@@ -624,6 +787,7 @@ IMPORTANT GUIDELINES:
 - Do NOT use value-laden words like "unfortunately", "thankfully", "crucial", "vital", "struggle", etc.
 - Simply describe what the policies are and how they affect this household's numbers.
 - Use exact dollar amounts and percentages provided - do not round or approximate.
+- Every reform below is a proposal, not law. Say so, and describe {year} current law as the law in effect.
 {"- CRITICAL: This household has NO children. Do NOT mention CHIP at all." if not has_children else ""}
 
 HOUSEHOLD DETAILS:
@@ -638,10 +802,11 @@ PROGRAM ELIGIBILITY THRESHOLDS FOR {state_name.upper()}:
 - Medicaid expansion state: {"Yes" if data.is_expansion_state else "No"}
 
 KEY FINANCIAL DATA:
-- Federal Poverty Level (FPL) for this household: ${data.fpl:,.0f}
-- 400% FPL (baseline subsidy cliff): ${data.fpl_400_income:,.0f}
+- Coverage year: {year}
+- Federal Poverty Level (FPL) for this household: ${data.fpl:,.0f} (the {year - 1} poverty guideline, which {year} premium tax credits use)
+- 400% FPL (current-law subsidy limit): ${data.fpl_400_income:,.0f}
 - 700% FPL: ${data.fpl_700_income:,.0f}
-- Annual benchmark plan (SLCSP): ${data.slcsp:,.0f} (${data.slcsp/12:,.0f}/month)
+- Annual benchmark plan (SLCSP): ${data.slcsp:,.0f} (${data.slcsp/12:,.0f}/month){prior_year_benchmark}
 
 SELECTED REFORMS AND THEIR DETAILS:
 {reform_descriptions_text}
@@ -685,6 +850,10 @@ def get_explain_cache_key(data: ExplainRequest) -> str:
         "show_700fpl": data.show_700fpl,
         "show_additional_bracket": data.show_additional_bracket,
         "show_simplified_bracket": data.show_simplified_bracket,
+        "show_prior_year": data.show_prior_year,
+        "slcsp_prior_year": round(data.slcsp_prior_year, 0),
+        "year": data.year,
+        "model_version": MODEL_VERSION,
     }
     key_str = json.dumps(key_data, sort_keys=True)
     return hashlib.md5(key_str.encode()).hexdigest()

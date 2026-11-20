@@ -1,20 +1,22 @@
-/* Main App Styles - Scrollytelling Layout */
+/* The page frame, the Overview story and the calculator page. Colors, fonts
+   and radii come from @policyengine/ui-kit's theme. */
 
+/* A faintly tinted page, so the white cards (charts, key figures, the
+   calculator's panels) stand off it. */
 .app {
   min-height: 100vh;
-  background: linear-gradient(180deg, var(--pe-gray-50) 0%, #f0f4f8 100%);
+  background: linear-gradient(180deg, var(--pe-gray-50) 0%, var(--pe-gray-100) 100%);
+  color: var(--foreground);
 }
 
-/* Header */
+/* Title and page tabs on white, left-aligned with the Overview's split layout
+   (.overview, 1200px), as on the earlier version of the app. The
+   PolicyEngine shell above already has a sticky bar, so this header scrolls
+   with the page. */
 .header {
-  background: var(--pe-surface);
-  border-bottom: 1px solid var(--pe-border);
-  padding: var(--pe-space-xl) var(--pe-space-lg);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  backdrop-filter: blur(12px);
-  background: rgba(255, 255, 255, 0.95);
+  border-bottom: 1px solid var(--border);
+  padding: 40px 16px 24px;
+  background: var(--card);
 }
 
 .header-content {
@@ -23,224 +25,392 @@
 }
 
 .header h1 {
-  font-size: 1.75rem;
+  font-size: 2rem;
+  line-height: 1.2;
   font-weight: 700;
-  color: var(--pe-gray-900);
-  margin: 0 0 var(--pe-space-xs) 0;
-  letter-spacing: -0.02em;
+  color: var(--color-gray-900);
+  letter-spacing: -0.01em;
 }
 
 .subtitle {
-  font-size: 1rem;
-  color: var(--pe-text-secondary);
-  margin: 0;
+  margin-top: 8px;
+  font-size: 1.125rem;
+  line-height: 1.5;
+  color: var(--muted-foreground);
 }
 
-/* Page tabs in header */
+/* Pill tabs, as on the earlier version of the app. */
 .page-tabs {
   display: flex;
-  gap: var(--pe-space-sm);
-  margin-top: var(--pe-space-md);
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 24px;
 }
 
 .page-tab {
   padding: 12px 28px;
-  border: 2px solid var(--pe-border);
-  border-radius: 28px;
-  background: var(--pe-surface);
-  font-family: var(--pe-font-family);
+  border: 2px solid var(--border);
+  border-radius: 9999px;
+  background: var(--card);
+  font-family: var(--font-sans);
   font-size: 1rem;
   font-weight: 600;
-  color: var(--pe-text-secondary);
+  color: var(--muted-foreground);
+  white-space: nowrap;
   cursor: pointer;
-  transition: all var(--pe-transition-fast);
+  transition: color var(--pe-transition-fast), border-color var(--pe-transition-fast),
+    background-color var(--pe-transition-fast);
 }
 
 .page-tab:hover {
-  border-color: var(--pe-accent);
-  color: var(--pe-accent);
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .page-tab.active {
-  background: var(--pe-accent);
-  border-color: var(--pe-accent);
-  color: white;
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-foreground, #fff);
 }
 
-/* Household Selector */
-.household-selector-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: var(--pe-space-lg);
-  display: flex;
-  flex-direction: column;
-  gap: var(--pe-space-sm);
+.page-tab:focus-visible,
+.story-cta:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
-.household-info {
-  display: flex;
-  align-items: center;
-  gap: var(--pe-space-md);
-  font-size: 0.875rem;
+/* The Methodology tab: one centered column of text. */
+.story-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 760px) minmax(0, 1fr);
 }
 
-.location {
-  color: var(--pe-text-secondary);
+.story {
+  grid-column: 2;
+  width: 100%;
+  padding: 16px 16px 64px;
 }
 
-.expansion-badge {
-  padding: 4px 10px;
-  border-radius: 20px;
+.story-section {
+  padding-top: 40px;
+  scroll-margin-top: 72px;
+}
+
+/* The heading that opens each part of the story, as a pill. */
+.story-part {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  background: var(--pe-teal-100);
   font-size: 0.75rem;
   font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  color: var(--pe-teal-800);
 }
 
-.expansion-badge.expansion {
-  background: var(--pe-teal-100);
+.story-section h2 {
+  font-size: 1.5rem;
+  line-height: 1.3;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--pe-teal-700);
+  margin-bottom: 12px;
 }
 
-.expansion-badge.non-expansion {
-  background: #fef3c7;
-  color: #92400e;
+.story-prose p,
+.story-prose ul {
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: var(--color-gray-700);
+  margin-bottom: 16px;
 }
 
-/* Scrollytelling Container */
-.scrollytelling-container {
+.story-prose ul {
+  padding-left: 1.25rem;
+}
+
+.story-prose li {
+  margin-bottom: 4px;
+}
+
+.story-prose strong {
+  font-weight: 600;
+  color: var(--color-gray-900);
+}
+
+/* A chart or table in the text: a raised white card as wide as the column.
+   Charts size to the card, so nothing runs past it. */
+.story-figure {
+  margin: 8px 0 8px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--pe-radius-xl);
+  background: var(--card);
+  box-shadow: var(--pe-shadow-md);
+  overflow: hidden;
+}
+
+/* Buttons lift on hover and their arrow slides forward. */
+.story-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: var(--radius-container);
+  background: var(--primary);
+  color: var(--primary-foreground, #fff);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--pe-transition-fast), transform var(--pe-transition-fast),
+    box-shadow var(--pe-transition-fast);
+}
+
+.story-cta:hover {
+  background: var(--pe-teal-700);
+  transform: translateY(-1px);
+  box-shadow: var(--pe-shadow-md);
+}
+
+.story-cta svg {
+  transition: transform var(--pe-transition-fast);
+}
+
+.story-cta:hover svg {
+  transform: translateX(4px);
+}
+
+.story-cta.secondary {
+  background: var(--card);
+  color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.story-cta.secondary:hover {
+  background: var(--pe-teal-50);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .story-cta,
+  .story-cta svg {
+    transition: none;
+  }
+
+  .story-cta:hover,
+  .story-cta:hover svg {
+    transform: none;
+  }
+}
+
+/* The buttons that end the Overview and the Methodology page. */
+.story-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 40px;
+}
+
+.story-prose a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.story-prose code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  overflow-wrap: anywhere;
+}
+
+/* The Overview's split layout, as on the earlier version of the app: on wide
+   screens the active section's chart is pinned on the left (55%) and the text
+   scrolls past in cards on the right (45%). The opening paragraph sits above,
+   at reading width. Below 1025px (useMediaQuery in App.jsx) it is one column,
+   each chart under its text. */
+.overview {
   max-width: 1200px;
   margin: 0 auto;
-  display: grid;
-  grid-template-columns: 55% 45%;
-  gap: var(--pe-space-xl);
-  padding: 0 var(--pe-space-lg);
+  padding: 0 16px 64px;
 }
 
-/* Chart Column - Sticky */
-.chart-column {
+.scrolly {
+  display: grid;
+  grid-template-columns: minmax(0, 55fr) minmax(0, 45fr);
+  gap: 32px;
+  padding-top: 32px;
+}
+
+.scrolly-chart {
   position: relative;
 }
 
-.chart-sticky {
+/* Below the PolicyEngine shell's sticky bar. */
+.scrolly-sticky {
   position: sticky;
-  top: 200px;
-  height: calc(100vh - 280px);
-  background: var(--pe-surface);
-  border-radius: var(--pe-radius-lg);
+  top: calc(var(--spacing-header, 58px) + 24px);
+  max-height: calc(100vh - var(--spacing-header, 58px) - 48px);
+  overflow: auto;
+  margin: 0;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--pe-radius-xl);
+  background: var(--card);
   box-shadow: var(--pe-shadow-lg);
-  padding: var(--pe-space-lg);
-  display: flex;
-  flex-direction: column;
 }
 
-/* Text Column - Scrollable */
-.text-column {
-  padding-bottom: 50vh;
+/* Each new chart fades in. */
+.scrolly-swap {
+  animation: scrolly-fade var(--pe-transition-slow);
 }
 
-/* Footer */
-.footer {
-  text-align: center;
-  padding: var(--pe-space-2xl) var(--pe-space-lg);
-  color: var(--pe-text-muted);
-  font-size: 0.875rem;
+@keyframes scrolly-fade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
-.footer a {
-  color: var(--pe-accent);
-  text-decoration: none;
-  font-weight: 500;
+/* Room below the last card, so it can reach the line that makes a section
+   active (40% down the screen, useActiveSection). */
+.scrolly-text {
+  padding-bottom: 40vh;
 }
 
-.footer a:hover {
-  color: var(--pe-accent-dark);
-  text-decoration: underline;
+/* A section as a card. Cards other than the active one are dimmed, but kept
+   readable. */
+.story-section.scroll-card {
+  min-height: 60vh;
+  margin-bottom: 24px;
+  padding: 28px;
+  border: 2px solid transparent;
+  border-radius: var(--pe-radius-xl);
+  background: var(--card);
+  box-shadow: var(--pe-shadow-md);
+  opacity: 0.7;
+  transition: opacity var(--pe-transition-base), border-color var(--pe-transition-base),
+    box-shadow var(--pe-transition-base);
 }
 
-.calc-link {
-  background: var(--pe-accent);
-  color: white !important;
-  padding: 8px 16px;
-  border-radius: var(--pe-radius-md);
-  margin-left: var(--pe-space-md);
+.story-section.scroll-card.active {
+  opacity: 1;
+  border-color: var(--primary);
+  box-shadow: var(--pe-shadow-md), 0 0 0 4px var(--pe-teal-50);
 }
 
-.calc-link:hover {
-  background: var(--pe-accent-dark);
-  text-decoration: none !important;
+.scroll-card .story-prose p:last-child,
+.scroll-card .story-prose ul:last-child {
+  margin-bottom: 0;
 }
 
-/* Households page */
-.households-page {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: var(--pe-space-lg);
+@media (prefers-reduced-motion: reduce) {
+  .scrolly-swap {
+    animation: none;
+  }
+
+  .story-section.scroll-card {
+    transition: none;
+  }
+}
+
+@media (max-width: 1024px) {
+  .scrolly {
+    display: block;
+    padding-top: 24px;
+  }
+
+  .scrolly-text {
+    padding-bottom: 0;
+  }
+
+  .story-section.scroll-card {
+    min-height: 0;
+    padding: 20px;
+    opacity: 1;
+  }
+
+  /* The chart under the text, inside the card. */
+  .scroll-card .story-figure {
+    margin-top: 16px;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+  }
 }
 
 /* Calculator page */
 .calculator-page {
-  max-width: 100%;
-  padding: var(--pe-space-lg) 0;
+  max-width: var(--spacing-content, 976px);
+  margin: 0 auto;
+  padding: 24px 16px 64px;
 }
 
-.back-button {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--pe-space-sm);
-  padding: 8px 16px;
-  margin-bottom: var(--pe-space-lg);
-  background: var(--pe-surface);
-  border: 2px solid var(--pe-border);
-  border-radius: var(--pe-radius-md);
-  font-family: var(--pe-font-family);
+.footer {
+  border-top: 1px solid var(--border);
+  padding: 24px 16px;
+  text-align: center;
   font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--pe-text-secondary);
-  cursor: pointer;
-  transition: all var(--pe-transition-fast);
+  color: var(--muted-foreground);
 }
 
-.back-button:hover {
-  border-color: var(--pe-accent);
-  color: var(--pe-accent);
+.footer a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
 }
 
-/* Responsive Design */
-@media (max-width: 1024px) {
-  .scrollytelling-container {
-    grid-template-columns: 1fr;
-  }
+.footer a:hover {
+  text-decoration: underline;
+}
 
-  .chart-sticky {
-    position: relative;
-    top: 0;
-    height: 400px;
-    margin-bottom: var(--pe-space-xl);
-  }
-
-  .text-column {
-    padding-bottom: var(--pe-space-2xl);
-  }
+.embedded .story,
+.embedded .calculator-page {
+  padding-top: 0;
 }
 
 @media (max-width: 640px) {
+  .header {
+    padding-top: 24px;
+    padding-bottom: 20px;
+  }
+
   .header h1 {
-    font-size: 1.25rem;
+    font-size: 1.625rem;
   }
 
   .subtitle {
+    font-size: 1rem;
+  }
+
+  .story-section h2 {
+    font-size: 1.25rem;
+  }
+
+  .story-prose p,
+  .story-prose ul {
+    font-size: 1rem;
+  }
+
+  .story-figure {
+    padding: 12px;
+  }
+
+  .page-tabs {
+    gap: 6px;
+    margin-top: 20px;
+  }
+
+  .page-tab {
+    padding: 8px 14px;
     font-size: 0.875rem;
-  }
-
-  .household-info {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--pe-space-xs);
-  }
-
-  .chart-sticky {
-    height: 300px;
-    padding: var(--pe-space-md);
   }
 }
