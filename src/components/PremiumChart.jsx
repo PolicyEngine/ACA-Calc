@@ -63,7 +63,8 @@ function earningsAt(amount, incomes, magi) {
  * `data` has the calculator API's fields: income, ptc_prior_year, ptc_baseline,
  * ptc_ira, slcsp_by_income_prior_year, slcsp_by_income, fpl, year and, if the
  * API sent it, magi. `lines` picks the scenarios to draw, and `xLabel` names
- * the income axis. The chart is `height` pixels tall and as wide as its
+ * the income axis. The chart is `height` pixels tall, or with `fill` as tall
+ * as its parent leaves (the Overview's pinned card), and as wide as its
  * container.
  */
 function PremiumChart({
@@ -72,6 +73,7 @@ function PremiumChart({
   title,
   lines: shown = ["prior", "current", "revived"],
   height = 380,
+  fill = false,
   xLabel = "Household income",
 }) {
   const year = data?.year || 2027;
@@ -151,9 +153,10 @@ function PremiumChart({
   for (let tick = 0; tick <= maxIncome; tick += step) xTicks.push(tick);
 
   return (
-    <div className="premium-chart">
+    <div className={fill ? "premium-chart chart-fill" : "premium-chart"}>
       {title && <h3 className="premium-chart-title">{title}</h3>}
-      <ResponsiveContainer width="100%" height={height}>
+      <div className={fill ? "chart-plot fill" : "chart-plot"}>
+      <ResponsiveContainer width="100%" height={fill ? "100%" : height}>
         <LineChart data={points} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
           <CartesianGrid {...GRID} vertical={false} />
           <XAxis
@@ -213,6 +216,7 @@ function PremiumChart({
           )}
         </LineChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 }

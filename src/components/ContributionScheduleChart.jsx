@@ -53,7 +53,9 @@ const CURRENT_LAW = ["current2026", "current2027"];
 // Where current law's credit ends; the line labels keep off it and its name.
 const LIMIT_400 = { x: 400, label: "400% FPL", position: "insideTopRight" };
 
-function ContributionScheduleChart({ showPolicies = ["current2027", "enhanced"] }) {
+// `fill`: the plot takes the height its parent leaves (the Overview's pinned
+// card) instead of 340px.
+function ContributionScheduleChart({ showPolicies = ["current2027", "enhanced"], fill = false }) {
   const showsCurrentLaw = showPolicies.some((policy) => CURRENT_LAW.includes(policy));
   // Name each line beside it, or fall back to a legend when they run too
   // close together (DirectLabels.jsx).
@@ -62,13 +64,14 @@ function ContributionScheduleChart({ showPolicies = ["current2027", "enhanced"] 
   const showLegend = plan.crowded || !labelsFit;
 
   return (
-    <div className="contribution-chart">
+    <div className={fill ? "contribution-chart chart-fill" : "contribution-chart"}>
       <h3 className="chart-title">Share of income paid for the benchmark plan</h3>
       <p className="chart-subtitle">
         The most a household pays for the benchmark plan, as a percent of its income
       </p>
 
-      <ResponsiveContainer width="100%" height={340}>
+      <div className={fill ? "chart-plot fill" : "chart-plot"}>
+      <ResponsiveContainer width="100%" height={fill ? "100%" : 340}>
         <LineChart data={data} margin={{ top: 8, right: 24, left: 0, bottom: 8 }}>
           <CartesianGrid {...GRID} vertical={false} />
           <XAxis
@@ -142,6 +145,7 @@ function ContributionScheduleChart({ showPolicies = ["current2027", "enhanced"] 
           )}
         </LineChart>
       </ResponsiveContainer>
+      </div>
 
       {showsCurrentLaw && (
         <p className="chart-note">No credit is available below 100% FPL, where the lines start, and current law gives none above 400% FPL, where its lines end.</p>

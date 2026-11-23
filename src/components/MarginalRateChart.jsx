@@ -30,7 +30,9 @@ const MIN_INCOME = 40000;
  * taxes and to a smaller premium tax credit (precompute_cliff_household.py's
  * mtr_baseline and mtr_ira).
  */
-function MarginalRateChart({ data, title, height = 360 }) {
+// `fill`: the plot takes the height its parent leaves (the Overview's pinned
+// card) instead of `height`.
+function MarginalRateChart({ data, title, height = 360, fill = false }) {
   const fpl = data.fpl;
   const year = data.year;
 
@@ -86,9 +88,10 @@ function MarginalRateChart({ data, title, height = 360 }) {
   };
 
   return (
-    <div className="premium-chart">
+    <div className={fill ? "premium-chart chart-fill" : "premium-chart"}>
       {title && <h3 className="premium-chart-title">{title}</h3>}
-      <ResponsiveContainer width="100%" height={height}>
+      <div className={fill ? "chart-plot fill" : "chart-plot"}>
+      <ResponsiveContainer width="100%" height={fill ? "100%" : height}>
         <LineChart data={points} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
           <CartesianGrid {...GRID} vertical={false} />
           <XAxis
@@ -146,6 +149,7 @@ function MarginalRateChart({ data, title, height = 360 }) {
           )}
         </LineChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 }

@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 
 /**
- * The id of the section being read: the one crossing a line 40% down the
- * screen. Null until a section reaches that line. The section rail
+ * The id of the section being read: the one crossing the middle of the
+ * screen, where the pinned chart sits. Null until a section reaches that line. The section rail
  * highlights it.
  */
 export default function useActiveSection(sections, enabled = true) {
@@ -19,7 +19,7 @@ export default function useActiveSection(sections, enabled = true) {
         const visible = entries.filter((entry) => entry.isIntersecting);
         if (visible.length) setActive(visible[0].target.id);
       },
-      { rootMargin: "-40% 0px -59% 0px" }
+      { rootMargin: "-50% 0px -49% 0px" }
     );
     elements.forEach((element) => observer.observe(element));
     return () => observer.disconnect();

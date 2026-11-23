@@ -280,19 +280,21 @@ function Prose({ content }) {
   });
 }
 
-function Chart({ chart }) {
+// `fill`: the chart fills the pinned card on wide screens.
+function Chart({ chart, fill = false }) {
   switch (chart.type) {
     case "examples":
       return <ExampleHouseholdsTable view={chart.view} />;
     case "household":
       return <HouseholdYearTable columns={chart.columns} />;
     case "schedule":
-      return <ContributionScheduleChart showPolicies={chart.policies} />;
+      return <ContributionScheduleChart showPolicies={chart.policies} fill={fill} />;
     case "premium":
       return (
         <PremiumChart
           data={cliffDemoData}
           lines={chart.lines}
+          fill={fill}
           title={`What a ${cliffDemoData.household_info.age}-year-old in ${cliffDemoData.household_info.location} pays for the benchmark plan, per month`}
         />
       );
@@ -300,6 +302,7 @@ function Chart({ chart }) {
       return (
         <MarginalRateChart
           data={cliffDemoData}
+          fill={fill}
           title={`Marginal tax rate of a ${cliffDemoData.household_info.age}-year-old in ${cliffDemoData.household_info.location}, ${cliffDemoData.year}`}
         />
       );
@@ -383,7 +386,7 @@ function App() {
           <div className="scrolly-chart">
             <figure ref={chartRef} className="scrolly-sticky" aria-label={activeSection.title}>
               <div key={activeSection.id} className="scrolly-swap">
-                <Chart chart={activeSection.chart} />
+                <Chart chart={activeSection.chart} fill />
               </div>
             </figure>
           </div>

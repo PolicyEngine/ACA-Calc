@@ -10,7 +10,7 @@
 }
 
 /* Title and page tabs on white, left-aligned with the Overview's split layout
-   (.overview, 1200px), as on the earlier version of the app. The
+   (.overview, 1320px), as on the earlier version of the app. The
    PolicyEngine shell above already has a sticky bar, so this header scrolls
    with the page. */
 .header {
@@ -19,8 +19,9 @@
   background: var(--card);
 }
 
+/* The Overview's 1320px less its 16px sides, so the two left edges line up. */
 .header-content {
-  max-width: 1200px;
+  max-width: 1288px;
   margin: 0 auto;
 }
 
@@ -235,12 +236,16 @@
    at reading width. Below 1025px (useMediaQuery in App.jsx) it is one column,
    each chart under its text. */
 .overview {
-  max-width: 1200px;
+  max-width: 1320px;
   margin: 0 auto;
   padding: 0 16px 64px;
 }
 
 .scrolly {
+  /* The pinned chart's card and each text card: as tall as the screen below
+     the PolicyEngine shell's bar allows, less 40px above and below, up to
+     720px. */
+  --scrolly-card-height: min(calc(100vh - var(--spacing-header, 58px) - 80px), 720px);
   display: grid;
   grid-template-columns: minmax(0, 55fr) minmax(0, 45fr);
   gap: 32px;
@@ -255,8 +260,10 @@
    useCenteredSticky sets top from the chart's height. */
 .scrolly-sticky {
   position: sticky;
-  top: calc(var(--spacing-header, 58px) + 24px);
-  max-height: calc(100vh - var(--spacing-header, 58px) - 48px);
+  top: calc(var(--spacing-header, 58px) + 40px);
+  display: flex;
+  flex-direction: column;
+  height: var(--scrolly-card-height);
   overflow: auto;
   margin: 0;
   padding: 20px;
@@ -266,9 +273,27 @@
   box-shadow: var(--pe-shadow-lg);
 }
 
-/* Each new chart fades in. */
+/* Each new chart fades in, in the middle of the card. A chart fills the card
+   (its plot takes the height its title and note leave); a table sits in the
+   middle. */
 .scrolly-swap {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 0;
   animation: scrolly-fade var(--pe-transition-slow);
+}
+
+.scrolly-swap .chart-fill {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.chart-plot.fill {
+  flex: 1;
+  min-height: 260px;
 }
 
 @keyframes scrolly-fade {
@@ -283,15 +308,20 @@
 }
 
 /* Room below the last card, so it can reach the line that makes a section
-   active (40% down the screen, useActiveSection). */
+   active (the middle of the screen, useActiveSection). */
 .scrolly-text {
-  padding-bottom: 40vh;
+  padding-bottom: 50vh;
 }
 
-/* A section as a card. Cards other than the active one are dimmed, but kept
-   readable. */
+/* A section as a card, as tall as the pinned chart's, with its text in the
+   middle, so the card in the middle of the screen lines up with the chart.
+   Cards other than the active one are dimmed, but kept readable. */
 .story-section.scroll-card {
-  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: var(--scrolly-card-height);
   margin-bottom: 24px;
   padding: 28px;
   border: 2px solid transparent;
@@ -335,6 +365,7 @@
   }
 
   .story-section.scroll-card {
+    display: block;
     min-height: 0;
     padding: 20px;
     opacity: 1;
