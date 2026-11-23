@@ -41,7 +41,7 @@ const getUrlParams = () => {
 const VIEWS = ["net", "credit", "impact"];
 
 // A link to a calculation, from the request the API was sent.
-const buildShareableUrl = (request, { compare = false, view = "net", income = null, ai = false } = {}) => {
+const buildShareableUrl = (request, { compare = false, view = "net", income = null } = {}) => {
   const params = new URLSearchParams();
   params.set("age", request.age_head);
   if (request.age_spouse != null) params.set("spouse", request.age_spouse);
@@ -52,7 +52,6 @@ const buildShareableUrl = (request, { compare = false, view = "net", income = nu
   if (compare) params.set("compare", "1");
   if (view !== "net" && VIEWS.includes(view)) params.set("view", view);
   if (income > 0) params.set("income", String(income));
-  if (ai) params.set("ai", "1");
 
   const baseUrl = window.location.origin + window.location.pathname;
   return `${baseUrl}#calculator?${params.toString()}`;
@@ -114,7 +113,6 @@ const getLinkFromUrl = () => {
     compare: params.get("compare") === "1",
     view: VIEWS.includes(view) ? view : "net",
     income: income > 0 ? income : null,
-    ai: params.get("ai") === "1",
   };
 };
 
