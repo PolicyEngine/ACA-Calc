@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   LineChart,
   Line,
@@ -49,11 +50,16 @@ const LABELS = {
 
 const CURRENT_LAW = ["current2026", "current2027"];
 
+// Where current law's credit ends; the line labels keep off it and its name.
+const LIMIT_400 = { x: 400, label: "400% FPL", position: "insideTopRight" };
+
 function ContributionScheduleChart({ showPolicies = ["current2027", "enhanced"] }) {
   const showsCurrentLaw = showPolicies.some((policy) => CURRENT_LAW.includes(policy));
   // Name each line beside it, or fall back to a legend when they run too
   // close together (DirectLabels.jsx).
   const plan = labelPlan(data, showPolicies, { yDomain: [0, 12], plotHeight: 340 - 60 });
+  const [labelsFit, setLabelsFit] = useState(true);
+  const showLegend = plan.crowded || !labelsFit;
 
   return (
     <div className="contribution-chart">
@@ -90,21 +96,20 @@ function ContributionScheduleChart({ showPolicies = ["current2027", "enhanced"] 
               fontFamily: "var(--font-sans)",
             }}
           />
-          {plan.crowded && (
+          {showLegend && (
             <Legend
               verticalAlign="top"
               align="left"
-              height={36}
               iconType="plainline"
-              wrapperStyle={{ fontSize: "13px", fontFamily: "var(--font-sans)" }}
+              wrapperStyle={{ fontSize: "13px", fontFamily: "var(--font-sans)", paddingBottom: "8px" }}
             />
           )}
           {showsCurrentLaw && (
             <ReferenceLine
-              x={400}
+              x={LIMIT_400.x}
               stroke="var(--color-gray-400)"
               strokeDasharray="4 4"
-              label={{ value: "400% FPL", position: "insideTopRight", ...AXIS_LABEL, fontSize: 11 }}
+              label={{ value: LIMIT_400.label, position: LIMIT_400.position, ...AXIS_LABEL, fontSize: 11 }}
             />
           )}
           {showPolicies.map((policy) => (
@@ -123,7 +128,17 @@ function ContributionScheduleChart({ showPolicies = ["current2027", "enhanced"] 
             />
           ))}
           {!plan.crowded && (
-            <Customized component={(props) => <DirectLabels {...props} index={plan.index} />} />
+            <Customized
+              component={(props) => (
+                <DirectLabels
+                  {...props}
+                  index={plan.index}
+                  references={showsCurrentLaw ? [LIMIT_400] : []}
+                  onFit={setLabelsFit}
+                  hidden={!labelsFit}
+                />
+              )}
+            />
           )}
         </LineChart>
       </ResponsiveContainer>

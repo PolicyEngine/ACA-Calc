@@ -1,0 +1,1 @@
+On wide screens the Overview's pinned chart sits in the middle of the screen instead of near its top. The calculator shows a spinner, with the step the server reports, instead of a progress bar while it calculates a household, and the "Your household" cards show a small spinner while they load.

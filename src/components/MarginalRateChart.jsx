@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   LineChart,
   Line,
@@ -62,6 +62,10 @@ function MarginalRateChart({ data, title, height = 360 }) {
     { key: "revived", name: `${year}, H.R. 1834` },
   ];
   const plan = labelPlan(points, ["current", "revived"], { yDomain: [0, MAX_RATE], plotHeight: height - 52 });
+  const [labelsFit, setLabelsFit] = useState(true);
+  const showLegend = plan.crowded || !labelsFit;
+  // The cliff, which the line labels keep off, with its name.
+  const cliff = { x: fpl * 4, label: "Cliff at 400% FPL", position: "insideTopLeft", offset: 8 };
 
   const CustomTooltip = ({ active, payload }) => {
     if (!active || !payload?.length) return null;
@@ -106,20 +110,19 @@ function MarginalRateChart({ data, title, height = 360 }) {
             width={48}
           />
           <Tooltip content={<CustomTooltip />} cursor={CURSOR} />
-          {plan.crowded && (
+          {showLegend && (
             <Legend
               verticalAlign="top"
               align="left"
-              height={36}
               iconType="plainline"
-              wrapperStyle={{ fontSize: "13px", fontFamily: "var(--font-sans)" }}
+              wrapperStyle={{ fontSize: "13px", fontFamily: "var(--font-sans)", paddingBottom: "8px" }}
             />
           )}
           <ReferenceLine
-            x={fpl * 4}
+            x={cliff.x}
             stroke="var(--color-gray-400)"
             strokeDasharray="4 4"
-            label={{ value: "Cliff at 400% FPL", position: "insideTopLeft", offset: 8, ...AXIS_LABEL, fontSize: 11 }}
+            label={{ value: cliff.label, position: cliff.position, offset: cliff.offset, ...AXIS_LABEL, fontSize: 11 }}
           />
           {lines.map(({ key, name }) => (
             <Line
@@ -135,7 +138,11 @@ function MarginalRateChart({ data, title, height = 360 }) {
             />
           ))}
           {!plan.crowded && (
-            <Customized component={(props) => <DirectLabels {...props} index={plan.index} />} />
+            <Customized
+              component={(props) => (
+                <DirectLabels {...props} index={plan.index} references={[cliff]} onFit={setLabelsFit} hidden={!labelsFit} />
+              )}
+            />
           )}
         </LineChart>
       </ResponsiveContainer>

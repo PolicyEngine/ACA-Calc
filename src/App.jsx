@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import ContributionScheduleChart from "./components/ContributionScheduleChart";
 import ExampleHouseholdsTable from "./components/ExampleHouseholdsTable";
 import HouseholdYearTable from "./components/HouseholdYearTable";
@@ -7,6 +7,7 @@ import MarginalRateChart from "./components/MarginalRateChart";
 import Calculator from "./components/Calculator";
 import Methodology from "./components/Methodology";
 import useActiveSection from "./components/useActiveSection";
+import useCenteredSticky from "./components/useCenteredSticky";
 import useMediaQuery from "./components/useMediaQuery";
 import { Reveal } from "./components/Motion";
 import "./App.css";
@@ -331,6 +332,9 @@ function App() {
   }, []);
   // The split layout's breakpoint (App.css): wide screens pin the chart.
   const wide = useMediaQuery("(min-width: 1025px)");
+  // The pinned chart stays in the middle of the screen.
+  const chartRef = useRef(null);
+  useCenteredSticky(chartRef, wide && currentPage === "main");
   const activeId = useActiveSection(SECTIONS, currentPage === "main" && wide);
   const activeSection = SECTIONS.find((section) => section.id === activeId) || SECTIONS[0];
 
@@ -377,7 +381,7 @@ function App() {
       <div className="scrolly">
         {wide && (
           <div className="scrolly-chart">
-            <figure className="scrolly-sticky" aria-label={activeSection.title}>
+            <figure ref={chartRef} className="scrolly-sticky" aria-label={activeSection.title}>
               <div key={activeSection.id} className="scrolly-swap">
                 <Chart chart={activeSection.chart} />
               </div>

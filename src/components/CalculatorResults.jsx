@@ -410,7 +410,8 @@ function CalculatorResults({
             )}
 
             {!answer && !tooHigh && atIncome.status !== "error" && (
-              <div className="impact-placeholder">
+              <div className="impact-placeholder" role={atIncome.status === "loading" ? "status" : undefined}>
+                {atIncome.status === "loading" && <span className="loading-spinner small" aria-hidden="true" />}
                 <p>
                   {atIncome.status === "loading"
                     ? `Calculating your household at ${formatCurrency(income)} of earnings…`

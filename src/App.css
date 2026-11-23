@@ -129,6 +129,7 @@
 
 .story-prose ul {
   padding-left: 1.25rem;
+  list-style: disc;
 }
 
 .story-prose li {
@@ -250,7 +251,8 @@
   position: relative;
 }
 
-/* Below the PolicyEngine shell's sticky bar. */
+/* In the middle of the screen below the PolicyEngine shell's sticky bar:
+   useCenteredSticky sets top from the chart's height. */
 .scrolly-sticky {
   position: sticky;
   top: calc(var(--spacing-header, 58px) + 24px);

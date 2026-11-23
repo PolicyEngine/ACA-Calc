@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   LineChart,
   Line,
@@ -118,6 +118,8 @@ function PremiumChart({
   const keys = lines.map((line) => line.key);
   const yMax = Math.max(0, ...points.flatMap((point) => keys.map((key) => point[key] ?? 0)));
   const plan = labelPlan(points, keys, { yDomain: [0, yMax * 1.1], plotHeight: height - 52 });
+  const [labelsFit, setLabelsFit] = useState(true);
+  const showLegend = plan.crowded || !labelsFit;
 
   const CustomTooltip = ({ active, payload }) => {
     if (!active || !payload?.length) return null;
@@ -142,6 +144,8 @@ function PremiumChart({
   const maxIncome = points.length ? points[points.length - 1].income : 0;
   // 400% FPL on the earnings axis.
   const limit400 = fpl > 0 ? earningsAt(4 * fpl, data.income, data.magi) : 0;
+  // The same line as the labels see it: they keep off it and its name.
+  const limit = fpl > 0 ? { x: limit400, label: "400% FPL", position: "insideTopRight" } : null;
   const step = maxIncome > 160000 ? 40000 : 20000;
   const xTicks = [];
   for (let tick = 0; tick <= maxIncome; tick += step) xTicks.push(tick);
@@ -164,21 +168,20 @@ function PremiumChart({
           />
           <YAxis tickFormatter={(v) => formatCurrency(v)} {...AXIS} width={64} />
           <Tooltip content={<CustomTooltip />} cursor={CURSOR} />
-          {plan.crowded && (
+          {showLegend && (
             <Legend
               verticalAlign="top"
               align="left"
-              height={36}
               iconType="plainline"
-              wrapperStyle={{ fontSize: "13px", fontFamily: "var(--font-sans)" }}
+              wrapperStyle={{ fontSize: "13px", fontFamily: "var(--font-sans)", paddingBottom: "8px" }}
             />
           )}
-          {fpl > 0 && (
+          {limit && (
             <ReferenceLine
-              x={limit400}
+              x={limit.x}
               stroke="var(--color-gray-400)"
               strokeDasharray="4 4"
-              label={{ value: "400% FPL", position: "insideTopRight", ...AXIS_LABEL, fontSize: 11 }}
+              label={{ value: limit.label, position: limit.position, ...AXIS_LABEL, fontSize: 11 }}
             />
           )}
           {lines.map(({ key, name }) => (
@@ -196,7 +199,17 @@ function PremiumChart({
             />
           ))}
           {!plan.crowded && (
-            <Customized component={(props) => <DirectLabels {...props} index={plan.index} />} />
+            <Customized
+              component={(props) => (
+                <DirectLabels
+                  {...props}
+                  index={plan.index}
+                  references={limit ? [limit] : []}
+                  onFit={setLabelsFit}
+                  hidden={!labelsFit}
+                />
+              )}
+            />
           )}
         </LineChart>
       </ResponsiveContainer>

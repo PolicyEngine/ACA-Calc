@@ -114,7 +114,8 @@ function Calculator() {
   const [results, setResults] = useState(null);
   const [formData, setFormData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState({ percent: 0, message: "" });
+  // The step the server reports, shown under the spinner.
+  const [progressMessage, setProgressMessage] = useState("");
   const [error, setError] = useState(null);
   const [aiExplanation, setAiExplanation] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -183,20 +184,19 @@ function Calculator() {
     setResults(null);
     setFormData(data);
     setAiExplanation(null);
-    setProgress({ percent: 0, message: "Starting calculation..." });
+    setProgressMessage("");
 
     // Check client-side cache first
     const cacheKey = getCacheKey(data);
     const cached = getFromCache(cacheKey);
     if (cached) {
-      setProgress({ percent: 100, message: "Using cached results" });
       setResults(cached);
       setLoading(false);
       return;
     }
 
     try {
-      // Use streaming endpoint for progress updates
+      // The streaming endpoint reports each step as it runs
       const response = await fetch(`${API_URL}/api/calculate-stream`, {
         method: "POST",
         headers: {
@@ -242,9 +242,7 @@ function Calculator() {
             throw new Error(event.error || "Calculation failed");
           }
 
-          if (event.progress !== undefined) {
-            setProgress({ percent: event.progress, message: event.message || "" });
-          }
+          if (event.message) setProgressMessage(event.message);
 
           if (event.step === "complete" && event.result) {
             gotResult = true;
@@ -283,7 +281,7 @@ function Calculator() {
       }
     } finally {
       setLoading(false);
-      setProgress({ percent: 0, message: "" });
+      setProgressMessage("");
     }
   };
 
@@ -453,19 +451,9 @@ function Calculator() {
 
         <div className="calculator-results-container" ref={resultsRef}>
           {loading && (
-            <div className="calculator-loading">
-              <div className="progress-container">
-                <div className="progress-bar">
-                  <div
-                    className="progress-fill"
-                    style={{ width: `${progress.percent}%` }}
-                  />
-                </div>
-                <div className="progress-text">
-                  <span className="progress-message">{progress.message || "Calculating..."}</span>
-                  <span className="progress-percent">{progress.percent}%</span>
-                </div>
-              </div>
+            <div className="calculator-loading" role="status">
+              <span className="loading-spinner" aria-hidden="true" />
+              <p className="loading-message">{progressMessage || "Calculating..."}</p>
               <p className="loading-note">Running simulations for your household</p>
             </div>
           )}
