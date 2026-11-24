@@ -5,7 +5,7 @@
     "": {
       "name": "aca-scrollytelling",
       "dependencies": {
-        "@policyengine/ui-kit": "^0.13.0",
+        "@policyengine/ui-kit": "^0.14.0",
         "d3": "^7.9.0",
         "next": "^16.2.6",
         "react": "^19.2.0",
@@ -113,7 +113,7 @@
 
     "@next/swc-win32-x64-msvc": ["@next/swc-win32-x64-msvc@16.2.6", "", { "os": "win32", "cpu": "x64" }, "sha512-F0+4i0h9J6C4eE3EAPWsoCk7UW/dbzOjyzxY0qnDUOYFu6FFmdZ6l97/XdV3/Nz3VYyO7UWjyEJUXkGqcoXfMA=="],
 
-    "@policyengine/ui-kit": ["@policyengine/ui-kit@0.13.0", "", { "dependencies": { "class-variance-authority": "^0.7.1", "clsx": "^2.1.1", "cmdk": "^1.1.1", "d3-geo": "^3.1.0", "dayjs": "^1.11.13", "lucide-react": "^0.577.0", "radix-ui": "^1.4.3", "tailwind-merge": "^3.5.0", "tw-animate-css": "^1.4.0" }, "peerDependencies": { "react": ">=19", "react-dom": ">=19", "recharts": ">=2.12" } }, "sha512-fisvPCBLWmso0czamljsEOa9A0d0E35Slr9cwfqEbwnq3nwkWrgSdtAqHH2iWA2bDsONxFmgQhV9sWlK6xw0+A=="],
+    "@policyengine/ui-kit": ["@policyengine/ui-kit@0.14.0", "", { "dependencies": { "class-variance-authority": "^0.7.1", "clsx": "^2.1.1", "cmdk": "^1.1.1", "d3-geo": "^3.1.0", "dayjs": "^1.11.13", "lucide-react": "^0.577.0", "radix-ui": "^1.4.3", "tailwind-merge": "^3.5.0", "tw-animate-css": "^1.4.0" }, "peerDependencies": { "react": ">=19", "react-dom": ">=19", "recharts": ">=2.12" } }, "sha512-bukncBdkJwW3a/J2TnYtGC+60x2cSfmrtCMpZ4ko0C5ywl+HsxMamGf7rWJCUVa79/rCUTDOG9Vv4eiKxiXOoQ=="],
 
     "@radix-ui/number": ["@radix-ui/number@1.1.1", "", {}, "sha512-MkKCwxlXTgz6CFoJx3pCwn07GKp36+aZyu/u2Ln2VrA5DcdyCZkASEDBTd8x5whTQQL5CiYf4prXKLcgQdv29g=="],
 
