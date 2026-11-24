@@ -46,6 +46,9 @@ concurrency:
 env:
   API_URL: https://policyengine--aca-calc-api-fastapi-app.modal.run
   MODAL_VERSION: 1.4.2
+  # modal 1.4.2's CLI passes click_type to typer.Option, which newer typer
+  # releases reject ("Option() got an unexpected keyword argument
+  # 'click_type'"), so each uvx call pins typer and click below.
   UV_VERSION: 0.11.7
   # Use the runner's Python; downloading one has taken over 10 minutes.
   UV_PYTHON_PREFERENCE: only-system
@@ -87,7 +90,7 @@ jobs:
           # The API reports it, so the smoke tests can tell this deploy's
           # containers from the previous version's.
           ACA_API_COMMIT: ${{ github.sha }}
-        run: uvx --from "modal==$MODAL_VERSION" modal deploy --env main modal_app.py
+        run: uvx --from "modal==$MODAL_VERSION" --with "typer<0.16" --with "click<8.2" modal deploy --env main modal_app.py
       # The smoke test uses only the standard library, so any Python runs it.
       # It waits until this commit's containers answer each check.
       - name: Smoke-test the calculator
@@ -95,7 +98,7 @@ jobs:
         run: uv run --no-project scripts/smoke_test_api.py "$API_URL" --commit "$GITHUB_SHA"
       - name: Roll back to the previous version if the calculator fails
         if: failure() && steps.calculator.outcome == 'failure'
-        run: uvx --from "modal==$MODAL_VERSION" modal app rollback aca-calc-api --env main
+        run: uvx --from "modal==$MODAL_VERSION" --with "typer<0.16" --with "click<8.2" modal app rollback aca-calc-api --env main
       # Calls the Anthropic API unless this household's answer is cached.
       - name: Smoke-test AI explanations
         run: uv run --no-project scripts/smoke_test_api.py "$API_URL" --commit "$GITHUB_SHA" --explain

@@ -134,12 +134,13 @@ existed. Change a pin only with a test of the new set and a comparison of
 `/api/calculate` results.
 
 To deploy or roll back by hand (needs access to PolicyEngine's Modal
-workspace):
+workspace), run the commands below. Like the workflow, they pin typer and
+click, because modal 1.4.2's CLI fails to start with newer typer releases:
 
 ```bash
-uvx --from modal==1.4.2 modal deploy --env main modal_app.py
-uvx --from modal==1.4.2 modal app history aca-calc-api --env main
-uvx --from modal==1.4.2 modal app rollback aca-calc-api --env main
+uvx --from modal==1.4.2 --with "typer<0.16" --with "click<8.2" modal deploy --env main modal_app.py
+uvx --from modal==1.4.2 --with "typer<0.16" --with "click<8.2" modal app history aca-calc-api --env main
+uvx --from modal==1.4.2 --with "typer<0.16" --with "click<8.2" modal app rollback aca-calc-api --env main
 ```
 
 Each `/api/explain` request that misses the 7-day explanation cache calls the
