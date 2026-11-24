@@ -22,7 +22,8 @@ const answerKey = (request, income) => JSON.stringify({ ...request, income });
  * guideline, and what covers each member.
  *
  * @param {object} request - The calculator's request for the household.
- * @param {number} income - Annual earnings; nothing is asked outside 0 to $1,000,000.
+ * @param {?number} income - Annual earnings, or null for none entered; nothing is
+ *   asked outside 0 to $1,000,000.
  * @param {?{income: number, answer: object}} stored - An answer stored with the
  *   page (an example household's), used without a request at its earnings.
  * @returns {{status: "idle"|"loading"|"ready"|"error", answer: ?object, error: ?string}}
@@ -35,7 +36,7 @@ export function useHouseholdAtIncome(request, income, stored = null) {
   const storedAnswer = stored?.answer;
 
   useEffect(() => {
-    if (!requestKey || !(income > 0) || income > MAX_EARNINGS) {
+    if (!requestKey || income == null || !(income >= 0) || income > MAX_EARNINGS) {
       setState({ status: "idle", answer: null, error: null });
       return undefined;
     }

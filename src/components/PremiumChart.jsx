@@ -12,6 +12,7 @@ import {
   Customized,
 } from "recharts";
 import { DirectLabels, labelPlan } from "./DirectLabels";
+import { fplPercentText } from "./fpl";
 import "./PremiumChart.css";
 
 // The three scenarios the calculator and the Overview compare, in
@@ -43,6 +44,16 @@ const formatCurrency = (value) =>
 
 // What the benchmark plan costs after the credit, never below zero.
 const net = (benchmark, credit) => Math.max(0, (benchmark || 0) - (credit || 0));
+
+// A month's payment, or none where the model prices no plan: Medicaid, CHIP or
+// a Basic Health Program covers everyone, or, in the coverage gap, the model
+// assumes no one buys one. The line breaks there instead of showing $0.
+const monthlyPayment = (benchmark, credit) => (benchmark > 0 ? net(benchmark, credit) / 12 : null);
+
+// A month's credit as the calculator's cards show it: the rounded premium less
+// the rounded payment, so the chart and the cards agree to the dollar.
+const monthlyCredit = (benchmark, credit) =>
+  benchmark > 0 ? Math.round(benchmark / 12) - Math.round(net(benchmark, credit) / 12) : (credit || 0) / 12;
 
 // The earnings at which the credit's income (magi) reaches an amount. The
 // credit's income adds other income to the earnings, such as Alaska's Permanent
@@ -93,17 +104,10 @@ function PremiumChart({
     return data.income
       .map((income, i) => {
         const point = { income, magi: data.magi?.[i] ?? income };
-        if (measure === "net") {
-          point.current = net(data.slcsp_by_income?.[i], data.ptc_baseline[i]) / 12;
-          point.revived = net(data.slcsp_by_income?.[i], data.ptc_ira[i]) / 12;
-          if (hasPrior) {
-            point.prior = net(data.slcsp_by_income_prior_year?.[i], data.ptc_prior_year[i]) / 12;
-          }
-        } else {
-          point.current = data.ptc_baseline[i] / 12;
-          point.revived = data.ptc_ira[i] / 12;
-          if (hasPrior) point.prior = data.ptc_prior_year[i] / 12;
-        }
+        const value = measure === "net" ? monthlyPayment : monthlyCredit;
+        point.current = value(data.slcsp_by_income?.[i], data.ptc_baseline[i]);
+        point.revived = value(data.slcsp_by_income?.[i], data.ptc_ira[i]);
+        if (hasPrior) point.prior = value(data.slcsp_by_income_prior_year?.[i], data.ptc_prior_year[i]);
         return point;
       })
       .filter((point) => point.income <= maxIncome);
@@ -131,9 +135,9 @@ function PremiumChart({
       <div className="premium-chart-tooltip">
         <p className="premium-chart-tooltip-income">
           {formatCurrency(income)}
-          {fpl > 0 && ` (${Math.round((100 * magi) / fpl)}% FPL)`}
+          {fpl > 0 && ` (${fplPercentText(magi, fpl)}% FPL)`}
         </p>
-        {payload.map((entry) => (
+        {payload.filter((entry) => entry.value != null).map((entry) => (
           <p key={entry.dataKey}>
             <span className="premium-chart-swatch" style={{ background: entry.color }} />
             {entry.name}: {formatCurrency(entry.value)}/month

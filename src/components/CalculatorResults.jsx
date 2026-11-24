@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import PremiumChart from "./PremiumChart";
 import { MAX_EARNINGS, useHouseholdAtIncome } from "./householdAtIncome";
 import { EXPANSION_STATES } from "./medicaidExpansion";
+import { fplPercentText } from "./fpl";
 import "./Calculator.css";
 
 const TABS = [
@@ -58,78 +59,50 @@ function describeMembers(indices, people) {
   return joinList(parts);
 }
 
-const isCovered = (member) => member.medicaid || member.chip;
-
-// Each state's Basic Health Program, as policyengine-us 2.138.2 models it
+// Each state's Basic Health Program, which policyengine-us 2.138.2 models
 // (gov.hhs.basic_health_program): adults aged 19 to 64 with incomes above
 // Medicaid's limit up to 200% FPL, or 250% for New York in 2026. People it
-// covers can't enroll in a Marketplace plan (42 U.S.C. 18051(e)), but the API
-// doesn't report this coverage yet, so the results name the program instead.
+// covers can't enroll in a Marketplace plan (42 U.S.C. 18051(e)).
 const BASIC_HEALTH_PROGRAMS = {
   DC: {
-    state: "DC",
     name: "the Healthy DC Plan",
-    limit: "200% FPL",
+    card: "Healthy DC Plan",
     url: "https://hbx.dc.gov/sites/default/files/dc/sites/hbx/page_content/attachments/Healthy%20DC%20Plan%20Overview%20-%20October%202025.pdf",
   },
-  MN: {
-    state: "Minnesota",
-    name: "MinnesotaCare",
-    limit: "200% FPL",
-    url: "https://mn.gov/dhs/health-care/minnesotacare/",
-  },
-  NY: {
-    state: "New York",
-    name: "the Essential Plan",
-    limit: "200% FPL, or 250% FPL in 2026",
-    url: "https://info.nystateofhealth.ny.gov/EssentialPlan",
-  },
-  OR: {
-    state: "Oregon",
-    name: "OHP Bridge",
-    limit: "200% FPL",
-    url: "https://www.oregon.gov/oha/ohp/pages/bridge.aspx",
-  },
+  MN: { name: "MinnesotaCare", card: "MinnesotaCare", url: "https://mn.gov/dhs/health-care/minnesotacare/" },
+  NY: { name: "the Essential Plan", card: "Essential Plan", url: "https://info.nystateofhealth.ny.gov/EssentialPlan" },
+  OR: { name: "OHP Bridge", card: "OHP Bridge", url: "https://www.oregon.gov/oha/ohp/pages/bridge.aspx" },
 };
+// A state the API reports a Basic Health Program in but this list lacks.
+const OTHER_PROGRAM = { name: "the state's Basic Health Program", card: "Basic Health Program", url: null };
+const basicHealthProgram = (state) => BASIC_HEALTH_PROGRAMS[state] ?? OTHER_PROGRAM;
 
-function BasicHealthProgramNote({ state }) {
-  const program = BASIC_HEALTH_PROGRAMS[state];
-  if (!program) return null;
-  return (
-    <p className="results-notice">
-      {program.state}'s Basic Health Program, {program.name}, covers adults aged 19 to 64 with
-      incomes above Medicaid's limit and up to {program.limit}. People it covers can't enroll in a
-      Marketplace plan or get a premium tax credit. These results don't include {program.name} yet,
-      so at those incomes they show what a Marketplace plan would cost.{" "}
-      <a href={program.url} target="_blank" rel="noopener noreferrer">
-        Learn about {program.name}
-      </a>
-      .
-    </p>
-  );
-}
+const isCovered = (member) => member.medicaid || member.chip || member.basic_health_program;
+// Each member's program, Medicaid first, as the model ranks them.
+const programOf = (member) =>
+  member.medicaid ? "medicaid" : member.chip ? "chip" : member.basic_health_program ? "bhp" : null;
 
 // "Medicaid would cover your children, and CHIP would cover ...", naming each
 // program only for the members it covers.
-function coverageSentence(coverage, people) {
-  const medicaid = indicesWhere(coverage, (member) => member.medicaid);
-  const chip = indicesWhere(coverage, (member) => !member.medicaid && member.chip);
-  return [
-    medicaid.length > 0 && `Medicaid would cover ${describeMembers(medicaid, people)}`,
-    chip.length > 0 && `CHIP would cover ${describeMembers(chip, people)}`,
-  ]
+function coverageSentence(coverage, people, state) {
+  const names = { medicaid: "Medicaid", chip: "CHIP", bhp: basicHealthProgram(state).name };
+  return ["medicaid", "chip", "bhp"]
+    .map((program) => {
+      const members = indicesWhere(coverage, (member) => programOf(member) === program);
+      return members.length > 0 && `${names[program]} would cover ${describeMembers(members, people)}`;
+    })
     .filter(Boolean)
     .join(", and ");
 }
 
 // What a scenario's card shows, in annual amounts.
-function cardValues(scenario) {
+function cardValues(scenario, state) {
   if (scenario.coverage.every(isCovered)) {
-    const programs = [
-      scenario.coverage.some((member) => member.medicaid) && "Medicaid",
-      scenario.coverage.some((member) => !member.medicaid && member.chip) && "CHIP",
-    ].filter(Boolean);
-    return { covered: true, programs: programs.join(" and ") };
+    const names = { medicaid: "Medicaid", chip: "CHIP", bhp: basicHealthProgram(state).card };
+    const programs = ["medicaid", "chip", "bhp"]
+      .filter((program) => scenario.coverage.some((member) => programOf(member) === program))
+      .map((program) => names[program]);
+    return { covered: true, programs: joinList(programs) };
   }
   // In the coverage gap the model prices no plan, since it assumes no one there
   // buys one; the card shows what one would cost without a credit.
@@ -142,14 +115,8 @@ function cardValues(scenario) {
 // What the household pays each month, as its card shows it.
 const monthlyNet = (values) => Math.round(values.net / 12);
 
-// The credit's income as a share of the poverty line, in whole percents
-// rounded down, as Form 8962 line 5 has it; just over 400% FPL rounds down to
-// 400, which still qualifies, so it's worded.
-function fplText(scenario) {
-  const percent = (100 * scenario.magi) / scenario.fpl;
-  if (percent > 400 && percent < 401) return "just over 400";
-  return String(Math.floor(percent));
-}
+// The credit's income as a share of the poverty line, as the charts show it.
+const fplText = (scenario) => fplPercentText(scenario.magi, scenario.fpl);
 
 function Explanation({ answer, state, year, compareEnhanced }) {
   const { people, current, ira, prior_year: priorYear } = answer;
@@ -163,27 +130,43 @@ function Explanation({ answer, state, year, compareEnhanced }) {
   const covered = indicesWhere(current.coverage, isCovered);
   const uncovered = indicesWhere(current.coverage, (member) => !isCovered(member));
   if (uncovered.length === 0) {
-    // Medicaid and CHIP measure income against the coverage year's guideline,
-    // not the credit's, so the share of the credit's guideline isn't named.
+    // Medicaid, CHIP and the Basic Health Program measure income against the
+    // coverage year's guideline, not the credit's, so the share of the
+    // credit's guideline isn't named.
+    const programs = new Set(current.coverage.map(programOf));
+    const program = basicHealthProgram(state);
     return (
       <p>
-        At this income in {year}, {coverageSentence(current.coverage, people)}. Premium tax credits
-        are not available to people eligible for these programs.
+        At this income in {year}, {coverageSentence(current.coverage, people, state)}.{" "}
+        {programs.has("bhp") && programs.size === 1
+          ? "People eligible for it can't enroll in a Marketplace plan or get a premium tax credit."
+          : programs.has("bhp")
+            ? `Premium tax credits are not available to people eligible for these programs, and people eligible for ${program.name} can't enroll in a Marketplace plan.`
+            : "Premium tax credits are not available to people eligible for these programs."}
+        {programs.has("bhp") && program.url && (
+          <>
+            {" "}
+            <a href={program.url} target="_blank" rel="noopener noreferrer">
+              Learn about {program.name}
+            </a>
+            .
+          </>
+        )}
       </p>
     );
   }
 
-  // Members Medicaid or CHIP covers leave the benchmark plan to the others.
+  // Members a program covers leave the benchmark plan to the others.
   const lead = covered.length > 0 && (
     <>
-      {capitalize(coverageSentence(current.coverage, people))}, so the benchmark plan covers{" "}
+      {capitalize(coverageSentence(current.coverage, people, state))}, so the benchmark plan covers{" "}
       {describeMembers(uncovered, people)}.{" "}
     </>
   );
   const who = describeMembers(uncovered, people);
-  const values = cardValues(current);
-  const revived = ira ? cardValues(ira) : null;
-  const prior = priorYear && !priorYear.coverage.every(isCovered) ? cardValues(priorYear) : null;
+  const values = cardValues(current, state);
+  const revived = ira ? cardValues(ira, state) : null;
+  const prior = priorYear && !priorYear.coverage.every(isCovered) ? cardValues(priorYear, state) : null;
 
   if (percent < 100 && current.credit <= 0 && (ira?.credit ?? 0) <= 0) {
     const barred = uncovered.some((i) => current.coverage[i].medicaid_work_requirement);
@@ -288,16 +271,18 @@ function CalculatorResults({
   const yearMismatch = Boolean(requestedYear) && requestedYear !== year;
 
   // The household at the earnings entered, calculated by the API.
-  const income = parseFloat(userIncome) || 0;
+  // A blank box asks nothing; $0 of earnings is an income like any other.
+  const income = userIncome.trim() === "" ? null : parseFloat(userIncome);
   const tooHigh = income > MAX_EARNINGS;
   const atIncome = useHouseholdAtIncome(formData, income, storedAtIncome);
   const answer = atIncome.status === "ready" && atIncome.answer?.income === income ? atIncome.answer : null;
 
   const cards = answer
     ? (() => {
-        const prior = answer.prior_year && cardValues(answer.prior_year);
-        const current = cardValues(answer.current);
-        const revived = answer.ira && cardValues(answer.ira);
+        const state = formData?.state;
+        const prior = answer.prior_year && cardValues(answer.prior_year, state);
+        const current = cardValues(answer.current, state);
+        const revived = answer.ira && cardValues(answer.ira, state);
         // A change only between two cards with amounts.
         const change = (values, from, label) =>
           from && !from.covered && !values.covered
@@ -345,7 +330,6 @@ function CalculatorResults({
       </div>
 
       <div className="results-content">
-        <BasicHealthProgramNote state={formData?.state} />
         {(activeTab === "net" || activeTab === "credit") && data && (
           <>
             <div className="results-chart">
@@ -364,6 +348,8 @@ function CalculatorResults({
             </div>
             <p className="results-caption">
               The benchmark plan is the second-lowest-cost silver plan in your area.
+              {activeTab === "net" &&
+                " A line breaks where the model prices no plan: where Medicaid, CHIP or a Basic Health Program covers the whole household, or in the coverage gap, where it assumes no one buys one."}
               {compareEnhanced &&
                 " H.R. 1834 would revive the enhanced credits of 2021–2025 for 2026 through 2028; it passed the House on January 8, 2026 and has not been enacted."}
             </p>

@@ -23,6 +23,17 @@ FLORIDA = {
     "state": "FL",
     "county": "Hillsborough County",
 }
+MINNESOTA = {"age_head": 40, "state": "MN", "county": "Hennepin County"}
+NEW_YORK = {"age_head": 40, "state": "NY", "county": "New York County"}
+# Eight people: 400% FPL is above $262,144, where float32 moves in steps of
+# 3.125 cents.
+ANCHORAGE_EIGHT = {
+    "age_head": 40,
+    "age_spouse": 40,
+    "dependent_ages": [16, 14, 12, 10, 8, 6],
+    "state": "AK",
+    "county": "Anchorage Municipality",
+}
 ANCHORAGE = {
     "age_head": 45,
     "age_spouse": 43,
@@ -121,7 +132,9 @@ def test_in_the_coverage_gap_a_plan_costs_its_full_premium(client):
     current = at_income(client, TEXAS, 15_500)["current"]
     assert current["benchmark"] == 0 and current["credit"] == 0
     assert monthly(current, "full_premium") == pytest.approx(770.15, abs=0.01)
-    assert current["coverage"] == [{"medicaid": False, "chip": False, "medicaid_work_requirement": False}]
+    assert current["coverage"] == [
+        {"medicaid": False, "chip": False, "medicaid_work_requirement": False, "basic_health_program": False}
+    ]
 
 
 def test_the_full_premium_is_the_benchmark_where_the_model_prices_one(client):
@@ -137,6 +150,7 @@ def test_from_2027_medicaids_work_requirement_bars_low_earnings(client):
         "medicaid": False,
         "chip": False,
         "medicaid_work_requirement": True,
+        "basic_health_program": False,
     }
     assert answer["prior_year"]["coverage"][0]["medicaid"]
 
@@ -149,6 +163,53 @@ def test_the_answer_matches_the_income_axis_at_a_calculated_income(client):
     assert answer["ira"]["credit"] == pytest.approx(axis["ptc_ira"][i], abs=0.01)
     assert answer["prior_year"]["credit"] == pytest.approx(axis["ptc_prior_year"][i], abs=0.01)
     assert answer["current"]["benchmark"] == pytest.approx(axis["slcsp_by_income"][i], abs=0.01)
+
+
+def test_the_basic_health_program_covers_adults_up_to_200_percent(client):
+    # Max's post-merge review: at 188% FPL MinnesotaCare covers a single adult,
+    # who can't enroll in a Marketplace plan (42 U.S.C. 18051(e)), so there's
+    # no plan to price.
+    answer = at_income(client, MINNESOTA, 30_000)
+    for scenario in ("prior_year", "current", "ira"):
+        member = answer[scenario]["coverage"][0]
+        assert member["basic_health_program"] and not member["medicaid"]
+        assert answer[scenario]["credit"] == 0
+        assert answer[scenario]["full_premium"] == 0
+
+
+def test_above_200_percent_the_basic_health_program_ends(client):
+    current = at_income(client, MINNESOTA, 40_000)["current"]
+    assert not current["coverage"][0]["basic_health_program"]
+    assert current["credit"] > 0
+
+
+def test_new_yorks_essential_plan_reaches_250_percent_in_2026_only(client):
+    # The model keeps New York's 250% limit through 2026 and returns to 200%
+    # in 2027. $35,000 is 223% of 2026's guideline and 219% of 2027's.
+    answer = at_income(client, NEW_YORK, 35_000)
+    assert answer["prior_year"]["coverage"][0]["basic_health_program"]
+    assert answer["prior_year"]["full_premium"] == 0
+    assert not answer["current"]["coverage"][0]["basic_health_program"]
+    assert answer["current"]["credit"] > 0
+
+
+def test_a_cent_above_400_percent_gets_no_credit(client):
+    # Max's post-merge review: float32 read $0.01 over the limit as exactly at it.
+    probe = at_income(client, ANCHORAGE_EIGHT, 200_000)["current"]
+    dividends = probe["magi"] - 200_000
+    limit = 4 * probe["fpl"]
+    assert limit > 262_144
+    at_limit = at_income(client, ANCHORAGE_EIGHT, limit - dividends)["current"]
+    above = at_income(client, ANCHORAGE_EIGHT, limit - dividends + 0.01)["current"]
+    assert at_limit["credit"] > 0
+    assert above["credit"] == 0
+    assert above["magi"] == pytest.approx(limit + 0.01, abs=1e-6)
+
+
+def test_zero_earnings_get_an_answer(client):
+    answer = at_income(client, PENNSYLVANIA, 0)
+    assert answer["income"] == 0
+    assert answer["prior_year"]["coverage"][0]["medicaid"]
 
 
 @pytest.mark.parametrize("income", [-1, 1_000_001])
