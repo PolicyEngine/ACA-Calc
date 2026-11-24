@@ -593,6 +593,12 @@
   font-size: 0.875rem;
 }
 
+.results-notice a {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
 .impact-breakdown {
   margin: var(--pe-space-md) 0 0 0;
   font-size: 0.8125rem;
