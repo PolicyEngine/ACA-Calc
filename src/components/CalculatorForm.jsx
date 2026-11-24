@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import counties from "../../counties.json";
 import "./Calculator.css";
 
@@ -9,6 +9,10 @@ const STATES = [
   "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
   "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY", "DC",
 ];
+
+// Every calculation is for 2027 coverage under current law and under H.R.
+// 1834, with 2026 current law alongside.
+export const YEAR = 2027;
 
 const STATE_NAMES = {
   AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California",
@@ -32,70 +36,87 @@ const getUrlParams = () => {
   return new URLSearchParams(hash.slice(queryIndex + 1));
 };
 
-// Build a shareable URL with household configuration
-const buildShareableUrl = (formData, includeAi = false) => {
-  const params = new URLSearchParams();
-  // Use defaults for empty values in URL
-  const ageHead = formData.age_head === "" ? 40 : formData.age_head;
-  const ageSpouse = formData.age_spouse === "" ? 40 : formData.age_spouse;
-  const depAges = formData.dependent_ages.map(age => age === "" ? 10 : age);
+// The calculator's links (#calculator?...) carry the household and what the
+// results show: the comparison, the results tab and the income entered.
+const VIEWS = ["net", "credit", "impact"];
 
-  params.set("age", ageHead);
-  if (formData.married) {
-    params.set("spouse", ageSpouse);
-  }
-  if (depAges.length > 0) {
-    params.set("deps", depAges.join(","));
-  }
-  params.set("state", formData.state);
-  params.set("county", formData.county);
-  if (formData.zip_code) {
-    params.set("zip", formData.zip_code);
-  }
-  if (!formData.show_ira) params.set("ira", "0");
-  if (!formData.show_700fpl) params.set("700fpl", "0");
-  if (formData.show_additional_bracket) params.set("additional", "1");
-  if (formData.show_simplified_bracket) params.set("simplified", "1");
-  if (includeAi) params.set("ai", "1");
+// A link to a calculation, from the request the API was sent.
+const buildShareableUrl = (request, { compare = false, view = "net", income = null } = {}) => {
+  const params = new URLSearchParams();
+  params.set("age", request.age_head);
+  if (request.age_spouse != null) params.set("spouse", request.age_spouse);
+  if (request.dependent_ages?.length) params.set("deps", request.dependent_ages.join(","));
+  params.set("state", request.state);
+  params.set("county", request.county);
+  if (request.zip_code) params.set("zip", request.zip_code);
+  if (compare) params.set("compare", "1");
+  if (view !== "net" && VIEWS.includes(view)) params.set("view", view);
+  if (income > 0) params.set("income", String(income));
 
   const baseUrl = window.location.origin + window.location.pathname;
   return `${baseUrl}#calculator?${params.toString()}`;
 };
 
-// Check if AI explanation should auto-load from URL
-const shouldAutoLoadAi = () => {
-  const params = getUrlParams();
-  return params.get("ai") === "1";
+// The request the API takes, from the form's values (empty fields take their
+// defaults).
+const toRequest = (form) => {
+  const ageHead = form.age_head === "" ? 40 : form.age_head;
+  const ageSpouse = form.age_spouse === "" ? 40 : form.age_spouse;
+  const numDeps = form.num_dependents === "" ? 0 : form.num_dependents;
+  return {
+    year: YEAR,
+    age_head: ageHead,
+    age_spouse: form.married ? ageSpouse : null,
+    dependent_ages: form.dependent_ages.slice(0, numDeps).map((age) => (age === "" ? 10 : age)),
+    state: form.state,
+    county: form.county,
+    zip_code: form.zip_code || null,
+    show_ira: true,
+    show_prior_year: true,
+  };
 };
 
-// Export for use in Calculator component
-export { buildShareableUrl, shouldAutoLoadAi };
-
-// Parse form data from URL parameters
+// The form's values from a link, or null without a valid state. A county
+// that isn't in the state's list becomes its first county, as the form does.
 const getFormDataFromUrl = () => {
   const params = getUrlParams();
-  if (!params.has("state") && !params.has("age")) return null;
-
   const state = params.get("state") || "";
+  if (!STATES.includes(state)) return null;
+
+  const stateCounties = [...(counties[state] || [])].sort();
   const county = params.get("county") || "";
   const depsStr = params.get("deps");
   const dependentAges = depsStr ? depsStr.split(",").map(a => parseInt(a, 10)).filter(a => !isNaN(a)) : [];
 
+  // Links from before the calculator compared fixed scenarios also carry a
+  // year and scenario choices; only the household is read.
   return {
     age_head: parseInt(params.get("age"), 10) || 40,
     age_spouse: parseInt(params.get("spouse"), 10) || 40,
     married: params.has("spouse"),
     num_dependents: dependentAges.length,
     dependent_ages: dependentAges,
-    state: STATES.includes(state) ? state : "",
-    county: county,
+    state,
+    county: stateCounties.includes(county) ? county : stateCounties[0] || "",
     zip_code: params.get("zip") || "",
-    show_ira: params.get("ira") !== "0",
-    show_700fpl: params.get("700fpl") !== "0",
-    show_additional_bracket: params.get("additional") === "1",
-    show_simplified_bracket: params.get("simplified") === "1",
   };
 };
+
+// Everything a link asks for: the household (null without one) and what the
+// results show.
+const getLinkFromUrl = () => {
+  const params = getUrlParams();
+  const income = parseFloat(params.get("income"));
+  const view = params.get("view");
+  return {
+    form: getFormDataFromUrl(),
+    compare: params.get("compare") === "1",
+    view: VIEWS.includes(view) ? view : "net",
+    income: income > 0 ? income : null,
+  };
+};
+
+export { buildShareableUrl, getLinkFromUrl, toRequest };
 
 // Generate random initial values
 const getRandomDefaults = () => {
@@ -123,37 +144,14 @@ const getInitialFormData = () => {
     state: defaults.state,
     county: defaults.county,
     zip_code: "",
-    show_ira: true,
-    show_700fpl: true,
-    show_additional_bracket: false,
-    show_simplified_bracket: false,
   };
 };
 
-function CalculatorForm({ onCalculate, loading }) {
-  const [formData, setFormData] = useState(getInitialFormData);
+function CalculatorForm({ onCalculate, loading, compareEnhanced = false, onCompareChange, initialValues = null }) {
+  // An example household's values when one was chosen (the parent remounts
+  // the form then); otherwise the link's household or random defaults.
+  const [formData, setFormData] = useState(() => initialValues || getInitialFormData());
   const [availableCounties, setAvailableCounties] = useState([]);
-  const [shareMessage, setShareMessage] = useState("");
-
-  // Update URL when form is submitted
-  const updateUrl = useCallback((data) => {
-    const url = buildShareableUrl(data);
-    const hashPart = url.split("#")[1] || "";
-    window.history.replaceState(null, "", `#${hashPart}`);
-  }, []);
-
-  // Copy shareable URL to clipboard
-  const handleShare = useCallback(() => {
-    const url = buildShareableUrl(formData);
-    navigator.clipboard.writeText(url).then(() => {
-      setShareMessage("Link copied!");
-      setTimeout(() => setShareMessage(""), 2000);
-    }).catch(() => {
-      setShareMessage("Failed to copy");
-      setTimeout(() => setShareMessage(""), 2000);
-    });
-  }, [formData]);
-
   // Update available counties when state changes
   useEffect(() => {
     if (formData.state && counties[formData.state]) {
@@ -214,40 +212,10 @@ function CalculatorForm({ onCalculate, loading }) {
     setFormData(prev => ({ ...prev, dependent_ages: newAges }));
   };
 
+  // The calculator keeps the page's link in step with the results.
   const handleSubmit = (e) => {
     e.preventDefault();
-
-    // Convert any empty strings to default values for submission
-    const ageHead = formData.age_head === "" ? 40 : formData.age_head;
-    const ageSpouse = formData.age_spouse === "" ? 40 : formData.age_spouse;
-    const numDeps = formData.num_dependents === "" ? 0 : formData.num_dependents;
-    const depAges = formData.dependent_ages.slice(0, numDeps).map(age => age === "" ? 10 : age);
-
-    const submitData = {
-      age_head: ageHead,
-      age_spouse: formData.married ? ageSpouse : null,
-      dependent_ages: depAges,
-      state: formData.state,
-      county: formData.county,
-      zip_code: formData.zip_code || null,
-      show_ira: formData.show_ira,
-      show_700fpl: formData.show_700fpl,
-      show_additional_bracket: formData.show_additional_bracket,
-      show_simplified_bracket: formData.show_simplified_bracket,
-    };
-
-    // Update form with normalized values
-    const normalizedFormData = {
-      ...formData,
-      age_head: ageHead,
-      age_spouse: ageSpouse,
-      dependent_ages: depAges,
-    };
-
-    // Update URL with form data for sharing
-    updateUrl(normalizedFormData);
-
-    onCalculate(submitData);
+    onCalculate(toRequest(formData));
   };
 
   const needsZipCode = formData.state === "CA" && formData.county === "Los Angeles County";
@@ -256,7 +224,7 @@ function CalculatorForm({ onCalculate, loading }) {
     <form onSubmit={handleSubmit} className="calculator-form">
       {/* Household Composition */}
       <div className="form-section">
-        <h3 className="form-section-title">Household Composition</h3>
+        <h3 className="form-section-title">Household composition</h3>
 
         <div className="form-row">
           <label className="form-label">
@@ -267,13 +235,13 @@ function CalculatorForm({ onCalculate, loading }) {
               onChange={handleChange}
               disabled={loading}
             />
-            Married / Filing Jointly
+            Married, filing jointly
           </label>
         </div>
 
         <div className="form-row form-row-inline">
           <div className="form-field">
-            <label htmlFor="age_head">Your Age</label>
+            <label htmlFor="age_head">Your age</label>
             <input
               type="number"
               id="age_head"
@@ -291,7 +259,7 @@ function CalculatorForm({ onCalculate, loading }) {
 
           {formData.married && (
             <div className="form-field">
-              <label htmlFor="age_spouse">Spouse Age</label>
+              <label htmlFor="age_spouse">Spouse age</label>
               <input
                 type="number"
                 id="age_spouse"
@@ -311,7 +279,7 @@ function CalculatorForm({ onCalculate, loading }) {
 
         <div className="form-row">
           <div className="form-field">
-            <label htmlFor="num_dependents">Number of Dependents</label>
+            <label htmlFor="num_dependents">Number of dependents</label>
             <input
               type="number"
               id="num_dependents"
@@ -327,7 +295,7 @@ function CalculatorForm({ onCalculate, loading }) {
 
         {formData.num_dependents > 0 && (
           <div className="form-row dependent-ages">
-            <label>Dependent Ages</label>
+            <label>Dependent ages</label>
             <div className="dependent-ages-grid">
               {formData.dependent_ages.map((age, index) => (
                 <input
@@ -391,7 +359,7 @@ function CalculatorForm({ onCalculate, loading }) {
         {needsZipCode && (
           <div className="form-row">
             <div className="form-field">
-              <label htmlFor="zip_code">ZIP Code</label>
+              <label htmlFor="zip_code">ZIP code</label>
               <input
                 type="text"
                 id="zip_code"
@@ -408,106 +376,33 @@ function CalculatorForm({ onCalculate, loading }) {
         )}
       </div>
 
-      {/* Policy Scenarios */}
+      {/* Comparison: changes what the results show, not the calculation */}
       <div className="form-section">
-        <h3 className="form-section-title">Policy Scenarios</h3>
-
-        <div className="form-row">
-          <label className="form-label checkbox-label">
-            <input
-              type="checkbox"
-              name="show_ira"
-              checked={formData.show_ira}
-              onChange={handleChange}
-              disabled={loading}
-            />
-            <span>
-              <strong>IRA Extension</strong>
-              <span className="checkbox-description">8.5% cap, no income limit above 400% FPL</span>
+        <h3 className="form-section-title">Comparison</h3>
+        <label className="compare-toggle">
+          <input
+            type="checkbox"
+            checked={compareEnhanced}
+            onChange={(event) => onCompareChange?.(event.target.checked)}
+          />
+          <span>
+            <strong>Compare with the enhanced credits</strong>
+            <span className="compare-toggle-detail">
+              Add 2027 under H.R. 1834, which would revive the 2021–2025 enhanced subsidies
             </span>
-          </label>
-        </div>
-
-        <div className="form-row">
-          <label className="form-label checkbox-label">
-            <input
-              type="checkbox"
-              name="show_700fpl"
-              checked={formData.show_700fpl}
-              onChange={handleChange}
-              disabled={loading}
-            />
-            <span>
-              <strong>700% FPL Bill</strong>
-              <span className="checkbox-description">Bipartisan bill extending to 700% FPL with 9.25% cap</span>
-            </span>
-          </label>
-        </div>
-
-        <div className="form-row">
-          <label className="form-label checkbox-label">
-            <input
-              type="checkbox"
-              name="show_additional_bracket"
-              checked={formData.show_additional_bracket}
-              onChange={handleChange}
-              disabled={loading}
-            />
-            <span>
-              <strong>Additional Bracket</strong>
-              <span className="checkbox-description">
-                <a href="https://www.crfb.org/blogs/understanding-aca-subsidy-discussion" target="_blank" rel="noopener noreferrer">CRFB</a> "Progressive Alternative": extends enhanced subsidies below 300% FPL, linear phase-up above
-              </span>
-            </span>
-          </label>
-        </div>
-
-        <div className="form-row">
-          <label className="form-label checkbox-label">
-            <input
-              type="checkbox"
-              name="show_simplified_bracket"
-              checked={formData.show_simplified_bracket}
-              onChange={handleChange}
-              disabled={loading}
-            />
-            <span>
-              <strong>Simplified Bracket</strong>
-              <span className="checkbox-description">
-                <a href="https://www.crfb.org/blogs/understanding-aca-subsidy-discussion" target="_blank" rel="noopener noreferrer">CRFB</a> "Smaller Alternative": subsidies halfway between baseline and enhanced
-              </span>
-            </span>
-          </label>
-        </div>
+          </span>
+        </label>
       </div>
 
       <div className="form-actions">
         <button
           type="submit"
           className="calculate-button"
-          disabled={loading || (!formData.show_ira && !formData.show_700fpl && !formData.show_additional_bracket && !formData.show_simplified_bracket)}
-        >
-          {loading ? "Calculating..." : "Calculate Premium Tax Credits"}
-        </button>
-
-        <button
-          type="button"
-          className="share-button"
-          onClick={handleShare}
           disabled={loading}
-          title="Copy shareable link to clipboard"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" />
-          </svg>
-          Share
+          {loading ? "Calculating…" : "Calculate premium tax credits"}
         </button>
-        {shareMessage && <span className="share-message">{shareMessage}</span>}
       </div>
-
-      {!formData.show_ira && !formData.show_700fpl && !formData.show_additional_bracket && !formData.show_simplified_bracket && (
-        <p className="form-warning">Please select at least one policy scenario</p>
-      )}
     </form>
   );
 }

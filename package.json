@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "node scripts/check_data.mjs && next build",
+    "check:data": "node scripts/check_data.mjs",
     "start": "next start"
   },
   "dependencies": {

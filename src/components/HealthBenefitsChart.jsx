@@ -13,15 +13,15 @@ import {
 } from "recharts";
 import "./HealthBenefitsChart.css";
 
-// Chart colors - PolicyEngine appv2 design tokens
+// PolicyEngine chart colors (src/index.css)
 const COLORS = {
-  medicaid: "#319795",  // primary teal
-  chip: "#38B2AC",      // teal-400
-  baseline: "#9CA3AF",  // gray-400
-  ira: "#0284C7",       // blue-600 from appv2
-  bipartisan: "#7c3aed",
-  additionalBracket: "#059669",  // emerald-600
-  simplifiedBracket: "#d97706",  // amber-600
+  medicaid: "var(--pe-medicaid)",
+  chip: "var(--pe-chip)",
+  baseline: "var(--pe-current)",
+  ira: "var(--pe-reform)",
+  bipartisan: "var(--chart-2)",
+  additionalBracket: "var(--chart-3)",
+  simplifiedBracket: "var(--chart-4)",
 };
 
 function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: externalVisibleLines }) {
@@ -181,9 +181,9 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
       case "chip_focus":
         return "CHIP coverage by income";
       case "ira_reform":
-        return "Baseline vs IRA extension";
+        return "Current law vs H.R. 1834";
       case "ira_impact":
-        return "IRA extension vs current law";
+        return "H.R. 1834 vs current law";
       case "fpl700_focus":
         return "700% FPL bill vs current law";
       case "additional_focus":
@@ -191,13 +191,13 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
       case "simplified_focus":
         return "Simplified bracket vs current law";
       case "gain_view":
-        return "Gain from reform vs baseline";
+        return "Gain over current law";
       case "both_reforms":
         return "Comparing all policy options";
       case "all_programs":
         return "Health coverage programs by income";
       default:
-        return "Annual health benefits by income (2026)";
+        return data?.year ? `Annual health benefits by income (${data.year})` : "Annual health benefits by income";
     }
   };
 
@@ -227,16 +227,17 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
   return (
     <div className="chart-container">
       <h3 className="chart-title">{getChartTitle()}</h3>
+      <div className="chart-container-body">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart
           data={displayData}
           margin={{ top: 20, right: 30, left: 45, bottom: 60 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
           <XAxis
             dataKey="income"
             tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
-            stroke="#6b7280"
+            stroke="var(--border)"
             fontSize={12}
             ticks={(() => {
               const maxIncome = chartData.length > 0 ? chartData[chartData.length - 1].income : 200000;
@@ -250,12 +251,12 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
               value: "Household income",
               position: "bottom",
               offset: 40,
-              fill: "#6b7280",
+              fill: "var(--muted-foreground)",
             }}
           />
           <YAxis
             tickFormatter={(v) => v === 0 ? "$0" : `$${(v / 1000).toFixed(0)}k`}
-            stroke="#6b7280"
+            stroke="var(--border)"
             fontSize={12}
             domain={getYDomain()}
             ticks={(() => {
@@ -267,11 +268,11 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
               return ticks;
             })()}
             label={{
-              value: (chartState === "impact" || chartState === "gain_view") ? "Gain over baseline" : "Annual value",
+              value: (chartState === "impact" || chartState === "gain_view") ? "Gain over current law" : "Annual value",
               angle: -90,
               position: "insideLeft",
               offset: 10,
-              fill: "#6b7280",
+              fill: "var(--muted-foreground)",
             }}
           />
           <Tooltip content={<CustomTooltip />} />
@@ -284,19 +285,19 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
           {/* FPL Reference Lines */}
           <ReferenceLine
             x={fpl * 1}
-            stroke="#d1d5db"
+            stroke="var(--color-gray-400)"
             strokeDasharray="5 5"
-            label={{ value: "100%", position: "top", fill: "#9ca3af", fontSize: 10 }}
+            label={{ value: "100%", position: "top", fill: "var(--muted-foreground)", fontSize: 10 }}
           />
           <ReferenceLine
             x={baselineCliffIncome}
-            stroke={chartState === "cliff_focus" ? "#ef4444" : "#d1d5db"}
+            stroke={chartState === "cliff_focus" ? "var(--color-gray-700)" : "var(--color-gray-400)"}
             strokeDasharray={chartState === "cliff_focus" ? "8 4" : "5 5"}
             strokeWidth={chartState === "cliff_focus" ? 2 : 1}
             label={{
               value: chartState === "cliff_focus" ? "400% FPL Cliff" : "400%",
               position: "top",
-              fill: chartState === "cliff_focus" ? "#ef4444" : "#9ca3af",
+              fill: chartState === "cliff_focus" ? "var(--color-gray-700)" : "var(--muted-foreground)",
               fontSize: chartState === "cliff_focus" ? 12 : 10,
               fontWeight: chartState === "cliff_focus" ? 600 : 400,
             }}
@@ -304,18 +305,18 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
           {chartState === "both_reforms" && (
             <ReferenceLine
               x={fpl * 7}
-              stroke="#d1d5db"
+              stroke="var(--color-gray-400)"
               strokeDasharray="5 5"
-              label={{ value: "700%", position: "top", fill: "#9ca3af", fontSize: 10 }}
+              label={{ value: "700%", position: "top", fill: "var(--muted-foreground)", fontSize: 10 }}
             />
           )}
 
-          {/* IRA EXTENSION vs CURRENT LAW - stacked area showing baseline + IRA gain */}
+          {/* H.R. 1834 vs CURRENT LAW - stacked area showing baseline + IRA gain */}
           {chartState === "ira_impact" && (
             <Area
               type="monotone"
               dataKey="ptcBaseline"
-              name="Baseline (Current Law)"
+              name="Current law"
               fill={COLORS.baseline}
               fillOpacity={0.4}
               stroke={COLORS.baseline}
@@ -327,7 +328,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             <Area
               type="monotone"
               dataKey="deltaIRA"
-              name="Additional from IRA"
+              name="Additional from H.R. 1834"
               fill={COLORS.ira}
               fillOpacity={0.5}
               stroke={COLORS.ira}
@@ -341,7 +342,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             <Area
               type="monotone"
               dataKey="ptcBaseline"
-              name="Baseline (Current Law)"
+              name="Current law"
               fill={COLORS.baseline}
               fillOpacity={0.4}
               stroke={COLORS.baseline}
@@ -367,7 +368,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             <Area
               type="monotone"
               dataKey="ptcBaseline"
-              name="Baseline (Current Law)"
+              name="Current law"
               fill={COLORS.baseline}
               fillOpacity={0.4}
               stroke={COLORS.baseline}
@@ -393,7 +394,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             <Area
               type="monotone"
               dataKey="ptcBaseline"
-              name="Baseline (Current Law)"
+              name="Current law"
               fill={COLORS.baseline}
               fillOpacity={0.4}
               stroke={COLORS.baseline}
@@ -419,7 +420,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             <Line
               type="monotone"
               dataKey="deltaIRA"
-              name="Gain from IRA Extension"
+              name="Gain from H.R. 1834"
               stroke={COLORS.ira}
               strokeWidth={2.5}
               dot={false}
@@ -456,7 +457,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             />
           )}
 
-          {/* COMPARISON VIEW - for "Baseline vs Extension" tab (both_reforms) */}
+          {/* COMPARISON VIEW - for "Baseline vs H.R. 1834" tab (both_reforms) */}
           {chartState === "both_reforms" && shouldShow("ptcBaseline") && (
             <Area
               type="monotone"
@@ -490,7 +491,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
                 !shouldShow("ptcBaseline") ? "ptcIRA" :
                 shouldShow("ptc700FPL") ? "deltaIRAOver700FPL" : "deltaIRA"
               }
-              name="PTC (IRA Extension)"
+              name="PTC (H.R. 1834)"
               fill={COLORS.ira}
               fillOpacity={0.5}
               stroke={COLORS.ira}
@@ -539,7 +540,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
             <Line
               type="monotone"
               dataKey="ptcIRA"
-              name="PTC (IRA Extension)"
+              name="PTC (H.R. 1834)"
               stroke={COLORS.ira}
               strokeWidth={2.5}
               dot={false}
@@ -571,6 +572,7 @@ function HealthBenefitsChart({ data, chartState, householdInfo, visibleLines: ex
           )}
         </ComposedChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,21 @@
+.national-chart {
+  width: 100%;
+  min-width: 0;
+}
+
+/* The spending chart's two panels: side by side when there's room. */
+.national-chart-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.national-chart-panel {
+  min-width: 0;
+}
+
+.national-chart-panel h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-gray-700);
+}

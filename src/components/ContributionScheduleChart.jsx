@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   LineChart,
   Line,
@@ -8,206 +9,146 @@ import {
   Legend,
   ResponsiveContainer,
   ReferenceLine,
+  Customized,
 } from "recharts";
+import { ACTIVE_DOT, AXIS, AXIS_LABEL, CURSOR, GRID } from "./PremiumChart";
+import { DirectLabels, labelPlan } from "./DirectLabels";
 import "./ContributionScheduleChart.css";
 
-// Generate data points for each policy
-const generateContributionData = () => {
-  const data = [];
+// The schedules as policyengine-us computes them: the percent of income a
+// household pays for the benchmark plan at each percent of the poverty
+// guideline, null where the credit isn't available. Regenerate with
+// precompute_contribution_schedules.py.
+import schedules from "../data/contribution_schedules.json";
 
-  // FPL points from 0% to 800%
-  for (let fpl = 0; fpl <= 800; fpl += 10) {
-    const point = { fpl };
-
-    // Original ACA / 2026 baseline (IRS Rev Proc 2025-25)
-    // Jump at 133% is real - that's the Medicaid expansion threshold
-    if (fpl < 100) {
-      point.baseline = 0;
-    } else if (fpl < 133) {
-      // Below 133%: flat at 2.1%
-      point.baseline = 2.1;
-    } else if (fpl <= 150) {
-      // 133-150%: 3.14% to 4.19%
-      point.baseline = 3.14 + (fpl - 133) / (150 - 133) * (4.19 - 3.14);
-    } else if (fpl <= 200) {
-      // 150-200%: 4.19% to 6.6%
-      point.baseline = 4.19 + (fpl - 150) / (200 - 150) * (6.6 - 4.19);
-    } else if (fpl <= 250) {
-      // 200-250%: 6.6% to 8.44%
-      point.baseline = 6.6 + (fpl - 200) / (250 - 200) * (8.44 - 6.6);
-    } else if (fpl <= 300) {
-      // 250-300%: 8.44% to 9.96%
-      point.baseline = 8.44 + (fpl - 250) / (300 - 250) * (9.96 - 8.44);
-    } else if (fpl <= 400) {
-      point.baseline = 9.96;
-    } else {
-      point.baseline = null; // No subsidy above 400%
-    }
-
-    // ARPA/IRA (2021-2025) - from IRS Revenue Procedure 2023-29
-    // 0% contribution up to 150% FPL, then gradual increase
-    if (fpl <= 150) {
-      point.ira = 0;
-    } else if (fpl <= 200) {
-      // 0% to 2%
-      point.ira = (fpl - 150) / (200 - 150) * 2.0;
-    } else if (fpl <= 250) {
-      // 2% to 4%
-      point.ira = 2.0 + (fpl - 200) / (250 - 200) * (4.0 - 2.0);
-    } else if (fpl <= 300) {
-      // 4% to 6%
-      point.ira = 4.0 + (fpl - 250) / (300 - 250) * (6.0 - 4.0);
-    } else {
-      // 6% to 8.5% (capped at 8.5% for all incomes above 300%)
-      point.ira = 6.0 + Math.min((fpl - 300) / (400 - 300) * (8.5 - 6.0), 2.5);
-    }
-
-    // 700% FPL Proposal
-    // Below 100% FPL: 0% contribution
-    if (fpl < 100) {
-      point.bill700 = 0;
-    } else if (fpl <= 150) {
-      point.bill700 = (fpl - 100) / (150 - 100) * 2.0;
-    } else if (fpl <= 200) {
-      point.bill700 = 2.0 + (fpl - 150) / (200 - 150) * (4.0 - 2.0);
-    } else if (fpl <= 250) {
-      point.bill700 = 4.0 + (fpl - 200) / (250 - 200) * (6.0 - 4.0);
-    } else if (fpl <= 300) {
-      point.bill700 = 6.0 + (fpl - 250) / (300 - 250) * (8.5 - 6.0);
-    } else if (fpl <= 400) {
-      point.bill700 = 8.5 + (fpl - 300) / (400 - 300) * (9.0 - 8.5);
-    } else if (fpl <= 500) {
-      point.bill700 = 9.0 + (fpl - 400) / (500 - 400) * (9.25 - 9.0);
-    } else if (fpl <= 700) {
-      point.bill700 = 9.25;
-    } else {
-      point.bill700 = null; // No subsidy above 700%
-    }
-
-    data.push(point);
-  }
-
-  return data;
+const SERIES = {
+  current2026: "current_2026",
+  current2027: "current_2027",
+  enhanced: "enhanced",
 };
 
-const data = generateContributionData();
+const data = schedules.fpl_percent.map((fpl, i) => {
+  const point = { fpl };
+  for (const [policy, key] of Object.entries(SERIES)) {
+    point[policy] = schedules.schedules[key][i];
+  }
+  return point;
+});
 
-// Chart colors - PolicyEngine appv2 design tokens
-const COLORS = {
-  baseline: "#9CA3AF", // gray-400
-  ira: "#0284C7",      // blue-600 from appv2
-  bill700: "#7c3aed",  // purple
+// The same scenario colors as the premium charts (src/index.css).
+const STYLES = {
+  current2026: { color: "var(--pe-prior)", dash: "6 4" },
+  current2027: { color: "var(--pe-current)", dash: undefined },
+  enhanced: { color: "var(--pe-reform)", dash: undefined },
 };
 
 const LABELS = {
-  baseline: "Original ACA / 2026+",
-  ira: "Current Policy (2021-2025)",
-  bill700: "700% FPL Proposal",
+  current2026: "2026, current law",
+  current2027: "2027, current law",
+  enhanced: "Enhanced credits (H.R. 1834)",
 };
 
-function ContributionScheduleChart({ showPolicies = ["baseline", "ira"] }) {
-  const formatPercent = (value) => `${value}%`;
-  const formatFPL = (value) => `${value}%`;
+const CURRENT_LAW = ["current2026", "current2027"];
+
+// Where current law's credit ends; the line labels keep off it and its name.
+const LIMIT_400 = { x: 400, label: "400% FPL", position: "insideTopRight" };
+
+// `fill`: the plot takes the height its parent leaves (the Overview's pinned
+// card) instead of 340px.
+function ContributionScheduleChart({ showPolicies = ["current2027", "enhanced"], fill = false }) {
+  const showsCurrentLaw = showPolicies.some((policy) => CURRENT_LAW.includes(policy));
+  // Name each line beside it, or fall back to a legend when they run too
+  // close together (DirectLabels.jsx).
+  const plan = labelPlan(data, showPolicies, { yDomain: [0, 12], plotHeight: 340 - 60 });
+  const [labelsFit, setLabelsFit] = useState(true);
+  const showLegend = plan.crowded || !labelsFit;
 
   return (
-    <div className="contribution-chart">
-      <div className="chart-header">
-        <h3>Required Contribution by Income</h3>
-        <p>Maximum percentage of income required to pay for the benchmark plan</p>
-      </div>
+    <div className={fill ? "contribution-chart chart-fill" : "contribution-chart"}>
+      <h3 className="chart-title">Share of income paid for the benchmark plan</h3>
+      <p className="chart-subtitle">
+        The most a household pays for the benchmark plan, as a percent of its income
+      </p>
 
-      <div className="chart-legend">
-        {showPolicies.map((policy) => (
-          <div key={policy} className="legend-item">
-            <span className="legend-color" style={{ backgroundColor: COLORS[policy] }}></span>
-            <span className="legend-label">{LABELS[policy]}</span>
-          </div>
-        ))}
-      </div>
-
-      <ResponsiveContainer width="100%" height={350}>
-        <LineChart
-          data={data}
-          margin={{ top: 10, right: 20, left: 10, bottom: 40 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+      <div className={fill ? "chart-plot fill" : "chart-plot"}>
+      <ResponsiveContainer width="100%" height={fill ? "100%" : 340}>
+        <LineChart data={data} margin={{ top: 8, right: 24, left: 0, bottom: 8 }}>
+          <CartesianGrid {...GRID} vertical={false} />
           <XAxis
             dataKey="fpl"
-            tickFormatter={formatFPL}
-            tick={{ fontSize: 11 }}
+            type="number"
+            domain={[0, 800]}
             ticks={[0, 100, 200, 300, 400, 500, 600, 700, 800]}
+            tickFormatter={(value) => `${value}%`}
+            {...AXIS}
+            height={44}
+            label={{ value: "Income, percent of the poverty guideline", position: "insideBottom", offset: 0, ...AXIS_LABEL }}
           />
-          <YAxis
-            tickFormatter={formatPercent}
-            domain={[0, 12]}
-            tick={{ fontSize: 11 }}
-            width={40}
-          />
+          <YAxis domain={[0, 12]} tickFormatter={(value) => `${value}%`} {...AXIS} width={44} />
           <Tooltip
-            formatter={(value, name) => {
-              if (value === null) return ["No subsidy", LABELS[name]];
-              return [`${value.toFixed(1)}%`, LABELS[name]];
-            }}
-            labelFormatter={(fpl) => `Income: ${fpl}% FPL`}
+            formatter={(value, name) =>
+              value === null ? ["No credit", name] : [`${value.toFixed(2)}%`, name]
+            }
+            cursor={CURSOR}
+            labelFormatter={(fpl) => `Income at ${fpl}% of the poverty guideline`}
             contentStyle={{
-              backgroundColor: "white",
-              border: "1px solid #e5e7eb",
-              borderRadius: "8px",
+              backgroundColor: "var(--card)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-container)",
               fontSize: "13px",
+              fontFamily: "var(--font-sans)",
             }}
           />
-
-          {/* Reference line for 400% FPL */}
-          {showPolicies.includes("baseline") && (
+          {showLegend && (
+            <Legend
+              verticalAlign="top"
+              align="left"
+              iconType="plainline"
+              wrapperStyle={{ fontSize: "13px", fontFamily: "var(--font-sans)", paddingBottom: "8px" }}
+            />
+          )}
+          {showsCurrentLaw && (
             <ReferenceLine
-              x={400}
-              stroke="#ef4444"
-              strokeDasharray="5 5"
-              strokeWidth={1}
+              x={LIMIT_400.x}
+              stroke="var(--color-gray-400)"
+              strokeDasharray="4 4"
+              label={{ value: LIMIT_400.label, position: LIMIT_400.position, ...AXIS_LABEL, fontSize: 11 }}
             />
           )}
-
-          {showPolicies.includes("baseline") && (
+          {showPolicies.map((policy) => (
             <Line
-              type="monotone"
-              dataKey="baseline"
-              stroke={COLORS.baseline}
+              key={policy}
+              type="linear"
+              dataKey={policy}
+              name={LABELS[policy]}
+              stroke={STYLES[policy].color}
+              strokeDasharray={STYLES[policy].dash}
               strokeWidth={2.5}
               dot={false}
+              activeDot={ACTIVE_DOT}
               connectNulls={false}
+              isAnimationActive={false}
             />
-          )}
-          {showPolicies.includes("ira") && (
-            <Line
-              type="monotone"
-              dataKey="ira"
-              stroke={COLORS.ira}
-              strokeWidth={2.5}
-              dot={false}
-            />
-          )}
-          {showPolicies.includes("bill700") && (
-            <Line
-              type="monotone"
-              dataKey="bill700"
-              stroke={COLORS.bill700}
-              strokeWidth={2.5}
-              dot={false}
-              connectNulls={false}
+          ))}
+          {!plan.crowded && (
+            <Customized
+              component={(props) => (
+                <DirectLabels
+                  {...props}
+                  index={plan.index}
+                  references={showsCurrentLaw ? [LIMIT_400] : []}
+                  onFit={setLabelsFit}
+                  hidden={!labelsFit}
+                />
+              )}
             />
           )}
         </LineChart>
       </ResponsiveContainer>
-
-      <div className="chart-axis-labels">
-        <div className="x-axis-label">Income (% of Federal Poverty Level)</div>
       </div>
 
-      {showPolicies.includes("baseline") && (
-        <div className="chart-note">
-          <span className="note-marker">|</span>
-          Red dashed line marks 400% FPL where baseline subsidies end
-        </div>
+      {showsCurrentLaw && (
+        <p className="chart-note">No credit is available below 100% FPL, where the lines start, and current law gives none above 400% FPL, where its lines end.</p>
       )}
     </div>
   );

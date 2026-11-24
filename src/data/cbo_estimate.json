@@ -1,0 +1,19 @@
+{
+  "description": "CBO's cost estimate for H.R. 1834 and its baseline for the premium tax credit, as published. Fiscal years; the estimate assumes enactment in January 2026 and includes people who would enroll in response and lower premiums as healthier people enroll.",
+  "estimate": {
+    "title": "Congressional Budget Office, cost estimate for H.R. 1834 (January 8, 2026)",
+    "url": "https://www.cbo.gov/publication/61999",
+    "deficit_increase_fy2027": 31788000000,
+    "deficit_increase_10_year": 80582000000,
+    "window": "2026–2035",
+    "insured_increase_2027": 3000000,
+    "benchmark_premium_change_2027": -0.057
+  },
+  "baseline": {
+    "title": "Congressional Budget Office, baseline projections for the premium tax credit (February 2026)",
+    "url": "https://www.cbo.gov/system/files/2026-02/60523-2026-02-premium-tax-credit.pdf",
+    "credits_fy2027": 78000000000,
+    "subsidized_enrollment_2027": 10300000,
+    "unsubsidized_enrollment_2027": 2800000
+  }
+}

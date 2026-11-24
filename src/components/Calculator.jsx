@@ -1,78 +1,31 @@
 import { useState, useEffect, useRef } from "react";
-import CalculatorForm, { buildShareableUrl, shouldAutoLoadAi } from "./CalculatorForm";
+import CalculatorForm, { buildShareableUrl, getLinkFromUrl, toRequest } from "./CalculatorForm";
 import CalculatorResults from "./CalculatorResults";
-import AIExplanation from "./AIExplanation";
+import ExampleHouseholds from "./ExampleHouseholds";
+import { API_URL } from "./api";
+import { EXPANSION_STATES } from "./medicaidExpansion";
 import "./Calculator.css";
-
-// API URL - uses environment variable or defaults to localhost for development
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
-
-// Medicaid expansion states
-const EXPANSION_STATES = [
-  "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "HI", "IL", "IN", "IA",
-  "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MO", "MT", "NE", "NV", "NH",
-  "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SD", "UT",
-  "VT", "VA", "WA", "WV"
-];
-
-// Medicaid adult thresholds by state (% FPL) - expansion states are 138%, non-expansion varies
-const getMedicaidAdultThreshold = (state) => {
-  if (EXPANSION_STATES.includes(state)) return 138;
-  // Non-expansion states have very low or no coverage for adults
-  const nonExpansionThresholds = {
-    "AL": 18, "FL": 19, "GA": 33, "KS": 38, "MS": 27,
-    "SC": 67, "TN": 96, "TX": 17, "WI": 100, "WY": 53
-  };
-  return nonExpansionThresholds[state] || 0;
-};
-
-// Medicaid child thresholds by state (% FPL)
-const getMedicaidChildThreshold = (state) => {
-  const thresholds = {
-    "AL": 146, "AK": 208, "AZ": 147, "AR": 216, "CA": 269, "CO": 147,
-    "CT": 201, "DE": 217, "DC": 324, "FL": 215, "GA": 252, "HI": 313,
-    "ID": 190, "IL": 147, "IN": 218, "IA": 375, "KS": 174, "KY": 218,
-    "LA": 217, "ME": 213, "MD": 322, "MA": 205, "MI": 217, "MN": 288,
-    "MS": 215, "MO": 196, "MT": 266, "NE": 218, "NV": 205, "NH": 323,
-    "NJ": 355, "NM": 303, "NY": 405, "NC": 216, "ND": 175, "OH": 211,
-    "OK": 210, "OR": 305, "PA": 319, "RI": 266, "SC": 213, "SD": 209,
-    "TN": 213, "TX": 206, "UT": 147, "VT": 317, "VA": 148, "WA": 317,
-    "WV": 305, "WI": 306, "WY": 159
-  };
-  return thresholds[state] || 200;
-};
-
-// CHIP thresholds by state (% FPL) - upper limit for children
-const getChipThreshold = (state) => {
-  const thresholds = {
-    "AL": 317, "AK": 208, "AZ": 209, "AR": 216, "CA": 269, "CO": 265,
-    "CT": 323, "DE": 217, "DC": 324, "FL": 215, "GA": 252, "HI": 313,
-    "ID": 190, "IL": 318, "IN": 262, "IA": 375, "KS": 250, "KY": 218,
-    "LA": 255, "ME": 213, "MD": 322, "MA": 305, "MI": 217, "MN": 288,
-    "MS": 215, "MO": 305, "MT": 266, "NE": 218, "NV": 205, "NH": 323,
-    "NJ": 355, "NM": 303, "NY": 405, "NC": 216, "ND": 181, "OH": 211,
-    "OK": 210, "OR": 305, "PA": 319, "RI": 266, "SC": 213, "SD": 209,
-    "TN": 255, "TX": 206, "UT": 209, "VT": 317, "VA": 205, "WA": 317,
-    "WV": 305, "WI": 306, "WY": 209
-  };
-  return thresholds[state] || 200;
-};
 
 // Cache TTL: 24 hours in milliseconds
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 
+// Part of every browser cache key: change it when the API's answers change for
+// the same request (a new policyengine-us pin), so no one sees the old ones.
+// The suffix marks answers with the credit's income (magi) and the credit at
+// exactly 400% FPL.
+const CACHE_VERSION = "policyengine-us-2.138.2-magi";
+
 function getCacheKey(data) {
   const keyData = {
+    version: CACHE_VERSION,
+    year: data.year,
+    show_prior_year: data.show_prior_year,
     age_head: data.age_head,
     age_spouse: data.age_spouse,
     dependent_ages: data.dependent_ages || [],
     state: data.state,
     county: data.county,
     zip_code: data.zip_code,
-    show_ira: data.show_ira,
-    show_700fpl: data.show_700fpl,
-    show_additional_bracket: data.show_additional_bracket,
-    show_simplified_bracket: data.show_simplified_bracket,
   };
   return `aca-calc-${JSON.stringify(keyData)}`;
 }
@@ -92,6 +45,14 @@ function getFromCache(key) {
   }
 }
 
+// Store an answer only if it is for the year asked. Right after a relaunch,
+// Vercel serves this page before the new API is deployed, and the previous
+// API answers every request for 2026 without naming a year; caching that
+// would show the 2026 answer for a day.
+function cacheIfForYear(key, request, result) {
+  if (result?.year === request.year) setInCache(key, result);
+}
+
 function setInCache(key, data) {
   try {
     localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
@@ -100,37 +61,92 @@ function setInCache(key, data) {
   }
 }
 
+// The results tab and income when no link chose them.
+const NO_LINK_VIEW = { tab: "net", income: null };
+
 function Calculator() {
+  // What the page's link (#calculator?...) asks for, read when it opens.
+  const [link] = useState(() => getLinkFromUrl());
   const [results, setResults] = useState(null);
   const [formData, setFormData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState({ percent: 0, message: "" });
+  // The step the server reports, shown under the spinner.
+  const [progressMessage, setProgressMessage] = useState("");
   const [error, setError] = useState(null);
-  const [aiExplanation, setAiExplanation] = useState(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [pendingAiLoad, setPendingAiLoad] = useState(shouldAutoLoadAi());
-  const aiTriggeredRef = useRef(false);
+  // Current law in 2026 and 2027 by default; the form's checkbox adds 2027
+  // under H.R. 1834, which the API returns with every calculation.
+  const [compareEnhanced, setCompareEnhanced] = useState(link.compare);
+  // The results tab and income a link opens on, until another household is
+  // calculated or chosen; and the ones on screen, for the page's link.
+  const [linkView, setLinkView] = useState({ tab: link.view, income: link.income });
+  const [view, setView] = useState(NO_LINK_VIEW);
+  const [shareMessage, setShareMessage] = useState("");
+  // The Overview's four households with their stored results
+  // (precompute_calculator_examples.py), loaded with the page.
+  const [examples, setExamples] = useState([]);
+  const [selectedExample, setSelectedExample] = useState(null);
+  // The form remounts with new values only when an example is chosen, so
+  // editing an example and calculating keeps the edits.
+  const [formPreset, setFormPreset] = useState({ key: "initial", values: null });
+  const resultsRef = useRef(null);
+  const linkRunRef = useRef(false);
 
-  const handleCalculate = async (data) => {
+  useEffect(() => {
+    import("../data/households/calculator_examples.json")
+      .then((module) => setExamples((module.default || module).examples || []))
+      .catch(() => setExamples([]));
+  }, []);
+
+  const scrollToResults = () => {
+    requestAnimationFrame(() =>
+      resultsRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" })
+    );
+  };
+
+  // Fill the form with an example and show its stored result, without a request.
+  const handleSelectExample = (example) => {
+    const request = example.request;
+    const values = {
+      age_head: request.age_head,
+      age_spouse: request.age_spouse ?? request.age_head,
+      married: request.age_spouse != null,
+      num_dependents: request.dependent_ages.length,
+      dependent_ages: request.dependent_ages,
+      state: request.state,
+      county: request.county,
+      zip_code: request.zip_code || "",
+    };
+    setFormPreset({ key: `${example.key}-${Date.now()}`, values });
+    setSelectedExample(example);
+    setFormData(request);
+    setResults(example.response);
+    setError(null);
+    setLoading(false);
+    setLinkView(NO_LINK_VIEW);
+    scrollToResults();
+  };
+
+  const handleCalculate = async (data, { fromLink = false } = {}) => {
+    setSelectedExample(null);
+    if (!fromLink) setLinkView(NO_LINK_VIEW);
+    scrollToResults();
     setLoading(true);
     setError(null);
     setResults(null);
     setFormData(data);
-    setAiExplanation(null);
-    setProgress({ percent: 0, message: "Starting calculation..." });
+    setProgressMessage("");
 
     // Check client-side cache first
     const cacheKey = getCacheKey(data);
     const cached = getFromCache(cacheKey);
     if (cached) {
-      setProgress({ percent: 100, message: "Using cached results" });
       setResults(cached);
       setLoading(false);
       return;
     }
 
     try {
-      // Use streaming endpoint for progress updates
+      // The streaming endpoint reports each step as it runs
       const response = await fetch(`${API_URL}/api/calculate-stream`, {
         method: "POST",
         headers: {
@@ -176,14 +192,12 @@ function Calculator() {
             throw new Error(event.error || "Calculation failed");
           }
 
-          if (event.progress !== undefined) {
-            setProgress({ percent: event.progress, message: event.message || "" });
-          }
+          if (event.message) setProgressMessage(event.message);
 
           if (event.step === "complete" && event.result) {
             gotResult = true;
             setResults(event.result);
-            setInCache(cacheKey, event.result);
+            cacheIfForYear(cacheKey, data, event.result);
           }
         }
       }
@@ -211,117 +225,79 @@ function Calculator() {
 
         const result = await response.json();
         setResults(result);
-        setInCache(cacheKey, result);
+        cacheIfForYear(cacheKey, data, result);
       } catch (fallbackErr) {
         setError(fallbackErr.message || "An error occurred. Please try again.");
       }
     } finally {
       setLoading(false);
-      setProgress({ percent: 0, message: "" });
+      setProgressMessage("");
     }
   };
 
-  // Find value at a specific income level
-  const findValueAtIncome = (targetIncome, incomeArray, valueArray) => {
-    if (!incomeArray || !valueArray) return 0;
-    let closest = 0;
-    let minDiff = Infinity;
-    for (let i = 0; i < incomeArray.length; i++) {
-      const diff = Math.abs(incomeArray[i] - targetIncome);
-      if (diff < minDiff) {
-        minDiff = diff;
-        closest = i;
-      }
-    }
-    return valueArray[closest] || 0;
-  };
-
-  const handleExplainWithAI = async (updateUrl = true) => {
-    if (!results || !formData) return;
-
-    setAiLoading(true);
-
-    // Calculate sample income at 300% FPL (a typical middle-income point)
-    const sampleIncome = results.fpl * 3;
-
-    const hasChildren = (formData.dependent_ages || []).length > 0;
-
-    const explainRequest = {
-      age_head: formData.age_head,
-      age_spouse: formData.age_spouse,
-      dependent_ages: formData.dependent_ages || [],
-      state: formData.state,
-      county: formData.county,
-      is_expansion_state: EXPANSION_STATES.includes(formData.state),
-      fpl: results.fpl,
-      slcsp: results.slcsp,
-      fpl_400_income: results.fpl * 4,
-      fpl_700_income: results.fpl * 7,
-      medicaid_adult_threshold_pct: getMedicaidAdultThreshold(formData.state),
-      medicaid_child_threshold_pct: getMedicaidChildThreshold(formData.state),
-      chip_threshold_pct: hasChildren ? getChipThreshold(formData.state) : 0,
-      // Which reforms are selected
-      show_ira: formData.show_ira,
-      show_700fpl: formData.show_700fpl,
-      show_additional_bracket: formData.show_additional_bracket,
-      show_simplified_bracket: formData.show_simplified_bracket,
-      // PTC values at sample income for all reforms
-      sample_income: sampleIncome,
-      ptc_baseline_at_sample: findValueAtIncome(sampleIncome, results.income, results.ptc_baseline),
-      ptc_ira_at_sample: formData.show_ira ? findValueAtIncome(sampleIncome, results.income, results.ptc_ira) : 0,
-      ptc_700fpl_at_sample: formData.show_700fpl ? findValueAtIncome(sampleIncome, results.income, results.ptc_700fpl) : 0,
-      ptc_additional_bracket_at_sample: formData.show_additional_bracket ? findValueAtIncome(sampleIncome, results.income, results.ptc_additional_bracket) : 0,
-      ptc_simplified_bracket_at_sample: formData.show_simplified_bracket ? findValueAtIncome(sampleIncome, results.income, results.ptc_simplified_bracket) : 0,
-    };
-
-    try {
-      const response = await fetch(`${API_URL}/api/explain`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(explainRequest),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to generate explanation");
-      }
-
-      const data = await response.json();
-      setAiExplanation(data);
-
-      // Update URL to include ai=1 so it can be shared
-      if (updateUrl) {
-        const url = buildShareableUrl(formData, true);
-        const hashPart = url.split("#")[1] || "";
-        window.history.replaceState(null, "", `#${hashPart}`);
-      }
-    } catch (err) {
-      setError(err.message || "Failed to generate AI explanation");
-    } finally {
-      setAiLoading(false);
-      setPendingAiLoad(false);
-    }
-  };
-
-  // Auto-trigger AI explanation if URL has ai=1 and results are available
+  // A link with a household calculates it when the page opens, so the link
+  // lands on its results.
   useEffect(() => {
-    if (pendingAiLoad && results && formData && !aiExplanation && !aiLoading && !aiTriggeredRef.current) {
-      aiTriggeredRef.current = true;
-      handleExplainWithAI(false); // Don't update URL again since it already has ai=1
-    }
-  }, [pendingAiLoad, results, formData, aiExplanation, aiLoading]);
+    if (linkRunRef.current || !link.form) return;
+    linkRunRef.current = true;
+    handleCalculate(toRequest(link.form), { fromLink: true });
+  }, []);
+
+  // The page's link follows what it shows, so the address and the share
+  // button both reopen these results.
+  const pageLink = formData
+    ? buildShareableUrl(formData, {
+        compare: compareEnhanced,
+        view: view.tab,
+        income: view.income,
+      })
+    : null;
+  useEffect(() => {
+    if (pageLink) window.history.replaceState(null, "", `#${pageLink.split("#")[1]}`);
+  }, [pageLink]);
+
+  const handleShare = () => {
+    const say = (message) => {
+      setShareMessage(message);
+      setTimeout(() => setShareMessage(""), 2000);
+    };
+    if (!navigator.clipboard) return say("Failed to copy");
+    navigator.clipboard.writeText(pageLink).then(
+      () => say("Link copied!"),
+      () => say("Failed to copy")
+    );
+  };
 
   return (
     <div className="calculator">
       <div className="calculator-layout">
-        <div className="calculator-form-container">
-          <h2 className="calculator-title">Calculate Your Premium Tax Credits</h2>
+        <div className="calculator-intro">
+          <h2 className="calculator-title">Calculate your premium tax credits</h2>
           <p className="calculator-subtitle">
-            Enter your household information to see how ACA policy changes would affect your health insurance costs.
+            See what a household would pay for the benchmark plan in 2026 and 2027 under current
+            law. Check the comparison box to add 2027 under H.R. 1834, which would revive the
+            enhanced credits.
           </p>
-          <CalculatorForm onCalculate={handleCalculate} loading={loading} />
+        </div>
+
+        <ExampleHouseholds
+          examples={examples}
+          selectedKey={selectedExample?.key}
+          onSelect={handleSelectExample}
+          compareEnhanced={compareEnhanced}
+          expansionStates={EXPANSION_STATES}
+        />
+
+        <div className="calculator-form-container">
+          <h3 className="calculator-form-heading">Your household</h3>
+          <CalculatorForm
+            key={formPreset.key}
+            initialValues={formPreset.values}
+            onCalculate={handleCalculate}
+            loading={loading}
+            compareEnhanced={compareEnhanced}
+            onCompareChange={setCompareEnhanced}
+          />
 
           {error && (
             <div className="calculator-error">
@@ -331,52 +307,51 @@ function Calculator() {
           )}
         </div>
 
-        <div className="calculator-results-container">
+        <div className="calculator-results-container" ref={resultsRef}>
           {loading && (
-            <div className="calculator-loading">
-              <div className="progress-container">
-                <div className="progress-bar">
-                  <div
-                    className="progress-fill"
-                    style={{ width: `${progress.percent}%` }}
-                  />
-                </div>
-                <div className="progress-text">
-                  <span className="progress-message">{progress.message || "Calculating..."}</span>
-                  <span className="progress-percent">{progress.percent}%</span>
-                </div>
-              </div>
+            <div className="calculator-loading" role="status">
+              <span className="loading-spinner" aria-hidden="true" />
+              <p className="loading-message">{progressMessage || "Calculating..."}</p>
               <p className="loading-note">Running simulations for your household</p>
             </div>
           )}
 
           {results && !loading && (
             <>
-              <div className="explain-ai-section">
-                <button
-                  className="explain-ai-button"
-                  onClick={handleExplainWithAI}
-                  disabled={aiLoading}
-                >
-                  {aiLoading ? (
-                    <>
-                      <span className="ai-spinner"></span>
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                      </svg>
-                      Explain with AI
-                    </>
-                  )}
-                </button>
-                <p className="explain-ai-hint">
-                  Get a personalized walkthrough of how these policies affect your household
+              {selectedExample && (
+                <p className="example-result-note">
+                  Results for the example household: {selectedExample.name.toLowerCase()},{" "}
+                  {selectedExample.description}.
                 </p>
+              )}
+              <CalculatorResults
+                key={selectedExample ? `example-${selectedExample.key}` : "custom"}
+                data={results}
+                formData={formData}
+                compareEnhanced={compareEnhanced}
+                initialTab={selectedExample ? "net" : linkView.tab}
+                initialIncome={selectedExample?.income ?? linkView.income}
+                storedAtIncome={
+                  selectedExample?.at_income
+                    ? { income: selectedExample.income, answer: selectedExample.at_income }
+                    : null
+                }
+                onViewChange={setView}
+              />
+              <div className="results-share">
+                <button
+                  type="button"
+                  className="share-button"
+                  onClick={handleShare}
+                  title="Copy a link to these results"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" />
+                  </svg>
+                  Share results
+                </button>
+                {shareMessage && <span className="share-message" role="status">{shareMessage}</span>}
               </div>
-              <CalculatorResults data={results} formData={formData} />
             </>
           )}
 
@@ -387,32 +362,13 @@ function Calculator() {
                   <path d="M9 7h6m-6 4h6m-6 4h4m-7 5h10a2 2 0 002-2V6a2 2 0 00-2-2H7a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </div>
-              <h3>Enter Your Household Details</h3>
-              <p>Fill out the form and click "Calculate" to see your projected premium tax credits under different policy scenarios.</p>
+              <h3>Choose an example or enter your household</h3>
+              <p>Results appear here: benchmark premiums and premium tax credits for 2026 and 2027.</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* AI Explanation Modal */}
-      {aiExplanation && (
-        <AIExplanation
-          sections={aiExplanation.sections}
-          chartData={{
-            income: results.income,
-            ptc_baseline: results.ptc_baseline,
-            ptc_ira: results.ptc_ira,
-            ptc_700fpl: results.ptc_700fpl,
-            ptc_additional_bracket: results.ptc_additional_bracket,
-            ptc_simplified_bracket: results.ptc_simplified_bracket,
-            medicaid: results.medicaid,
-            chip: results.chip,
-            fpl: results.fpl,
-          }}
-          householdDescription={aiExplanation.household_description}
-          onClose={() => setAiExplanation(null)}
-        />
-      )}
     </div>
   );
 }

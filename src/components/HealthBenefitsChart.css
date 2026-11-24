@@ -4,7 +4,13 @@
   flex-direction: column;
 }
 
-.chart-title {
+/* The chart takes the height the title leaves. */
+.chart-container-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.chart-container .chart-title {
   font-size: 1.125rem;
   font-weight: 600;
   color: var(--pe-gray-800);

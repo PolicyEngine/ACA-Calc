@@ -1,0 +1,156 @@
+"""The calculator API for 2026 and 2027 coverage, 2026 alongside 2027, and the
+extension scenarios.
+
+A single 60-year-old in Travis County, Texas: Texas didn't expand Medicaid, so
+the credit starts at 100% FPL, and at 60 the benchmark premium is above 8.5%
+of income well past 400% FPL, so the scenarios' differences there show.
+"""
+
+import numpy as np
+import pytest
+from policyengine_us import Simulation
+from pydantic import ValidationError
+
+TestClient = pytest.importorskip(
+    "fastapi.testclient",
+    reason="API tests require FastAPI: run uv run --with fastapi pytest",
+).TestClient
+
+from aca_calc.calculations.household import build_household_situation
+from src.aca_api import api
+from src.aca_api.models import CalculateRequest
+
+HOUSEHOLD = {"age_head": 60, "state": "TX", "county": "Travis County", "skip_cache": True}
+ALL_SCENARIOS = {
+    "show_ira": True,
+    "show_700fpl": True,
+    "show_additional_bracket": True,
+    "show_simplified_bracket": True,
+}
+# Single-person poverty guidelines for the 48 states and Alaska (HHS).
+GUIDELINE_2025 = 15_650
+GUIDELINE_2026 = 15_960
+ALASKA_GUIDELINE_2026 = 19_950
+
+
+@pytest.fixture(scope="module")
+def client():
+    with TestClient(api.app) as client:
+        yield client
+
+
+@pytest.fixture(scope="module")
+def answer_2027(client):
+    """Current law and every scenario for 2027 coverage, with 2026 current law."""
+    request = {**HOUSEHOLD, **ALL_SCENARIOS, "year": 2027, "show_prior_year": True}
+    response = client.post("/api/calculate", json=request)
+    assert response.status_code == 200, response.text
+    answer = {
+        key: np.array(value) if isinstance(value, list) else value
+        for key, value in response.json().items()
+    }
+    # Income as a multiple of the guideline the credit uses. Points within 1%
+    # of a limit are left out of the checks, since the credit's FPL fraction is
+    # truncated to whole percents.
+    answer["multiple"] = answer["income"] / answer["fpl"]
+    return answer
+
+
+def between(answer, low, high):
+    multiple = answer["multiple"]
+    return (multiple > low * 1.01) & (multiple < high * 0.99)
+
+
+def test_requests_without_a_year_get_2026():
+    assert CalculateRequest(age_head=40, state="TX", county="Travis County").year == 2026
+
+
+@pytest.mark.parametrize("year", [2025, 2028])
+def test_other_years_are_refused(year):
+    with pytest.raises(ValidationError, match="year must be one of 2026, 2027"):
+        CalculateRequest(age_head=40, state="TX", county="Travis County", year=year)
+
+
+def test_the_cache_key_names_the_year_and_the_model_version(monkeypatch):
+    request = {"age_head": 40, "state": "TX", "county": "Travis County"}
+    key_2026 = api.get_cache_key(CalculateRequest(**request, year=2026))
+    key_2027 = api.get_cache_key(CalculateRequest(**request, year=2027))
+    assert key_2026 != key_2027
+    with_2026 = CalculateRequest(**request, year=2027, show_prior_year=True)
+    assert api.get_cache_key(with_2026) != key_2027
+    monkeypatch.setattr(api, "MODEL_VERSION", "another version")
+    assert api.get_cache_key(CalculateRequest(**request, year=2026)) != key_2026
+
+
+def test_only_2027_requests_can_ask_for_the_year_before():
+    with pytest.raises(ValidationError, match="show_prior_year"):
+        CalculateRequest(
+            age_head=40, state="TX", county="Travis County", year=2026, show_prior_year=True
+        )
+
+
+def test_the_answer_names_its_year_guideline_and_model(answer_2027):
+    assert answer_2027["year"] == 2027
+    # 2027 credits measure income against the 2026 guideline.
+    assert answer_2027["fpl_year"] == 2026
+    assert answer_2027["fpl"] == GUIDELINE_2026
+    assert answer_2027["model_version"] == api.MODEL_VERSION
+
+
+def test_alaska_households_get_alaskas_prior_year_guideline():
+    situation = build_household_situation(40, None, [], "AK", county="Anchorage Municipality", year=2027)
+    sim = Simulation(situation=situation)
+    assert float(sim.calculate("tax_unit_fpg", 2026)[0]) == ALASKA_GUIDELINE_2026
+
+
+def test_current_law_in_2027_ends_the_credit_at_400_percent(answer_2027):
+    baseline = answer_2027["ptc_baseline"]
+    assert (baseline[between(answer_2027, 1.5, 4)] > 0).all()
+    assert (baseline[answer_2027["multiple"] > 4.01] == 0).all()
+
+
+def test_hr1834_in_2027_charges_nothing_below_150_percent(answer_2027):
+    # The enhanced schedule's required contribution is 0% of income there, so
+    # the credit is the whole benchmark premium.
+    below_150 = between(answer_2027, 1, 1.5)
+    assert below_150.any()
+    np.testing.assert_allclose(answer_2027["ptc_ira"][below_150], answer_2027["slcsp"], atol=1)
+
+
+def test_hr1834_in_2027_continues_above_400_percent(answer_2027):
+    assert (answer_2027["ptc_ira"][between(answer_2027, 4, 7)] > 0).all()
+
+
+def test_2026_current_law_comes_back_for_the_same_incomes(answer_2027):
+    # 2026 credits measure income against the 2025 guideline and end at 400%
+    # of it.
+    assert answer_2027["fpl_prior_year"] == GUIDELINE_2025
+    prior = answer_2027["ptc_prior_year"]
+    assert len(prior) == len(answer_2027["income"])
+    assert len(answer_2027["slcsp_by_income_prior_year"]) == len(answer_2027["income"])
+    multiple = answer_2027["income"] / GUIDELINE_2025
+    assert (prior[(multiple > 1.5 * 1.01) & (multiple < 4 * 0.99)] > 0).all()
+    assert (prior[multiple > 4.01] == 0).all()
+
+
+@pytest.mark.parametrize(
+    "field", ["ptc_700fpl", "ptc_additional_bracket", "ptc_simplified_bracket"]
+)
+def test_the_other_scenarios_run_for_2027(answer_2027, field):
+    values = answer_2027[field]
+    assert len(values) == len(answer_2027["income"])
+    assert values[between(answer_2027, 1.5, 4)].max() > 0
+
+
+def test_a_scenario_that_is_off_returns_zeros(client):
+    response = client.post("/api/calculate", json={**HOUSEHOLD, "show_ira": True})
+    assert response.status_code == 200, response.text
+    answer = response.json()
+    assert answer["year"] == 2026
+    assert answer["fpl"] == GUIDELINE_2025
+    assert max(answer["ptc_ira"]) > 0
+    for field in ("ptc_700fpl", "ptc_additional_bracket", "ptc_simplified_bracket"):
+        assert len(answer[field]) == len(answer["income"])
+        assert max(answer[field]) == 0
+    assert answer["ptc_prior_year"] is None
+

@@ -149,6 +149,7 @@ def test_the_smoke_test_passes_against_this_code(local_api, poisoned_cache):
     assert run.returncode == 0, run.stdout + run.stderr
     assert "ok /api/calculate-stream:" in run.stdout
     assert "ok /api/calculate:" in run.stdout
+    assert "ok /api/calculate-at-income:" in run.stdout
 
 
 def test_skipping_the_cache_computes_without_storing(local_api, poisoned_cache):

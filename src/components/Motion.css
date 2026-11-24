@@ -1,0 +1,38 @@
+.reveal {
+  transition: opacity 500ms ease, transform 500ms ease;
+}
+
+.reveal.is-waiting {
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+.reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal.is-waiting {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+.count-up {
+  font-variant-numeric: tabular-nums;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

@@ -1,16 +1,45 @@
 /* Calculator Page Styles */
 
 .calculator {
-  max-width: 1400px;
   margin: 0 auto;
-  padding: var(--pe-space-lg);
 }
 
+/* Top to bottom: the introduction, the example households, the form, then the
+   results. */
 .calculator-layout {
-  display: grid;
-  grid-template-columns: 400px 1fr;
+  display: flex;
+  flex-direction: column;
   gap: var(--pe-space-xl);
+}
+
+.calculator-form-heading {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-gray-900);
+  margin-bottom: var(--pe-space-md);
+}
+
+/* The form's sections side by side when there's room, its buttons below. */
+.calculator-form-container .calculator-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--pe-space-lg);
   align-items: start;
+}
+
+.calculator-form-container .calculator-form .form-actions {
+  grid-column: 1 / -1;
+}
+
+.calculator-form-container .form-section {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.example-result-note {
+  margin-bottom: var(--pe-space-md);
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
 }
 
 .calculator-title {
@@ -30,9 +59,10 @@
 /* Form Container */
 .calculator-form-container {
   background: var(--pe-surface);
-  border-radius: var(--pe-radius-lg);
-  padding: var(--pe-space-xl);
+  border: 1px solid var(--border);
+  border-radius: var(--pe-radius-xl);
   box-shadow: var(--pe-shadow-md);
+  padding: var(--pe-space-xl);
 }
 
 /* Form Styles */
@@ -196,6 +226,7 @@
 .share-button {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   padding: 14px 20px;
   background: var(--pe-gray-100);
@@ -230,6 +261,14 @@
   white-space: nowrap;
 }
 
+/* Under the results: copies a link that reopens them */
+.results-share {
+  display: flex;
+  align-items: center;
+  gap: var(--pe-space-sm);
+  margin-top: var(--pe-space-lg);
+}
+
 .form-warning {
   text-align: center;
   color: var(--pe-text-muted);
@@ -239,7 +278,7 @@
 
 /* Results Container */
 .calculator-results-container {
-  min-height: 500px;
+  scroll-margin-top: 72px;
 }
 
 /* Loading State */
@@ -253,6 +292,7 @@
 }
 
 .loading-spinner {
+  display: block;
   width: 48px;
   height: 48px;
   border: 4px solid var(--pe-gray-200);
@@ -266,6 +306,25 @@
   to { transform: rotate(360deg); }
 }
 
+/* Beside the "Your household" cards' placeholder text. */
+.loading-spinner.small {
+  width: 24px;
+  height: 24px;
+  border-width: 3px;
+  margin: 0 auto var(--pe-space-sm);
+}
+
+/* Slower for readers who ask for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  .loading-spinner {
+    animation-duration: 2.5s;
+  }
+}
+
+.loading-message {
+  font-weight: 500;
+}
+
 .calculator-loading p {
   color: var(--pe-text-secondary);
   margin: 0;
@@ -275,48 +334,6 @@
   font-size: 0.875rem;
   color: var(--pe-text-muted);
   margin-top: var(--pe-space-sm) !important;
-}
-
-/* Progress Bar */
-.progress-container {
-  width: 100%;
-  max-width: 400px;
-  margin-bottom: var(--pe-space-lg);
-}
-
-.progress-bar {
-  width: 100%;
-  height: 8px;
-  background: var(--pe-gray-200);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  display: block;
-  height: 8px;
-  min-height: 8px;
-  background: #319795;
-  border-radius: 4px;
-  transition: width 0.3s ease-out;
-}
-
-.progress-text {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: var(--pe-space-sm);
-  font-size: 0.875rem;
-}
-
-.progress-message {
-  color: var(--pe-text-secondary);
-  font-weight: 500;
-}
-
-.progress-percent {
-  color: var(--pe-accent);
-  font-weight: 600;
 }
 
 /* Placeholder */
@@ -381,7 +398,7 @@
 /* Results Tabs */
 .calculator-results {
   background: var(--pe-surface);
-  border-radius: var(--pe-radius-lg);
+  border-radius: var(--pe-radius-xl);
   box-shadow: var(--pe-shadow-md);
   overflow: hidden;
 }
@@ -420,7 +437,41 @@
 }
 
 .results-chart {
-  height: 450px;
+  min-width: 0;
+}
+
+/* The form's checkbox that adds H.R. 1834 to the results. */
+.compare-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-container);
+  background: var(--color-teal-50);
+  cursor: pointer;
+  font-size: 0.9375rem;
+  color: var(--color-gray-900);
+}
+
+.compare-toggle input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.compare-toggle strong {
+  display: block;
+  font-weight: 600;
+}
+
+.compare-toggle-detail {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
 }
 
 /* Impact Tab */
@@ -483,7 +534,7 @@
 
 .impact-cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: var(--pe-space-md);
 }
 
@@ -493,28 +544,18 @@
   text-align: center;
 }
 
+.impact-card.prior {
+  background: var(--pe-gray-50);
+  border: 2px dashed var(--pe-gray-300);
+}
+
 .impact-card.baseline {
   background: var(--pe-gray-100);
 }
 
 .impact-card.ira {
-  background: rgba(2, 132, 199, 0.1);
-  border: 2px solid rgba(2, 132, 199, 0.3);
-}
-
-.impact-card.fpl700 {
-  background: rgba(124, 58, 237, 0.1);
-  border: 2px solid rgba(124, 58, 237, 0.3);
-}
-
-.impact-card.additional-bracket {
-  background: rgba(5, 150, 105, 0.1);
-  border: 2px solid rgba(5, 150, 105, 0.3);
-}
-
-.impact-card.simplified-bracket {
-  background: rgba(217, 119, 6, 0.1);
-  border: 2px solid rgba(217, 119, 6, 0.3);
+  background: var(--color-teal-50);
+  border: 2px solid var(--color-teal-200);
 }
 
 .impact-card h4 {
@@ -522,17 +563,6 @@
   font-weight: 600;
   margin: 0 0 var(--pe-space-md) 0;
   color: var(--pe-gray-700);
-}
-
-.impact-card h4 .reform-link {
-  color: inherit;
-  text-decoration: underline;
-  text-decoration-style: dotted;
-  text-underline-offset: 2px;
-}
-
-.impact-card h4 .reform-link:hover {
-  color: var(--pe-accent);
 }
 
 .impact-value {
@@ -554,11 +584,57 @@
   margin: 0;
 }
 
-.impact-gain {
+.results-notice {
+  margin: 0 0 var(--pe-space-md) 0;
+  padding: var(--pe-space-sm) var(--pe-space-md);
+  border-radius: 8px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.875rem;
+}
+
+.impact-breakdown {
+  margin: var(--pe-space-md) 0 0 0;
+  font-size: 0.8125rem;
+  color: var(--pe-text-secondary);
+}
+
+.impact-breakdown div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--pe-space-sm);
+  padding: 2px 0;
+}
+
+.impact-breakdown dd {
+  margin: 0;
+  font-weight: 600;
+  color: var(--pe-gray-800);
+}
+
+.impact-change {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #16a34a;
+  color: var(--pe-gray-700);
   margin: var(--pe-space-sm) 0 0 0;
+}
+
+/* A card whose household Medicaid or CHIP covers names the program instead. */
+.impact-value-text {
+  font-size: 1.25rem;
+}
+
+/* Under a card's breakdown, as in the coverage gap. */
+.impact-note {
+  font-size: 0.75rem;
+  color: var(--pe-gray-600);
+  margin: var(--pe-space-sm) 0 0 0;
+}
+
+.results-caption {
+  margin: var(--pe-space-md) 0 0 0;
+  font-size: 0.8125rem;
+  color: var(--pe-text-muted);
 }
 
 .impact-explanation {
@@ -584,143 +660,6 @@
   text-align: center;
   padding: var(--pe-space-2xl);
   color: var(--pe-text-secondary);
-}
-
-/* Explain with AI Section */
-.explain-ai-section {
-  margin-bottom: var(--pe-space-lg);
-  padding: var(--pe-space-lg) var(--pe-space-xl) var(--pe-space-lg) var(--pe-space-lg);
-  background: var(--pe-primary);
-  border-radius: var(--pe-radius-md);
-  display: flex;
-  align-items: center;
-  gap: var(--pe-space-lg);
-}
-
-.explain-ai-button {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--pe-space-sm);
-  padding: 12px 24px;
-  background: white;
-  color: var(--pe-primary);
-  font-family: var(--pe-font-family);
-  font-size: 1rem;
-  font-weight: 600;
-  border: none;
-  border-radius: var(--pe-radius-md);
-  cursor: pointer;
-  transition: all var(--pe-transition-fast);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.explain-ai-button:hover:not(:disabled) {
-  background: var(--pe-gray-100);
-}
-
-.explain-ai-button:disabled {
-  opacity: 0.8;
-  cursor: not-allowed;
-}
-
-.explain-ai-button svg {
-  flex-shrink: 0;
-}
-
-.ai-spinner {
-  width: 18px;
-  height: 18px;
-  border: 2px solid rgba(49, 151, 149, 0.3);
-  border-top-color: var(--pe-primary);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.explain-ai-hint {
-  font-size: 0.9375rem;
-  color: white;
-  margin: 0;
-  flex: 1;
-}
-
-/* Chart Line Toggles */
-.chart-toggles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--pe-space-sm);
-  align-items: center;
-  padding: var(--pe-space-md);
-  background: var(--pe-gray-50);
-  border-radius: var(--pe-radius-md);
-  margin-bottom: var(--pe-space-md);
-}
-
-.toggle-label {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--pe-text-secondary);
-  margin-right: var(--pe-space-sm);
-}
-
-.toggle-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: white;
-  border: 1px solid var(--pe-border);
-  border-radius: var(--pe-radius-full);
-  cursor: pointer;
-  font-size: 0.8125rem;
-  color: var(--pe-text-secondary);
-  transition: all var(--pe-transition-fast);
-}
-
-.toggle-item:hover {
-  border-color: var(--pe-gray-400);
-}
-
-.toggle-item.active {
-  border-color: var(--pe-primary);
-  background: rgba(49, 151, 149, 0.05);
-  color: var(--pe-gray-900);
-}
-
-.toggle-item input {
-  display: none;
-}
-
-.toggle-color {
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
-}
-
-.toggle-color.baseline {
-  background: #9CA3AF;
-}
-
-.toggle-color.ira {
-  background: #0284C7;
-}
-
-.toggle-color.fpl700 {
-  background: #7c3aed;
-}
-
-.toggle-color.additional {
-  background: #059669;
-}
-
-.toggle-color.simplified {
-  background: #d97706;
 }
 
 /* Responsive */
