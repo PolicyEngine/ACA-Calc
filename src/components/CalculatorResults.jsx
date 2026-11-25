@@ -166,6 +166,29 @@ const monthlyNet = (values) => Math.round(values.net / 12);
 // The credit's income as a share of the poverty line, as the charts show it.
 const fplText = (scenario) => fplPercentText(scenario.magi, scenario.fpl);
 
+// New York's Essential Plan limit fell from 250% to 200% FPL on July 1, 2026,
+// when its section 1332 waiver ended, but the model's eligibility is annual, so
+// its 2026 card applies 250% to the whole year. Members on the program in 2026
+// whom no program covers in 2027 had incomes above 200% FPL in 2026, since the
+// 2027 guideline is higher, so the limit's fall reached them.
+function NewYorkMidYearNote({ answer, state, year }) {
+  const { people, current, prior_year: priorYear } = answer;
+  if (state !== "NY" || year - 1 !== 2026 || !priorYear) return null;
+  const members = indicesWhere(
+    priorYear.coverage,
+    (member, i) => member.basic_health_program && !isCovered(current.coverage[i])
+  );
+  if (members.length === 0) return null;
+  return (
+    <p>
+      The 2026 card applies New York's 250% FPL limit for the Essential Plan to the whole year. The
+      limit fell to 200% FPL on July 1, 2026, when New York's section 1332 waiver ended, so from
+      then {describeMembers(members, people)} would no longer qualify and could enroll in a
+      Marketplace plan.
+    </p>
+  );
+}
+
 function Explanation({ answer, state, year, compareEnhanced }) {
   const { people, current, ira, prior_year: priorYear } = answer;
   const fpl = fplText(current);
@@ -505,6 +528,7 @@ function CalculatorResults({
                     year={year}
                     compareEnhanced={compareEnhanced}
                   />
+                  <NewYorkMidYearNote answer={answer} state={formData?.state} year={year} />
                 </div>
               </div>
             )}
