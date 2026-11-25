@@ -251,10 +251,23 @@ function Explanation({ answer, state, year, compareEnhanced }) {
     );
   }
 
+  // The model prices no plan for members aged 65 or older, since Medicare
+  // rules out the credit (26 U.S.C. 36B(c)(2)(B)).
+  const ages = uncovered.map((i) => people[i].age);
+  if (values.gap && ages.every((age) => age >= 65)) {
+    return (
+      <p>
+        {lead}In {year}, {who} would qualify for Medicare at age 65 or older, and people eligible for
+        Medicare can't get a premium tax credit.
+      </p>
+    );
+  }
+
   // Above 100% FPL, where a state with a Basic Health Program has no plan
-  // priced for the members left, the model has the program covering them.
+  // priced for the members left, the model has the program covering them. It
+  // covers only adults aged 19 to 64.
   const program = BASIC_HEALTH_PROGRAMS[state];
-  if (program && values.gap) {
+  if (program && values.gap && ages.every((age) => age >= 19 && age <= 64)) {
     return (
       <p>
         {lead}In {year}, at {fpl}% FPL, {program.name} would cover {who}, so the model gives no
