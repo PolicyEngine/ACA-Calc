@@ -177,7 +177,8 @@ const fplText = (scenario) => fplPercentText(scenario.magi, scenario.fpl);
 // which the 2027 credit uses (current.fpl). The program covers incomes at or
 // below its limit, and it compares Medicaid income with the Medicaid
 // household's guideline. The credit's income and tax family can differ from
-// those, so near the limit this test and the program's can disagree.
+// those, so this test and the program's can disagree, and not only near the
+// limit.
 export function NewYorkMidYearNote({ answer, state, year }) {
   const { people, current, prior_year: priorYear } = answer;
   if (state !== "NY" || year - 1 !== 2026 || !priorYear) return null;

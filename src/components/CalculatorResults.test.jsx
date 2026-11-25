@@ -60,14 +60,14 @@ describe("Explanation", () => {
     expect(text).not.toContain("benchmark plan");
   });
 
-  // A Pennsylvania couple aged 67 and 66 with a child aged 16, earning $40,000
-  // in 2026: 150% of the 2025 guideline for three ($26,650). CHIP covers the
+  // A Pennsylvania couple aged 67 and 66 with a child aged 16, earning $60,000
+  // in 2026: 225% of the 2025 guideline for three ($26,650). CHIP covers the
   // child, and the model prices no plan for members aged 65 or older.
   test("names Medicare for adults aged 65 or older and not the benchmark plan", () => {
     const coverage = [covers(), covers(), covers({ chip: true })];
-    const current = scenario(2026, { magi: 40_000, fpl: 26_650, full_premium: 21_600, coverage });
+    const current = scenario(2026, { magi: 60_000, fpl: 26_650, full_premium: 21_600, coverage });
     const people = household(67, 66, [16]);
-    const answer = { income: 40_000, year: 2026, people, current, ira: current };
+    const answer = { income: 60_000, year: 2026, people, current, ira: current };
     const text = explain(answer, "PA");
     expect(text).toStartWith(
       "<p>CHIP would cover your child. In 2026, you and your spouse would qualify for Medicare at " +
@@ -136,10 +136,10 @@ describe("NewYorkMidYearNote", () => {
     expect(note(newYorker(36_000, { onPlanIn2027: false }), "NY")).toContain(SAYS_FALL);
   });
 
-  // The program compares Medicaid income with the Medicaid household's
-  // guideline, and those can differ from the credit's income and tax family.
-  // This answer holds the credit's income under the limit while the program
-  // leaves the member out in 2027.
+  // We built this answer by hand, since the model itself keeps a single adult
+  // at $31,900 on the program in 2027. It stands in for a household whose
+  // Medicaid income or household differs from the credit's, where the credit's
+  // income sits under the limit and no program covers the member in 2027.
   test("names a member no program covers in 2027 whatever the credit's income", () => {
     expect(note(newYorker(31_900, { onPlanIn2027: false }), "NY")).toContain(SAYS_FALL);
   });
