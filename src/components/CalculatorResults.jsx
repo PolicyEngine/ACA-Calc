@@ -168,28 +168,38 @@ const fplText = (scenario) => fplPercentText(scenario.magi, scenario.fpl);
 
 // New York's Essential Plan limit fell from 250% to 200% FPL on July 1, 2026,
 // when its section 1332 waiver ended, but the model's eligibility is annual, so
-// its 2026 card applies 250% to the whole year. Members on the program in 2026
-// whom no program covers in 2027 had incomes above 200% FPL in 2026, since the
-// 2027 guideline is higher, so the limit's fall reached them.
-function NewYorkMidYearNote({ answer, state, year }) {
+// its 2026 card applies 250% to the whole year. The fall reached members on the
+// program in 2026 whose 2026 incomes exceeded 200% of the 2026 guideline. The
+// model tests 2027 against the higher 2027 guideline, so it leaves some of them
+// uncovered in 2027 and keeps others on the program. The note names both: the
+// members no program covers in 2027, and every 2026 program member when the
+// credit's 2026 income (prior_year.magi) exceeds 200% of the 2026 guideline,
+// which the 2027 credit uses (current.fpl). The program covers incomes at or
+// below its limit, and it compares Medicaid income with the Medicaid
+// household's guideline. The credit's income and tax family can differ from
+// those, so this test and the program's can disagree, and not only near the
+// limit.
+export function NewYorkMidYearNote({ answer, state, year }) {
   const { people, current, prior_year: priorYear } = answer;
   if (state !== "NY" || year - 1 !== 2026 || !priorYear) return null;
+  const aboveJulyLimit = priorYear.magi > 2 * current.fpl;
   const members = indicesWhere(
     priorYear.coverage,
-    (member, i) => member.basic_health_program && !isCovered(current.coverage[i])
+    (member, i) =>
+      member.basic_health_program && (!isCovered(current.coverage[i]) || aboveJulyLimit)
   );
   if (members.length === 0) return null;
   return (
     <p>
       The 2026 card applies New York's 250% FPL limit for the Essential Plan to the whole year. The
-      limit fell to 200% FPL on July 1, 2026, when New York's section 1332 waiver ended, so from
-      then {describeMembers(members, people)} would no longer qualify and could enroll in a
+      limit fell to 200% FPL on July 1, 2026, when New York's section 1332 waiver ended, so for the
+      rest of 2026 {describeMembers(members, people)} would no longer qualify and could enroll in a
       Marketplace plan.
     </p>
   );
 }
 
-function Explanation({ answer, state, year, compareEnhanced }) {
+export function Explanation({ answer, state, year, compareEnhanced }) {
   const { people, current, ira, prior_year: priorYear } = answer;
   const fpl = fplText(current);
   const percent = (100 * current.magi) / current.fpl;
@@ -228,12 +238,16 @@ function Explanation({ answer, state, year, compareEnhanced }) {
   }
 
   // Members a program covers leave the benchmark plan to the others.
-  const lead = covered.length > 0 && (
+  const coverage =
+    covered.length > 0 && capitalize(coverageSentence(current.coverage, people, state));
+  const lead = coverage && (
     <>
-      {capitalize(coverageSentence(current.coverage, people, state))}, so the benchmark plan covers{" "}
-      {describeMembers(uncovered, people)}.{" "}
+      {coverage}, so the benchmark plan covers {describeMembers(uncovered, people)}.{" "}
     </>
   );
+  // Where the others would qualify for Medicare or a Basic Health Program, the
+  // opening sentence names only the members a program covers.
+  const coverageLead = coverage && <>{coverage}. </>;
   const who = describeMembers(uncovered, people);
   const values = cardValues(current, state);
   const revived = ira ? cardValues(ira, state) : null;
@@ -308,8 +322,8 @@ function Explanation({ answer, state, year, compareEnhanced }) {
   if (values.gap && ages.every((age) => age >= 65)) {
     return (
       <p>
-        {lead}In {year}, {who} would qualify for Medicare at age 65 or older, and people eligible for
-        Medicare can't get a premium tax credit.
+        {coverageLead}In {year}, {who} would qualify for Medicare at age 65 or older, and people
+        eligible for Medicare can't get a premium tax credit.
       </p>
     );
   }
@@ -327,8 +341,8 @@ function Explanation({ answer, state, year, compareEnhanced }) {
   ) {
     return (
       <p>
-        {lead}In {year}, at {fpl}% FPL, {program.name} would cover {who}, so the model gives no
-        credit.{compareEnhanced && revived?.gap && " H.R. 1834 wouldn't change this."}
+        {coverageLead}In {year}, at {fpl}% FPL, {program.name} would cover {who}, so the model
+        gives no credit.{compareEnhanced && revived?.gap && " H.R. 1834 wouldn't change this."}
       </p>
     );
   }
