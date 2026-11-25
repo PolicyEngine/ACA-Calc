@@ -172,12 +172,12 @@ const fplText = (scenario) => fplPercentText(scenario.magi, scenario.fpl);
 // program in 2026 whose 2026 incomes exceeded 200% of the 2026 guideline. The
 // model tests 2027 against the higher 2027 guideline, so it leaves some of them
 // uncovered in 2027 and keeps others on the program. The note names both: the
-// members no program covers in 2027, and every 2026 member when the credit's
-// 2026 income (prior_year.magi) exceeds 200% of the 2026 guideline, which the
-// 2027 credit uses (current.fpl). The program covers incomes at or below its
-// limit, and it compares Medicaid income with the Medicaid household's
-// guideline. The credit's income and tax family can differ from those, so near
-// the limit this test and the program's can disagree.
+// members no program covers in 2027, and every 2026 program member when the
+// credit's 2026 income (prior_year.magi) exceeds 200% of the 2026 guideline,
+// which the 2027 credit uses (current.fpl). The program covers incomes at or
+// below its limit, and it compares Medicaid income with the Medicaid
+// household's guideline. The credit's income and tax family can differ from
+// those, so near the limit this test and the program's can disagree.
 export function NewYorkMidYearNote({ answer, state, year }) {
   const { people, current, prior_year: priorYear } = answer;
   if (state !== "NY" || year - 1 !== 2026 || !priorYear) return null;
@@ -245,7 +245,7 @@ export function Explanation({ answer, state, year, compareEnhanced }) {
     </>
   );
   // Where the others would qualify for Medicare or a Basic Health Program, the
-  // text names only the members a program covers.
+  // opening sentence names only the members a program covers.
   const coverageLead = coverage && <>{coverage}. </>;
   const who = describeMembers(uncovered, people);
   const values = cardValues(current, state);

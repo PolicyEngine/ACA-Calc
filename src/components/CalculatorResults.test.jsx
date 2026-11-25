@@ -1,5 +1,5 @@
-// The "Your household" tab's text, rendered from answers shaped as
-// /api/calculate-at-income returns them. Each scenario's fpl is the guideline
+// These tests render the "Your household" tab's text from answers in the shape
+// /api/calculate-at-income returns. Each scenario's fpl is the guideline
 // its credit uses, the year before's (policyengine-us 2.138.2, gov.hhs.fpg):
 // $15,650 for one person in 2025 plus $5,500 for each other member, and
 // $15,960 in 2026 plus $5,680.
@@ -137,11 +137,33 @@ describe("NewYorkMidYearNote", () => {
   });
 
   // The program compares Medicaid income with the Medicaid household's
-  // guideline, which can differ from the credit's income and tax family. This
-  // answer holds the credit's income under the limit while the program leaves
-  // the member out in 2027.
+  // guideline, and those can differ from the credit's income and tax family.
+  // This answer holds the credit's income under the limit while the program
+  // leaves the member out in 2027.
   test("names a member no program covers in 2027 whatever the credit's income", () => {
     expect(note(newYorker(31_900, { onPlanIn2027: false }), "NY")).toContain(SAYS_FALL);
+  });
+
+  // A New York couple aged 40 and 38 with a child aged 8 on CHIP, earning
+  // $55,000. That exceeds 200% of the 2026 guideline for three ($54,640) and
+  // falls within 200% of the model's 2027 guideline for three (about
+  // $56,238), so the Essential Plan covers the adults in both years.
+  test("names only the members on the program in 2026", () => {
+    const coverage = [
+      covers({ basic_health_program: true }),
+      covers({ basic_health_program: true }),
+      covers({ chip: true }),
+    ];
+    const answer = {
+      income: 55_000,
+      year: 2027,
+      people: household(40, 38, [8]),
+      current: scenario(2027, { magi: 55_000, fpl: 27_320, coverage }),
+      prior_year: scenario(2026, { magi: 55_000, fpl: 26_650, coverage }),
+    };
+    expect(note(answer, "NY")).toContain(
+      "so for the rest of 2026 you and your spouse would no longer qualify"
+    );
   });
 
   test("names no one outside New York", () => {
