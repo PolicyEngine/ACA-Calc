@@ -60,6 +60,58 @@ function describeMembers(indices, people) {
 
 const isCovered = (member) => member.medicaid || member.chip;
 
+// Each state's Basic Health Program, as policyengine-us 2.138.2 models it
+// (gov.hhs.basic_health_program): adults aged 19 to 64 with incomes above
+// Medicaid's limit up to 200% FPL. New York's limit was 250% until its section
+// 1332 waiver ended on June 30, 2026; the model's eligibility is annual, so it
+// keeps 250% for all of 2026. People the program covers can't enroll in a
+// Marketplace plan (42 U.S.C. 18051(e)), but the API doesn't report this
+// coverage yet, so the results name the program instead.
+const BASIC_HEALTH_PROGRAMS = {
+  DC: {
+    state: "DC",
+    name: "the Healthy DC Plan",
+    limit: "200% FPL",
+    url: "https://hbx.dc.gov/sites/default/files/dc/sites/hbx/page_content/attachments/Healthy%20DC%20Plan%20Overview%20-%20October%202025.pdf",
+  },
+  MN: {
+    state: "Minnesota",
+    name: "MinnesotaCare",
+    limit: "200% FPL",
+    url: "https://mn.gov/dhs/health-care/minnesotacare/",
+  },
+  NY: {
+    state: "New York",
+    name: "the Essential Plan",
+    limit: "200% FPL (250% FPL until June 30, 2026)",
+    url: "https://info.nystateofhealth.ny.gov/EssentialPlan",
+  },
+  OR: {
+    state: "Oregon",
+    name: "OHP Bridge",
+    limit: "200% FPL",
+    url: "https://www.oregon.gov/oha/ohp/pages/bridge.aspx",
+  },
+};
+
+function BasicHealthProgramNote({ state }) {
+  const program = BASIC_HEALTH_PROGRAMS[state];
+  if (!program) return null;
+  return (
+    <p className="results-notice">
+      {program.state}'s Basic Health Program, {program.name}, covers adults aged 19 to 64 with
+      incomes above Medicaid's limit and up to {program.limit}. People it covers can't enroll in a
+      Marketplace plan or get a premium tax credit. These results don't include {program.name} yet:
+      at those incomes, the "Your household" cards show what a Marketplace plan would cost, and the
+      charts show $0.{" "}
+      <a href={program.url} target="_blank" rel="noopener noreferrer">
+        Learn about {program.name}
+      </a>
+      .
+    </p>
+  );
+}
+
 // "Medicaid would cover your children, and CHIP would cover ...", naming each
 // program only for the members it covers.
 function coverageSentence(coverage, people) {
@@ -118,8 +170,8 @@ function Explanation({ answer, state, year, compareEnhanced }) {
     // not the credit's, so the share of the credit's guideline isn't named.
     return (
       <p>
-        At this income, {coverageSentence(current.coverage, people)}. Premium tax credits are not
-        available to people eligible for these programs.
+        At this income in {year}, {coverageSentence(current.coverage, people)}. Premium tax credits
+        are not available to people eligible for these programs.
       </p>
     );
   }
@@ -144,9 +196,11 @@ function Explanation({ answer, state, year, compareEnhanced }) {
       // earnings of 80 hours a month at the federal minimum wage ($7.25).
       reason = (
         <>
-          {who} wouldn't qualify for Medicaid: from 2027, Medicaid requires most adults
-          aged 19 to 64 to work or do other qualifying activities for 80 hours a month, which the
-          model counts as earnings of at least $580 a month. Premium tax credits start at 100% FPL.
+          {who} wouldn't qualify for Medicaid: from 2027, Medicaid requires most adults in the
+          expansion group, aged 19 to 64, to work or do other qualifying activities for 80 hours a
+          month, which the model counts as earnings of at least $580 a month. The {year} estimate
+          assumes no qualifying activity beyond these earnings and no exemption. Premium tax credits
+          start at 100% FPL.
         </>
       );
     } else if (!EXPANSION_STATES.includes(state)) {
@@ -165,7 +219,7 @@ function Explanation({ answer, state, year, compareEnhanced }) {
     }
     return (
       <p>
-        {lead}At {fpl}% FPL, {reason}
+        {lead}In {year}, at {fpl}% FPL, {reason}
       </p>
     );
   }
@@ -197,10 +251,35 @@ function Explanation({ answer, state, year, compareEnhanced }) {
     );
   }
 
+  // The model prices no plan for members aged 65 or older, since Medicare
+  // rules out the credit (26 U.S.C. 36B(c)(2)(B)).
+  const ages = uncovered.map((i) => people[i].age);
+  if (values.gap && ages.every((age) => age >= 65)) {
+    return (
+      <p>
+        {lead}In {year}, {who} would qualify for Medicare at age 65 or older, and people eligible for
+        Medicare can't get a premium tax credit.
+      </p>
+    );
+  }
+
+  // Above 100% FPL, where a state with a Basic Health Program has no plan
+  // priced for the members left, the model has the program covering them. It
+  // covers only adults aged 19 to 64.
+  const program = BASIC_HEALTH_PROGRAMS[state];
+  if (program && values.gap && ages.every((age) => age >= 19 && age <= 64)) {
+    return (
+      <p>
+        {lead}In {year}, at {fpl}% FPL, {program.name} would cover {who}, so the model gives no
+        credit.{compareEnhanced && revived?.gap && " H.R. 1834 wouldn't change this."}
+      </p>
+    );
+  }
+
   return (
     <p>
-      {lead}At {fpl}% FPL, the benchmark plan costs less than the share of income current law asks
-      your household to pay, so it receives no credit.{" "}
+      {lead}In {year}, at {fpl}% FPL, the benchmark plan costs less than the share of income current
+      law asks your household to pay, so it receives no credit.{" "}
       {compareEnhanced &&
         revived &&
         (revived.credit > 0
@@ -294,6 +373,7 @@ function CalculatorResults({
       </div>
 
       <div className="results-content">
+        <BasicHealthProgramNote state={formData?.state} />
         {(activeTab === "net" || activeTab === "credit") && data && (
           <>
             <div className="results-chart">
