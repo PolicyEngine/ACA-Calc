@@ -62,9 +62,11 @@ const isCovered = (member) => member.medicaid || member.chip;
 
 // Each state's Basic Health Program, as policyengine-us 2.138.2 models it
 // (gov.hhs.basic_health_program): adults aged 19 to 64 with incomes above
-// Medicaid's limit up to 200% FPL, or 250% for New York in 2026. People it
-// covers can't enroll in a Marketplace plan (42 U.S.C. 18051(e)), but the API
-// doesn't report this coverage yet, so the results name the program instead.
+// Medicaid's limit up to 200% FPL. New York's limit was 250% until its section
+// 1332 waiver ended on June 30, 2026; the model's eligibility is annual, so it
+// keeps 250% for all of 2026. People the program covers can't enroll in a
+// Marketplace plan (42 U.S.C. 18051(e)), but the API doesn't report this
+// coverage yet, so the results name the program instead.
 const BASIC_HEALTH_PROGRAMS = {
   DC: {
     state: "DC",
@@ -81,7 +83,7 @@ const BASIC_HEALTH_PROGRAMS = {
   NY: {
     state: "New York",
     name: "the Essential Plan",
-    limit: "200% FPL, or 250% FPL in 2026",
+    limit: "200% FPL (250% FPL until June 30, 2026)",
     url: "https://info.nystateofhealth.ny.gov/EssentialPlan",
   },
   OR: {
@@ -99,8 +101,9 @@ function BasicHealthProgramNote({ state }) {
     <p className="results-notice">
       {program.state}'s Basic Health Program, {program.name}, covers adults aged 19 to 64 with
       incomes above Medicaid's limit and up to {program.limit}. People it covers can't enroll in a
-      Marketplace plan or get a premium tax credit. These results don't include {program.name} yet,
-      so at those incomes they show what a Marketplace plan would cost.{" "}
+      Marketplace plan or get a premium tax credit. These results don't include {program.name} yet:
+      at those incomes, the "Your household" cards show what a Marketplace plan would cost, and the
+      charts show $0.{" "}
       <a href={program.url} target="_blank" rel="noopener noreferrer">
         Learn about {program.name}
       </a>
@@ -244,6 +247,18 @@ function Explanation({ answer, state, year, compareEnhanced }) {
         Your household would pay {monthly(values.net)} in {year}
         {prior && <>, against {monthly(prior.net)} in {year - 1}</>}.
         {compareEnhanced && revived && <> H.R. 1834 would lower its share of income, to {monthly(revived.net)}.</>}
+      </p>
+    );
+  }
+
+  // Above 100% FPL, where a state with a Basic Health Program has no plan
+  // priced for the members left, the model has the program covering them.
+  const program = BASIC_HEALTH_PROGRAMS[state];
+  if (program && values.gap) {
+    return (
+      <p>
+        {lead}In {year}, at {fpl}% FPL, {program.name} would cover {who}, so the model gives no
+        credit.{compareEnhanced && revived?.gap && " H.R. 1834 wouldn't change this."}
       </p>
     );
   }
