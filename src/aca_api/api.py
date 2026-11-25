@@ -249,8 +249,8 @@ def scenario_simulation(situation: dict, create_reform) -> Simulation:
 def credit_at_400_percent(
     sim: Simulation, year: int, credit: np.ndarray, magi: np.ndarray | None = None
 ) -> np.ndarray:
-    """Current law's credit, with the tax units whose income is exactly 400% FPL
-    given theirs.
+    """Current law's credit, with the tax units the model reads as exactly at
+    400% FPL, whose income doesn't exceed it, given theirs.
 
     A tax unit whose income "does not exceed 400 percent" of the poverty line
     qualifies (26 U.S.C. 36B(c)(1)(A)). policyengine-us 2.138.2 makes exactly
@@ -261,12 +261,16 @@ def credit_at_400_percent(
 
     `magi` is the credit's income at full precision, where the caller has it.
     The model's float32 values can't hold a cent at these incomes (above
-    $262,144 they move in steps of 3.125 cents), so $0.01 over the limit would
-    read as exactly at it.
+    $262,144 they move in steps of 3.125 cents), so a cent either side of the
+    limit reads as exactly at it: the model's income picks the tax units it
+    gives nothing at the limit, and the full-precision one decides which of
+    them qualify.
     """
+    model_magi = sim.calculate("aca_magi", period=year).astype(float)
     if magi is None:
-        magi = sim.calculate("aca_magi", period=year)
-    at_limit = np.abs(magi - 4 * sim.calculate("aca_fpg", period=year).astype(float)) < 0.005
+        magi = model_magi
+    limit = 4 * sim.calculate("aca_fpg", period=year).astype(float)
+    at_limit = (model_magi >= limit) & (magi <= limit + 0.005)
     if not at_limit.any():
         return credit
     benchmark = sim.calculate("aca_ptc_slcsp", period=year)

@@ -65,17 +65,63 @@ function describeMembers(indices, people) {
 // covers can't enroll in a Marketplace plan (42 U.S.C. 18051(e)).
 const BASIC_HEALTH_PROGRAMS = {
   DC: {
+    state: "DC",
     name: "the Healthy DC Plan",
     card: "Healthy DC Plan",
+    limit: "200% FPL",
     url: "https://hbx.dc.gov/sites/default/files/dc/sites/hbx/page_content/attachments/Healthy%20DC%20Plan%20Overview%20-%20October%202025.pdf",
   },
-  MN: { name: "MinnesotaCare", card: "MinnesotaCare", url: "https://mn.gov/dhs/health-care/minnesotacare/" },
-  NY: { name: "the Essential Plan", card: "Essential Plan", url: "https://info.nystateofhealth.ny.gov/EssentialPlan" },
-  OR: { name: "OHP Bridge", card: "OHP Bridge", url: "https://www.oregon.gov/oha/ohp/pages/bridge.aspx" },
+  MN: {
+    state: "Minnesota",
+    name: "MinnesotaCare",
+    card: "MinnesotaCare",
+    limit: "200% FPL",
+    url: "https://mn.gov/dhs/health-care/minnesotacare/",
+  },
+  NY: {
+    state: "New York",
+    name: "the Essential Plan",
+    card: "Essential Plan",
+    limit: "200% FPL, or 250% FPL in 2026",
+    url: "https://info.nystateofhealth.ny.gov/EssentialPlan",
+  },
+  OR: {
+    state: "Oregon",
+    name: "OHP Bridge",
+    card: "OHP Bridge",
+    limit: "200% FPL",
+    url: "https://www.oregon.gov/oha/ohp/pages/bridge.aspx",
+  },
 };
 // A state the API reports a Basic Health Program in but this list lacks.
 const OTHER_PROGRAM = { name: "the state's Basic Health Program", card: "Basic Health Program", url: null };
 const basicHealthProgram = (state) => BASIC_HEALTH_PROGRAMS[state] ?? OTHER_PROGRAM;
+
+// Whether every scenario in an answer reports Basic Health Program coverage.
+// Answers from an API before it did (a stale cache, or a rolled-back deploy)
+// lack the field, so their cards can't show the program.
+const reportsBasicHealth = (answer) =>
+  [answer.prior_year, answer.current, answer.ira]
+    .filter(Boolean)
+    .every((scenario) => scenario.coverage.every((member) => "basic_health_program" in member));
+
+// For those answers, in a state with a program, the results name it.
+function BasicHealthProgramNote({ state }) {
+  const program = BASIC_HEALTH_PROGRAMS[state];
+  if (!program) return null;
+  return (
+    <p className="results-notice">
+      {program.state}'s Basic Health Program, {program.name}, covers adults aged 19 to 64 with
+      incomes above Medicaid's limit and up to {program.limit}. People it covers can't enroll in a
+      Marketplace plan or get a premium tax credit. These results don't include {program.name}, so
+      at those incomes they show what a Marketplace plan would cost.{" "}
+      <a href={program.url} target="_blank" rel="noopener noreferrer">
+        Learn about {program.name}
+      </a>
+      .
+    </p>
+  );
+}
 
 const isCovered = (member) => member.medicaid || member.chip || member.basic_health_program;
 // Each member's program, Medicaid first, as the model ranks them.
@@ -330,6 +376,7 @@ function CalculatorResults({
       </div>
 
       <div className="results-content">
+        {answer && !reportsBasicHealth(answer) && <BasicHealthProgramNote state={formData?.state} />}
         {(activeTab === "net" || activeTab === "credit") && data && (
           <>
             <div className="results-chart">

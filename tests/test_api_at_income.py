@@ -193,16 +193,21 @@ def test_new_yorks_essential_plan_reaches_250_percent_in_2026_only(client):
     assert answer["current"]["credit"] > 0
 
 
-def test_a_cent_above_400_percent_gets_no_credit(client):
-    # Max's post-merge review: float32 read $0.01 over the limit as exactly at it.
+def test_the_credit_reaches_400_percent_to_the_cent(client):
+    # Above $262,144 the model's float32 income moves in 3.125-cent steps, so a
+    # cent either side of the limit reads as exactly at it. Income that doesn't
+    # exceed 400% qualifies (26 U.S.C. 36B(c)(1)(A)); a cent more doesn't.
     probe = at_income(client, ANCHORAGE_EIGHT, 200_000)["current"]
     dividends = probe["magi"] - 200_000
     limit = 4 * probe["fpl"]
     assert limit > 262_144
+    below = at_income(client, ANCHORAGE_EIGHT, limit - dividends - 0.01)["current"]
     at_limit = at_income(client, ANCHORAGE_EIGHT, limit - dividends)["current"]
     above = at_income(client, ANCHORAGE_EIGHT, limit - dividends + 0.01)["current"]
     assert at_limit["credit"] > 0
+    assert below["credit"] == pytest.approx(at_limit["credit"], abs=1)
     assert above["credit"] == 0
+    assert below["magi"] == pytest.approx(limit - 0.01, abs=1e-6)
     assert above["magi"] == pytest.approx(limit + 0.01, abs=1e-6)
 
 
