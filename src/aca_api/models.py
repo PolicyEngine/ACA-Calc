@@ -175,6 +175,14 @@ class PersonCoverage(BaseModel):
     medicaid_work_requirement: bool = Field(
         description="Would be eligible for Medicaid but for its work requirement"
     )
+    basic_health_program: bool = Field(
+        default=False,
+        description=(
+            "Eligible for the state's Basic Health Program (MinnesotaCare, New "
+            "York's Essential Plan, OHP Bridge or the Healthy DC Plan), which "
+            "rules out Marketplace enrollment (42 U.S.C. 18051(e))"
+        ),
+    )
 
 
 class ScenarioAtIncome(BaseModel):
@@ -190,12 +198,15 @@ class ScenarioAtIncome(BaseModel):
     credit: float = Field(description="Premium tax credit")
     full_premium: float = Field(
         description=(
-            "Benchmark premium for every member without Medicaid or CHIP: the "
-            "benchmark, except in the coverage gap, where the model assumes no "
-            "one buys a plan and this is what one would cost without a credit"
+            "Benchmark premium for every member Medicaid, CHIP and the Basic "
+            "Health Program don't cover: the benchmark, except in the coverage "
+            "gap, where the model assumes no one buys a plan and this is what "
+            "one would cost without a credit"
         )
     )
-    magi: float = Field(description="The credit's income (aca_magi)")
+    magi: float = Field(
+        description="The credit's income (aca_magi), with the earnings exactly as asked"
+    )
     fpl: float = Field(description="The poverty guideline the credit uses")
     coverage: list[PersonCoverage] = Field(description="Each member's coverage, as in people")
 

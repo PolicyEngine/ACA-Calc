@@ -662,6 +662,10 @@
   line-height: 1.6;
 }
 
+.impact-explanation p + p {
+  margin-top: var(--pe-space-sm);
+}
+
 .impact-placeholder {
   text-align: center;
   padding: var(--pe-space-2xl);

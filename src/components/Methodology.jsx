@@ -96,10 +96,18 @@ function buildSections() {
       id: "method_limits",
       title: "Limitations",
       body: (
-        <p>
-          The example households assume every member buys the benchmark plan; a household that picks another
-          plan pays a different amount, though its credit is the same up to that plan's premium.
-        </p>
+        <>
+          <p>
+            The example households assume every member buys the benchmark plan; a household that picks another
+            plan pays a different amount, though its credit is the same up to that plan's premium.
+          </p>
+          <p>
+            policyengine-us {examples.model_version} doesn't round the share of income a household pays to
+            the nearest hundredth of a percent, as 26 CFR 1.36B-3(g)(1) requires, so a payment can differ by
+            $1 a month from a hand calculation
+            (<a href="https://github.com/PolicyEngine/policyengine-us/issues/11060" target="_blank" rel="noopener noreferrer">policyengine-us#11060</a>).
+          </p>
+        </>
       ),
     },
   ];

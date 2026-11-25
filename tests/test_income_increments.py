@@ -261,6 +261,13 @@ def test_axes_with_period_2026():
     assert len(errors) == 0, f"Found {len(errors)} values with errors > $1"
 
 
+@pytest.mark.xfail(
+    reason=(
+        "Exploratory: 1,000 values differ by more than $1 on main as on this "
+        "branch, and CI doesn't run it (Pavel's review of #37, suggestion 5)"
+    ),
+    strict=False,
+)
 def test_axes_with_uprating_compensation():
     """Test using compensated max to account for uprating"""
     # Use empirical uprating factor of ~1.09689

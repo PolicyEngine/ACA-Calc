@@ -93,12 +93,14 @@ jobs:
         run: uvx --from "modal==$MODAL_VERSION" --with "typer<0.16" --with "click<8.2" modal deploy --env main modal_app.py
       # The smoke test uses only the standard library, so any Python runs it.
       # It waits until this commit's containers answer each check.
+      # --no-config skips .python-version: its 3.11 is the local setup's, and
+      # under only-system uv won't download it on a runner that lacks it.
       - name: Smoke-test the calculator
         id: calculator
-        run: uv run --no-project scripts/smoke_test_api.py "$API_URL" --commit "$GITHUB_SHA"
+        run: uv run --no-project --no-config scripts/smoke_test_api.py "$API_URL" --commit "$GITHUB_SHA"
       - name: Roll back to the previous version if the calculator fails
         if: failure() && steps.calculator.outcome == 'failure'
         run: uvx --from "modal==$MODAL_VERSION" --with "typer<0.16" --with "click<8.2" modal app rollback aca-calc-api --env main
       # Calls the Anthropic API unless this household's answer is cached.
       - name: Smoke-test AI explanations
-        run: uv run --no-project scripts/smoke_test_api.py "$API_URL" --commit "$GITHUB_SHA" --explain
+        run: uv run --no-project --no-config scripts/smoke_test_api.py "$API_URL" --commit "$GITHUB_SHA" --explain

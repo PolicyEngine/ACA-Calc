@@ -111,8 +111,16 @@ if (sweepAt >= 0 && pennsylvania) {
   }
 }
 
-// 7. Each example's "Your household" cards, which the API calculated at its
-// earnings, match the Overview's table, to the dollar a month.
+// 7. The calculator offers the Overview's households, every one of them, and
+// each example's "Your household" cards, which the API calculated at its
+// earnings, match the Overview's table: the benchmark premium, the credit and
+// the payment each to the dollar a month, so errors in two can't offset.
+const calculatorKeys = data.calculator.examples.map((example) => example.key).sort();
+const overviewKeys = Object.keys(overview).sort();
+check(
+  calculatorKeys.join() === overviewKeys.join(),
+  `the calculator's examples (${calculatorKeys.join(", ")}) aren't the Overview's (${overviewKeys.join(", ")})`
+);
 for (const example of data.calculator.examples) {
   const table = overview[example.key];
   const answer = example.at_income;
@@ -127,12 +135,22 @@ for (const example of data.calculator.examples) {
     [`hr1834_${year}`]: answer.ira,
   };
   for (const [scenario, card] of Object.entries(cards)) {
-    const value = card ? net(card.benchmark, card.credit) : NaN;
-    const expected = table.scenarios[scenario].net_premium / 12;
-    check(
-      Math.abs(value - expected) < 1,
-      `${example.key}, ${scenario}: the card pays $${value.toFixed(2)}/month, the Overview $${expected.toFixed(2)}`
-    );
+    const row = table.scenarios[scenario];
+    if (!card || !row) {
+      problems.push(`${example.key}, ${scenario}: ${card ? "the Overview" : "the card"} has no values`);
+      continue;
+    }
+    const pairs = [
+      ["benchmark premium", card.benchmark, row.slcsp],
+      ["credit", card.credit, row.ptc],
+      ["payment", 12 * net(card.benchmark, card.credit), row.net_premium],
+    ];
+    for (const [label, value, expected] of pairs) {
+      check(
+        Math.abs(value - expected) / 12 < 1,
+        `${example.key}, ${scenario}: the card's ${label} is $${(value / 12).toFixed(2)}/month, the Overview's $${(expected / 12).toFixed(2)}`
+      );
+    }
   }
 }
 

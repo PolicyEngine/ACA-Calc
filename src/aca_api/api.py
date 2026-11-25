@@ -40,7 +40,8 @@ MODEL_VERSION = version("policyengine-us")
 # Also part of every cache key: change it when this API's answers change for
 # the same request and model version, so the caches drop the old ones.
 # 2: the credit at exactly 400% FPL, and the credit's income on the axis.
-ANSWER_VERSION = 2
+# 3: Basic Health Program coverage, and the credit's income to the cent.
+ANSWER_VERSION = 3
 
 # Each scenario: the request flag that turns it on, the response field for its
 # credits, and the reform that models it.
@@ -245,20 +246,31 @@ def scenario_simulation(situation: dict, create_reform) -> Simulation:
     return Simulation(situation=situation, reform=create_reform())
 
 
-def credit_at_400_percent(sim: Simulation, year: int, credit: np.ndarray) -> np.ndarray:
-    """Current law's credit, with the tax units whose income is exactly 400% FPL
-    given theirs.
+def credit_at_400_percent(
+    sim: Simulation, year: int, credit: np.ndarray, magi: np.ndarray | None = None
+) -> np.ndarray:
+    """Current law's credit, with the tax units the model reads as exactly at
+    400% FPL, whose income doesn't exceed it, given theirs.
 
     A tax unit whose income "does not exceed 400 percent" of the poverty line
-    qualifies (26 U.S.C. 36B(c)(1)(A)), and Form 8962 Worksheet 2 decides
-    "more than" 400% on dollars. policyengine-us 2.138.2 makes exactly 400%
-    ineligible (draft fix: PolicyEngine/policyengine-us#10312), so there this
-    applies the model's own formula (aca_ptc_before_filing_gate and the filing
-    condition of files_return_for_aca_ptc). It changes nothing else: a dollar
-    above, income exceeds the limit.
+    qualifies (26 U.S.C. 36B(c)(1)(A)). policyengine-us 2.138.2 makes exactly
+    400% ineligible (draft fix: PolicyEngine/policyengine-us#10312), so there
+    this applies the model's own formula (aca_ptc_before_filing_gate and the
+    filing condition of files_return_for_aca_ptc). It changes nothing else: a
+    cent above, income exceeds the limit.
+
+    `magi` is the credit's income at full precision, where the caller has it.
+    The model's float32 values can't hold a cent at these incomes (above
+    $262,144 they move in steps of 3.125 cents), so a cent either side of the
+    limit reads as exactly at it: the model's income picks the tax units it
+    gives nothing at the limit, and the full-precision one decides which of
+    them qualify.
     """
-    magi = sim.calculate("aca_magi", period=year)
-    at_limit = magi == 4 * sim.calculate("aca_fpg", period=year)
+    model_magi = sim.calculate("aca_magi", period=year).astype(float)
+    if magi is None:
+        magi = model_magi
+    limit = 4 * sim.calculate("aca_fpg", period=year).astype(float)
+    at_limit = (model_magi >= limit) & (magi <= limit + 0.005)
     if not at_limit.any():
         return credit
     benchmark = sim.calculate("aca_ptc_slcsp", period=year)
@@ -518,20 +530,34 @@ def run_at_income(data: AtIncomeRequest, year: int, enhanced: bool) -> ScenarioA
         sim = Simulation(tax_benefit_system=enhanced_system(), situation=situation)
     else:
         sim = Simulation(situation=situation)
+    # The credit's income with the earnings exactly as asked: the model's
+    # float32 income drops cents at high incomes. The rest of it (Alaska's
+    # dividends) is whole dollars.
+    earnings = float(sim.calculate("employment_income", period=year)[0])
+    other_income = round(float(sim.calculate("aca_magi", period=year)[0]) - earnings)
+    magi = data.income + other_income
     credit = sim.calculate("aca_ptc", period=year)
     if not enhanced:
-        credit = credit_at_400_percent(sim, year, credit)
+        credit = credit_at_400_percent(sim, year, credit, np.array([magi]))
     benchmark = float(sim.calculate("slcsp", map_to="household", period=year)[0])
     medicaid = sim.calculate("is_medicaid_eligible", period=year)
     chip = sim.calculate("is_chip_eligible", period=year)
     barred = sim.calculate("is_medicaid_ineligible_due_to_work_requirement", period=year)
+    basic_health = sim.calculate("is_basic_health_program_eligible", period=year)
     coverage = [
-        PersonCoverage(medicaid=bool(m), chip=bool(c), medicaid_work_requirement=bool(b))
-        for m, c, b in zip(medicaid, chip, barred)
+        PersonCoverage(
+            medicaid=bool(m),
+            chip=bool(c),
+            medicaid_work_requirement=bool(b),
+            basic_health_program=bool(h),
+        )
+        for m, c, b, h in zip(medicaid, chip, barred, basic_health)
     ]
+    # Only members no program covers can buy a Marketplace plan; Basic Health
+    # Program enrollees can't (42 U.S.C. 18051(e)).
     uncovered = [
         name for name, person in zip(situation["people"], coverage)
-        if not (person.medicaid or person.chip)
+        if not (person.medicaid or person.chip or person.basic_health_program)
     ]
     full_premium = benchmark
     if benchmark == 0 and uncovered:
@@ -541,7 +567,7 @@ def run_at_income(data: AtIncomeRequest, year: int, enhanced: bool) -> ScenarioA
         benchmark=benchmark,
         credit=float(credit[0]),
         full_premium=full_premium,
-        magi=float(sim.calculate("aca_magi", period=year)[0]),
+        magi=magi,
         fpl=float(sim.calculate("aca_fpg", period=year)[0]),
         coverage=coverage,
     )
